@@ -7,6 +7,7 @@ import { SelectedAudioClipInspector, useSelectedAudioClip } from "../audio/selec
 import { PanelHeader } from "../panel-header";
 import type { PlaybackClock } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";
+import { BlurSection } from "./blur-section";
 import { ClipSection } from "./clip-section";
 import { DraftInput } from "./draft-text-field";
 import { InspectorRow } from "./inspector-row";
@@ -20,9 +21,11 @@ const copy = STUDIO_COPY.inspector;
 export function InspectorPanel({
   editor,
   clock,
+  onBlurEditingChange,
 }: {
   editor: EditorState;
   clock: PlaybackClock;
+  onBlurEditingChange: (editing: boolean) => void;
 }): React.ReactElement {
   const clip = editor.primaryClip;
   const audioClip = useSelectedAudioClip(editor, clock);
@@ -81,6 +84,9 @@ export function InspectorPanel({
                 </InspectorRow>
               ) : null}
             </PropertyGroupSection>
+            {clip.source.kind === "text" ? null : (
+              <BlurSection clip={clip} clock={clock} editor={editor} onEditingChange={onBlurEditingChange} />
+            )}
             <PropertyGroupSection
               clip={clip}
               clock={clock}

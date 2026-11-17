@@ -35,7 +35,7 @@ export function laneProperties(
   });
 }
 
-export const PROPERTY_GROUP_ORDER: PropertyGroup[] = ["device", "camera", "clip"];
+export const PROPERTY_GROUP_ORDER: PropertyGroup[] = ["device", "camera", "blur", "clip"];
 
 export function keysInGroup(group: PropertyGroup): PropertyKey[] {
   return PROPERTY_KEYS.filter((key) => PROPERTY_SPECS[key].group === group);

@@ -6,7 +6,7 @@ import {
   findClipLocation,
   incomingOverlap,
 } from "@calcom/product-video/storyboard/storyboard-edits";
-import { EASES, type Ease, TRANSITION_KINDS } from "@calcom/product-video/storyboard/storyboard-schema";
+import { EASES, TRANSITION_KINDS } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   ContextMenuGroup,
   ContextMenuGroupLabel,
@@ -20,6 +20,7 @@ import {
   ContextMenuSubTrigger,
 } from "@coss/ui/components/context-menu";
 import type * as React from "react";
+import { easeLabel } from "../easing/easing-copy";
 import type { SelectedKeyframe } from "../editor-selection";
 import { MenuShortcut } from "../menu-shortcut";
 import type { PlaybackClock } from "../player/playback-clock";
@@ -29,6 +30,7 @@ import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.timeline.menu;
 const TRANSITION_LENGTHS = [0.25, 0.5, 1, 2] as const;
+const CUSTOM_EASE = "custom";
 
 /** What was right-clicked, read from the nearest `data-menu` element. */
 export type TimelineMenuTarget =
@@ -142,7 +144,7 @@ function ClipItems({ editor, clipId }: { editor: EditorState; clipId: string }):
   );
 }
 
-/** Every animatable property, grouped Device / Camera / Transform. */
+/** Every animatable property, grouped Device / Camera / Blur / Transform. */
 function PropertyGroupItems({
   onPick,
   exclude = [],
@@ -209,13 +211,21 @@ function KeyframeItems({
         <ContextMenuSubTrigger>{copy.ease}</ContextMenuSubTrigger>
         <ContextMenuSubPopup>
           <ContextMenuRadioGroup
-            onValueChange={(ease: Ease) => editor.setKeyframesEase(clipId, keyframes, ease)}
-            value={keyframe.ease}>
+            onValueChange={(value) => {
+              const ease = EASES.find((candidate) => candidate === value);
+              if (ease) editor.setKeyframesEase(clipId, keyframes, ease);
+            }}
+            value={typeof keyframe.ease === "string" ? keyframe.ease : CUSTOM_EASE}>
             {EASES.map((ease) => (
               <ContextMenuRadioItem key={ease} value={ease}>
                 {STUDIO_COPY.eases[ease]}
               </ContextMenuRadioItem>
             ))}
+            {typeof keyframe.ease === "string" ? null : (
+              <ContextMenuRadioItem disabled value={CUSTOM_EASE}>
+                {easeLabel(keyframe.ease)}
+              </ContextMenuRadioItem>
+            )}
           </ContextMenuRadioGroup>
         </ContextMenuSubPopup>
       </ContextMenuSub>

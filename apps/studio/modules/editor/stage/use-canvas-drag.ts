@@ -1,11 +1,20 @@
+import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
 import {
   type CanvasMode,
   dragProperties,
   dragTarget,
+  focusAt,
   type PropertyChanges,
   resetProperties,
+  ringRotation,
   wheelZoom,
 } from "@calcom/product-video/stage/canvas-drag";
+import {
+  hitRing,
+  type Point,
+  type RotationKey,
+  ringDragDegrees,
+} from "@calcom/product-video/stage/rotation-gizmo";
 import {
   evaluateClipProperties,
   type PropertyValues,
@@ -16,11 +25,21 @@ import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackClock } from "../player/playback-clock";
+import type { GizmoTarget } from "./stage-overlay";
 
 /** Wheel events closer together than this build on each other before the project catches up. */
 const WHEEL_BURST_MS = 250;
 
-type Drag = { pointerId: number; clipId: string; start: PropertyValues; x: number; y: number };
+/** A ring drag turns one axis: `turned` adds up each move's degrees, so it can go past half a turn. */
+type RingDrag = { key: RotationKey; target: GizmoTarget; last: Point; turned: number };
+type Drag = {
+  pointerId: number;
+  clipId: string;
+  start: PropertyValues;
+  x: number;
+  y: number;
+  ring: RingDrag | null;
+};
 type SetProperty = (clipId: string, key: PropertyKey, value: number) => void;
 
 function findTarget(
@@ -58,6 +77,8 @@ export function useCanvasDrag({
   selectedClipId,
   frame,
   onSetProperty,
+  layerGeometry,
+  gizmoAt,
 }: {
   element: HTMLElement | null;
   mode: CanvasMode;
@@ -66,8 +87,13 @@ export function useCanvasDrag({
   selectedClipId: string | null;
   frame: { width: number; height: number };
   onSetProperty: SetProperty;
-}): { dragging: boolean; handlers: React.HTMLAttributes<HTMLElement> } {
+  /** Where the stage last drew a clip; Focus mode projects the pointer onto it. */
+  layerGeometry: (clipId: string) => LayerGeometry | null;
+  /** The rotation gizmo on the stage, when it shows; dragging a ring turns that one axis. */
+  gizmoAt: () => GizmoTarget | null;
+}): { dragging: boolean; activeRing: RotationKey | null; handlers: React.HTMLAttributes<HTMLElement> } {
   const [dragging, setDragging] = useState(false);
+  const [activeRing, setActiveRing] = useState<RotationKey | null>(null);
   const drag = useRef<Drag | null>(null);
   const latest = useRef({ project, selectedClipId, frame, onSetProperty });
   useLayoutEffect(() => {
@@ -81,6 +107,24 @@ export function useCanvasDrag({
 
   const apply = (clipId: string, changes: PropertyChanges, from: PropertyValues) =>
     applyChanges(latest.current.onSetProperty, clipId, changes, from);
+
+  const framePoint = (event: React.PointerEvent<HTMLElement>): Point => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return [event.clientX - bounds.left, event.clientY - bounds.top];
+  };
+
+  const ringUnder = (event: React.PointerEvent<HTMLElement>) => {
+    const gizmo = gizmoAt();
+    const key = gizmo ? hitRing(gizmo.gizmo, framePoint(event)) : null;
+    return gizmo && key ? { key, target: gizmo } : null;
+  };
+
+  const focusUnder = (current: Drag, event: React.PointerEvent<HTMLElement>) => {
+    const geometry = layerGeometry(current.clipId);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const changes = geometry && focusAt(geometry, event.clientX - bounds.left, event.clientY - bounds.top);
+    if (changes) apply(current.clipId, changes, current.start);
+  };
 
   useEffect(() => {
     if (!element) return;
@@ -106,7 +150,8 @@ export function useCanvasDrag({
   const handlers: React.HTMLAttributes<HTMLElement> = {
     onPointerDown(event) {
       if (event.button !== 0) return;
-      const found = target();
+      const ring = ringUnder(event);
+      const found = ring ? { clipId: ring.target.clipId, values: ring.target.values } : target();
       if (!found) return;
       event.currentTarget.setPointerCapture(event.pointerId);
       drag.current = {
@@ -115,12 +160,29 @@ export function useCanvasDrag({
         start: found.values,
         x: event.clientX,
         y: event.clientY,
+        ring: ring ? { ...ring, last: framePoint(event), turned: 0 } : null,
       };
       setDragging(true);
+      if (mode === "focus") focusUnder(drag.current, event);
     },
     onPointerMove(event) {
       const current = drag.current;
-      if (!current || current.pointerId !== event.pointerId) return;
+      if (!current || current.pointerId !== event.pointerId) {
+        if (!current) setActiveRing(ringUnder(event)?.key ?? null);
+        return;
+      }
+      if (current.ring) {
+        const { key, target: gizmo, last } = current.ring;
+        const point = framePoint(event);
+        current.ring.turned += ringDragDegrees(gizmo.geometry, gizmo.values, key, last, point);
+        current.ring.last = point;
+        apply(current.clipId, ringRotation(key, current.start[key], current.ring.turned), current.start);
+        return;
+      }
+      if (mode === "focus") {
+        focusUnder(current, event);
+        return;
+      }
       apply(
         current.clipId,
         dragProperties({
@@ -143,11 +205,14 @@ export function useCanvasDrag({
       drag.current = null;
       setDragging(false);
     },
+    onPointerLeave() {
+      if (!drag.current) setActiveRing(null);
+    },
     onDoubleClick() {
       const found = target();
       if (found) apply(found.clipId, resetProperties(mode), found.values);
     },
   };
 
-  return { dragging, handlers };
+  return { dragging, activeRing, handlers };
 }

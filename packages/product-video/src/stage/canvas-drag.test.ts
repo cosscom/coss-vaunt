@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { PropertyValues } from "../storyboard/property-evaluation";
+import { evaluateClipProperties, type PropertyValues } from "../storyboard/property-evaluation";
 import { PROPERTY_KEYS, PROPERTY_SPECS } from "../storyboard/property-specs";
-import { dragProperties, dragTarget, resetProperties, wheelZoom } from "./canvas-drag";
+import { layerGeometry } from "./camera-projection";
+import { deviceWorldSize } from "./camera-rig";
+import { dragProperties, dragTarget, focusAt, resetProperties, ringRotation, wheelZoom } from "./canvas-drag";
 
 const start = {
   ...Object.fromEntries(PROPERTY_KEYS.map((key) => [key, PROPERTY_SPECS[key].defaultValue])),
@@ -70,6 +72,26 @@ describe("resetProperties", () => {
     expect(resetProperties("camera")).toEqual({ panX: 0, panY: 0, zoom: 1 });
     expect(resetProperties("orbit")).toEqual({ cameraX: 0, cameraY: 0, cameraZ: 0 });
     expect(resetProperties("rotate")).toEqual({ rotateX: 0, rotateY: 0, rotateZ: 0 });
+  });
+});
+
+describe("ringRotation", () => {
+  it("turns one axis, wrapping past a half turn and snapping to the step", () => {
+    expect(ringRotation("rotateZ", 10, 25.3)).toEqual({ rotateZ: 35.5 });
+    expect(ringRotation("rotateY", 170, 30)).toEqual({ rotateY: -160 });
+  });
+});
+
+describe("focusAt", () => {
+  it("puts the focus point where the pointer meets the device, kept on it", () => {
+    const values = evaluateClipProperties({ properties: {} }, 0);
+    const geometry = layerGeometry(values, values, deviceWorldSize({ width: 1600, height: 900 }), {
+      width: 1600,
+      height: 900,
+    });
+    expect(focusAt(geometry, 1200, 225)).toEqual({ focusX: 0.5, focusY: -0.5 });
+    expect(focusAt(geometry, 3200, 900)).toEqual({ focusX: 1, focusY: 1 });
+    expect(resetProperties("focus")).toEqual({ focusX: 0, focusY: 0 });
   });
 });
 

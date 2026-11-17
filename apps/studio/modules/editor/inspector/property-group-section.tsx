@@ -39,6 +39,9 @@ type PropertyGroupSectionProps = {
   clip: Clip;
   clock: PlaybackClock;
   editor: EditorState;
+  /** The group's rows to show, in this order; every row of the group by default. */
+  keys?: readonly PropertyKey[];
+  action?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -49,6 +52,8 @@ export function PropertyGroupSection({
   clip,
   clock,
   editor,
+  keys: shownKeys,
+  action,
   children,
 }: PropertyGroupSectionProps): React.ReactElement {
   const time = usePlaybackState(clock, (state) => state.time);
@@ -56,11 +61,13 @@ export function PropertyGroupSection({
   const localTime = clipLocalTime(clip, time);
   const tolerance = frameTolerance(editor.project.settings.fps);
   const withSphere = group === "device";
-  const keys = PROPERTY_KEYS.filter(
-    (key) =>
-      PROPERTY_SPECS[key].group === group &&
-      !(withSphere && ROTATION_KEYS.some((rotation) => rotation === key))
-  );
+  const keys =
+    shownKeys ??
+    PROPERTY_KEYS.filter(
+      (key) =>
+        PROPERTY_SPECS[key].group === group &&
+        !(withSphere && ROTATION_KEYS.some((rotation) => rotation === key))
+    );
   const count = keyframeCount(clip, group);
   const currentValue = (key: PropertyKey) => {
     const property = clip.properties[key];
@@ -70,6 +77,7 @@ export function PropertyGroupSection({
 
   return (
     <InspectorSection
+      action={action}
       aside={
         <span className="flex items-center gap-2">
           {count > 0 ? (

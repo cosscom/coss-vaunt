@@ -1,10 +1,23 @@
+import { cubicBezier } from "../easing/cubic-bezier";
 import { PROPERTY_KEYS, PROPERTY_SPECS, type PropertyKey } from "./property-specs";
-import type { AnimatedProperty, Clip, Ease } from "./storyboard-schema";
+import type { AnimatedProperty, Clip, CubicPoints, Ease } from "./storyboard-schema";
 
 export type PropertyValues = Record<PropertyKey, number>;
 
+const solvedCubics = new WeakMap<CubicPoints, (progress: number) => number>();
+
+function solveCubic(points: CubicPoints): (progress: number) => number {
+  let solved = solvedCubics.get(points);
+  if (!solved) {
+    solved = cubicBezier(...points);
+    solvedCubics.set(points, solved);
+  }
+  return solved;
+}
+
 export function applyEase(ease: Ease, progress: number): number {
   const t = Math.min(1, Math.max(0, progress));
+  if (typeof ease !== "string") return solveCubic(ease.cubic)(t);
   switch (ease) {
     case "linear":
       return t;

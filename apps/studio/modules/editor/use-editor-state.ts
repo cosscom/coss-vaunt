@@ -30,6 +30,7 @@ import {
   quantiseProjectKeyframes,
   removeClips,
   removeKeyframes,
+  removeLanes,
   removeTransition,
   removeVideoTrack,
   resetCamera,
@@ -240,6 +241,15 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
         );
         return;
       }
+      if (lanes.selected.length > 0 && primaryClip) {
+        const removed = lanes.selected;
+        commit(updateClip(project, primaryClip.id, (clip) => removeLanes(clip, removed, atPlayhead(clip))));
+        setLanes((current) => ({
+          selected: [],
+          shown: current.shown.filter((key) => !removed.includes(key)),
+        }));
+        return;
+      }
       commit(removeClips(project, selection.clipIds), { selection: EMPTY_SELECTION });
     },
     duplicateSelection: () => {
@@ -391,9 +401,11 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     },
     resetCamera: (clipId: string) => editClip(clipId, resetCamera),
     resetProperty: (clipId: string, key: PropertyKey) => editClip(clipId, (clip) => resetProperty(clip, key)),
-    setKeyframesEase: (clipId: string, refs: SelectedKeyframe[], ease: Ease) =>
-      editClip(clipId, (clip) =>
-        refs.reduce((current, ref) => setKeyframeEase(current, ref.key, ref.keyframeId, ease), clip)
+    setKeyframesEase: (clipId: string, refs: SelectedKeyframe[], ease: Ease, group?: string) =>
+      editClip(
+        clipId,
+        (clip) => refs.reduce((current, ref) => setKeyframeEase(current, ref.key, ref.keyframeId, ease), clip),
+        group
       ),
     deleteKeyframes: (clipId: string, refs: SelectedKeyframe[]) =>
       editClip(clipId, (clip) => removeKeyframes(clip, refs)),

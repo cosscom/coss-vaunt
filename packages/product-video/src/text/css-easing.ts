@@ -1,4 +1,4 @@
-import { cubicBezier } from "./cubic-bezier";
+import { cubicBezier } from "../easing/cubic-bezier";
 
 export type EasingFunction = (progress: number) => number;
 

@@ -12,12 +12,19 @@
     "./project-store/file-project-store": "./src/project-store/file-project-store.ts",
     "./storyboard/property-specs": "./src/storyboard/property-specs.ts",
     "./storyboard/property-evaluation": "./src/storyboard/property-evaluation.ts",
+    "./storyboard/keyframe-ease": "./src/storyboard/keyframe-ease.ts",
+    "./storyboard/ease-presets": "./src/storyboard/ease-presets.ts",
     "./storyboard/track-resolution": "./src/storyboard/track-resolution.ts",
     "./recording/recording-manifest": "./src/recording/recording-manifest.ts",
     "./stage/camera-rig": "./src/stage/camera-rig.ts",
     "./stage/device-pose": "./src/stage/device-pose.ts",
     "./stage/clip-layers": "./src/stage/clip-layers.ts",
     "./stage/canvas-drag": "./src/stage/canvas-drag.ts",
+    "./stage/camera-projection": "./src/stage/camera-projection.ts",
+    "./stage/depth-of-field": "./src/stage/depth-of-field.ts",
+    "./stage/blur-guides": "./src/stage/blur-guides.ts",
+    "./stage/rotation-gizmo": "./src/stage/rotation-gizmo.ts",
+    "./storyboard/blur-settings": "./src/storyboard/blur-settings.ts",
     "./stage/frame-letterbox": "./src/stage/frame-letterbox.ts",
     "./stage/background-gradient": "./src/stage/background-gradient.ts",
     "./imports/youtube-import": "./src/imports/youtube-import.ts",
@@ -63,6 +70,12 @@
       "storyboard/property-evaluation": [
         "./src/storyboard/property-evaluation.ts"
       ],
+      "storyboard/keyframe-ease": [
+        "./src/storyboard/keyframe-ease.ts"
+      ],
+      "storyboard/ease-presets": [
+        "./src/storyboard/ease-presets.ts"
+      ],
       "storyboard/track-resolution": [
         "./src/storyboard/track-resolution.ts"
       ],
@@ -80,6 +93,21 @@
       ],
       "stage/canvas-drag": [
         "./src/stage/canvas-drag.ts"
+      ],
+      "storyboard/blur-settings": [
+        "./src/storyboard/blur-settings.ts"
+      ],
+      "stage/blur-guides": [
+        "./src/stage/blur-guides.ts"
+      ],
+      "stage/rotation-gizmo": [
+        "./src/stage/rotation-gizmo.ts"
+      ],
+      "stage/depth-of-field": [
+        "./src/stage/depth-of-field.ts"
+      ],
+      "stage/camera-projection": [
+        "./src/stage/camera-projection.ts"
       ],
       "stage/frame-letterbox": [
         "./src/stage/frame-letterbox.ts"

@@ -23,7 +23,7 @@ export function PromptPanel(): React.ReactElement {
   const [lengthSeconds, setLengthSeconds] = useState(30);
 
   return (
-    <aside className="flex min-h-0 flex-col">
+    <aside className="flex shrink-0 flex-col">
       <PanelHeader title={copy.title} />
       <div className="flex flex-col gap-5 p-4">
         <Field>

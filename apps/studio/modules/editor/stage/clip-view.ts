@@ -12,6 +12,8 @@ import { createShadowMaterial, SHADOW_MARGIN } from "./shadow-material";
 /** Corner radius is set in px of a device drawn 1080 px tall. */
 const RADIUS_REFERENCE_PX = 1080;
 const SHADOW_LIFT = 0.001;
+/** The contact shadow's quad covers floor far past its visible shade, so depth of field leaves it out. */
+export const NO_DEPTH_LAYER = 1;
 
 export type ClipViewInput = {
   rig: CameraRig;
@@ -57,6 +59,8 @@ export function createClipView(): ClipView {
   const shadow = new Mesh(geometry, shadowMaterial);
   shadow.rotation.x = -Math.PI / 2;
   shadow.renderOrder = 0;
+  shadow.layers.set(NO_DEPTH_LAYER);
+  camera.layers.enable(NO_DEPTH_LAYER);
 
   scene.add(shadow, reflection, device);
   const placementMatrix = new Matrix4();

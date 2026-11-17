@@ -25,6 +25,7 @@ import {
   quantiseProjectKeyframes,
   removeClip,
   removeKeyframe,
+  removeLanes,
   removeTransition,
   removeVideoTrack,
   resetCamera,
@@ -324,6 +325,15 @@ describe("keyframe group edits", () => {
     const refs = camera.map((key) => ({ key, keyframeId: keyed.properties[key]?.keyframes[0]?.id ?? "" }));
     expect(keyframeTimes(shiftKeyframes(keyed, refs, 9))).toEqual([4]);
     expect(resetCamera(keyed).properties).toEqual({});
+  });
+});
+
+describe("removeLanes", () => {
+  it("drops the lanes' keyframes, keeping the value at the playhead", () => {
+    const keyed = setPropertyAt(setPropertyAt(toggleKeyframeAt(clip, "zoom", 0), "zoom", 0, 1), "zoom", 2, 2);
+    const next = removeLanes(keyed, ["zoom", "fov"], 1);
+    expect(next.properties.zoom).toEqual({ value: 1.5, keyframes: [] });
+    expect(next.properties.fov).toBeUndefined();
   });
 });
 

@@ -16,6 +16,8 @@ export const TRANSITION_KINDS = ["cut", "crossfade", "cross-blur", "zoom-through
 export const EASES = ["linear", "ease-in", "ease-out", "ease-in-out", "hold"] as const;
 export const TEXT_SIZES = ["display", "title", "body"] as const;
 export const TEXT_ALIGNS = ["start", "center", "end"] as const;
+export const BLUR_MODES = ["lens", "radial", "directional", "tilt-shift"] as const;
+export const BLUR_FOCUS_MODES = ["auto", "manual"] as const;
 
 export const aspectRatioSchema = z.enum(ASPECT_RATIOS);
 
@@ -26,13 +28,18 @@ export const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("press"), at: seconds, key: z.string().min(1) }),
 ]);
 
+const bezierX = z.number().min(0).max(1);
+const bezierY = z.number().min(-1).max(2);
+/** CSS `cubic-bezier(x1, y1, x2, y2)`; x outside [0, 1] would make time run backwards. */
+export const cubicEaseSchema = z.object({ cubic: z.tuple([bezierX, bezierY, bezierX, bezierY]) });
+
 export const keyframeSchema = z.object({
   id,
   /** Seconds from the start of the clip. */
   at: seconds,
   value: z.number(),
   /** Easing of the segment that ends at this keyframe. */
-  ease: z.enum(EASES),
+  ease: z.union([z.enum(EASES), cubicEaseSchema]),
 });
 
 export const animatedPropertySchema = z.object({
@@ -42,6 +49,14 @@ export const animatedPropertySchema = z.object({
 });
 
 const clipPropertiesSchema = z.partialRecord(z.enum(PROPERTY_KEYS), animatedPropertySchema);
+
+/** Depth of field settings that don't animate; strength, range and focus are keyframed properties. */
+export const blurSettingsSchema = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(BLUR_MODES),
+  /** Auto focuses on the focus point on the device, so focus follows it as it turns; manual on a distance. */
+  focus: z.enum(BLUR_FOCUS_MODES),
+});
 
 export const clipSourceSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -89,6 +104,7 @@ export const clipSchema = z
     /** Played over the overlap with the previous clip on the same track; ignored without an overlap. */
     transitionIn: z.enum(TRANSITION_KINDS),
     properties: clipPropertiesSchema,
+    blur: blurSettingsSchema.optional(),
     /** CSS selector inside a recording that depth of field focuses on. */
     focus: z.string().min(1).optional(),
     source: clipSourceSchema,
@@ -261,10 +277,16 @@ export const projectSchema = z.object({
 
 export type AspectRatio = z.infer<typeof aspectRatioSchema>;
 export type Action = z.infer<typeof actionSchema>;
-export type Ease = (typeof EASES)[number];
+export type EaseName = (typeof EASES)[number];
+export type CubicEase = z.infer<typeof cubicEaseSchema>;
+export type CubicPoints = CubicEase["cubic"];
+export type Ease = z.infer<typeof keyframeSchema>["ease"];
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type AnimatedProperty = z.infer<typeof animatedPropertySchema>;
 export type ClipSource = z.infer<typeof clipSourceSchema>;
+export type BlurSettings = z.infer<typeof blurSettingsSchema>;
+export type BlurMode = (typeof BLUR_MODES)[number];
+export type BlurFocusMode = (typeof BLUR_FOCUS_MODES)[number];
 export type Clip = z.infer<typeof clipSchema>;
 export type TransitionKind = (typeof TRANSITION_KINDS)[number];
 export type VideoTrack = z.infer<typeof videoTrackSchema>;

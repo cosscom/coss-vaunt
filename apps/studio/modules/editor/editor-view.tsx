@@ -4,6 +4,7 @@ import type { Project } from "@calcom/product-video/storyboard/storyboard-schema
 import { projectDuration } from "@calcom/product-video/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
+import { EasingSection } from "./easing/easing-section";
 import { InspectorPanel } from "./inspector/inspector-panel";
 import { ResizableSplit } from "./layout/resizable-split";
 import { PANEL_SPECS, usePanelLayout } from "./layout/use-panel-layout";
@@ -28,6 +29,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
   const layout = usePanelLayout();
   const timelineRef = useRef<TimelineHandle>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [blurEditing, setBlurEditing] = useState(false);
   const saveStatus = useProjectAutosave(project);
 
   useEffect(() => clock.setDuration(projectDuration(project)), [clock, project]);
@@ -54,8 +56,9 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
       />
       <div className="flex min-h-0 flex-1">
         {prompt.collapsed ? null : (
-          <div className="flex min-h-0 shrink-0 flex-col" style={{ width: prompt.size }}>
+          <div className="flex min-h-0 shrink-0 flex-col overflow-y-auto" style={{ width: prompt.size }}>
             <PromptPanel />
+            <EasingSection clock={clock} editor={editor} />
           </div>
         )}
         <ResizableSplit
@@ -74,8 +77,10 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
               onSetProperty={(clipId, key, value) =>
                 editor.setCompoundAtPlayhead(clipId, key, value, `canvas:${clipId}`)
               }
+              blurEditing={blurEditing}
               project={project}
               selectedClipId={editor.primaryClip?.id ?? null}
+              singleClipSelected={editor.selection.clipIds.length === 1}
             />
           </section>
         </StageContextMenu>
@@ -90,7 +95,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
         />
         {inspector.collapsed ? null : (
           <div className="flex min-h-0 shrink-0 flex-col" style={{ width: inspector.size }}>
-            <InspectorPanel clock={clock} editor={editor} />
+            <InspectorPanel clock={clock} editor={editor} onBlurEditingChange={setBlurEditing} />
           </div>
         )}
       </div>

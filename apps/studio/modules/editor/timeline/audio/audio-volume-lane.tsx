@@ -17,6 +17,7 @@ import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useState } from "react";
 import { AUDIO_COPY } from "../../audio/audio-copy";
+import { easeLabel } from "../../easing/easing-copy";
 import type { KeyframeState } from "../../inspector/keyframe-state";
 import { KeyframeToggle } from "../../inspector/keyframe-toggle";
 import { type PlaybackClock, usePlaybackState } from "../../player/playback-clock";
@@ -27,6 +28,7 @@ import type { AudioActions } from "./audio-actions";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = AUDIO_COPY;
+const CUSTOM_EASE = "custom";
 
 type AudioVolumeLaneProps = {
   clip: AudioClip;
@@ -61,6 +63,7 @@ export function AudioVolumeLane({
     return selectedKeyframeIds.has(keyframe.id) ? [...selectedKeyframeIds] : [keyframe.id];
   };
   const targets = menuTargets(menuKeyframe);
+  const customEase = menuKeyframe && typeof menuKeyframe.ease !== "string" ? menuKeyframe.ease : null;
   const toggleState = (): KeyframeState => {
     if (atPlayhead && inside) return "at-playhead";
     return keyframes.length > 0 ? "elsewhere" : "none";
@@ -144,12 +147,17 @@ export function AudioVolumeLane({
                 const ease = EASES.find((candidate) => candidate === value);
                 if (ease && targets.length > 0) actions.setKeyframeEase(clip.id, targets, ease);
               }}
-              value={menuKeyframe?.ease ?? ""}>
+              value={customEase ? CUSTOM_EASE : (menuKeyframe?.ease ?? "")}>
               {EASES.map((ease) => (
                 <ContextMenuRadioItem disabled={!menuKeyframe} key={ease} value={ease}>
                   {STUDIO_COPY.eases[ease]}
                 </ContextMenuRadioItem>
               ))}
+              {customEase ? (
+                <ContextMenuRadioItem disabled value={CUSTOM_EASE}>
+                  {easeLabel(customEase)}
+                </ContextMenuRadioItem>
+              ) : null}
             </ContextMenuRadioGroup>
           </ContextMenuGroup>
           <ContextMenuSeparator />

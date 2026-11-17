@@ -5,13 +5,14 @@ import { aspectRatioSize, letterbox } from "@calcom/product-video/stage/frame-le
 import type { PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
-import { BoxIcon, HandIcon, RotateCwIcon } from "@coss/ui/icons";
+import { BoxIcon, FocusIcon, HandIcon, RotateCwIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";
 import { STAGE_COPY as copy } from "./stage-copy";
+import { drawStageOverlay, rotationGizmoTarget, type StageOverlayState } from "./stage-overlay";
 import { createStageRenderer, type StageRenderer } from "./stage-renderer";
 import { textColorForBackground } from "./text/text-contrast";
 import { TextOverlay } from "./text-overlay";
@@ -21,7 +22,11 @@ export type StagePanelProps = {
   project: Project;
   clock: PlaybackClock;
   selectedClipId: string | null;
-  /** Called by canvas drags (Camera, Orbit and Rotate modes); the editor applies `setPropertyAt` at the playhead. */
+  /** Exactly one clip is selected, so Rotate mode shows the rotation gizmo on it. */
+  singleClipSelected: boolean;
+  /** The inspector's Blur section is being edited, so the stage shows blur guides. */
+  blurEditing: boolean;
+  /** Called by canvas drags (every canvas mode); the editor applies `setPropertyAt` at the playhead. */
   onSetProperty: (clipId: string, key: PropertyKey, value: number) => void;
 };
 
@@ -56,11 +61,14 @@ export function StagePanel({
   project,
   clock,
   selectedClipId,
+  singleClipSelected,
+  blurEditing,
   onSetProperty,
 }: StagePanelProps): React.ReactElement {
   const [area, setArea] = useState<HTMLDivElement | null>(null);
   const [frameElement, setFrameElement] = useState<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const stage = useRef<{ renderer: StageRenderer; invalidate: () => void } | null>(null);
   const [mode, setMode] = useState<CanvasMode>("camera");
   const [failed, setFailed] = useState(false);
@@ -70,10 +78,16 @@ export function StagePanel({
     () => letterbox(areaSize, aspectRatioSize(project.settings.aspectRatio), FRAME_PADDING),
     [areaSize, project.settings.aspectRatio]
   );
-  const latest = useRef({ project, frame });
-  useLayoutEffect(() => {
-    latest.current = { project, frame };
+  const latest = useRef<StageOverlayState>({
+    project,
+    frame,
+    selectedClipId,
+    singleClipSelected,
+    mode,
+    blurEditing,
+    activeRing: null,
   });
+  const layerAt = (clipId: string) => stage.current?.renderer.layerGeometry(clipId) ?? null;
   const hasText = project.videoTracks.some((track) =>
     track.clips.some((clip) => clip.source.kind === "text")
   );
@@ -87,6 +101,9 @@ export function StagePanel({
       scheduled = false;
       const { time, playing } = clock.getState();
       renderer.render(time, playing);
+      if (overlayRef.current) {
+        drawStageOverlay(overlayRef.current, renderer.layerGeometry, latest.current, time, playing);
+      }
     };
     // Coalesces clock ticks, edits and decoded frames into one draw per task.
     const invalidate = () => {
@@ -133,7 +150,7 @@ export function StagePanel({
     stage.current?.invalidate();
   }, [frame.width, frame.height]);
 
-  const { dragging, handlers } = useCanvasDrag({
+  const { dragging, activeRing, handlers } = useCanvasDrag({
     element: frameElement,
     mode,
     project,
@@ -141,7 +158,17 @@ export function StagePanel({
     selectedClipId,
     frame,
     onSetProperty,
+    layerGeometry: layerAt,
+    gizmoAt: () => rotationGizmoTarget(latest.current, clock.getState().time, layerAt),
   });
+  useLayoutEffect(() => {
+    latest.current = { project, frame, selectedClipId, singleClipSelected, mode, blurEditing, activeRing };
+  });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the overlay reads these through `latest`; changing one must redraw it.
+  useEffect(() => {
+    stage.current?.invalidate();
+  }, [blurEditing, mode, selectedClipId, singleClipSelected, activeRing]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
@@ -149,7 +176,7 @@ export function StagePanel({
         <SegmentedRadioGroup
           aria-label={copy.canvasMode}
           onValueChange={(next) => {
-            if (next === "camera" || next === "orbit" || next === "rotate") setMode(next);
+            if (next === "camera" || next === "orbit" || next === "rotate" || next === "focus") setMode(next);
           }}
           size="sm"
           value={mode}>
@@ -165,18 +192,33 @@ export function StagePanel({
             <BoxIcon aria-hidden="true" />
             {copy.rotate}
           </SegmentedRadio>
+          <SegmentedRadio title={copy.focusHint} value="focus">
+            <FocusIcon aria-hidden="true" />
+            {copy.focus}
+          </SegmentedRadio>
         </SegmentedRadioGroup>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden" ref={setArea}>
         <div
           className={cn(
             "absolute touch-none select-none overflow-hidden shadow-lg/5",
-            dragging ? "cursor-grabbing" : "cursor-grab"
+            mode === "focus"
+              ? "cursor-crosshair"
+              : activeRing
+                ? "cursor-pointer"
+                : dragging
+                  ? "cursor-grabbing"
+                  : "cursor-grab"
           )}
           ref={setFrameElement}
           style={{ left: frame.x, top: frame.y, width: frame.width, height: frame.height }}
           {...handlers}>
           <canvas className="block size-full" ref={canvasRef} />
+          <canvas
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 size-full opacity-0 transition-opacity duration-150"
+            ref={overlayRef}
+          />
           {hasText ? <StageText clock={clock} frame={frame} project={project} /> : null}
           {failed ? (
             <p className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">

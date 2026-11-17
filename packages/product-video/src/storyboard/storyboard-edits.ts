@@ -597,6 +597,16 @@ export function shiftKeyframes(clip: Clip, refs: readonly KeyframeRef[], delta: 
   }, clip);
 }
 
+/** Drops each property's keyframes, keeping the value it has at clip time `time`. */
+export function removeLanes(clip: Clip, keys: readonly PropertyKey[], time: number): Clip {
+  const properties = { ...clip.properties };
+  for (const key of keys) {
+    const property = properties[key];
+    if (property) properties[key] = { value: evaluateProperty(property, time), keyframes: [] };
+  }
+  return { ...clip, properties };
+}
+
 export function resetProperty(clip: Clip, key: PropertyKey): Clip {
   const { [key]: _removed, ...properties } = clip.properties;
   return { ...clip, properties };
@@ -680,6 +690,7 @@ export const COMPOUND_PROPERTIES: readonly (readonly PropertyKey[])[] = [
   ["rotateX", "rotateY", "rotateZ"],
   ["cameraX", "cameraY", "cameraZ"],
   ["panX", "panY"],
+  ["focusX", "focusY"],
 ];
 
 export function compoundOf(key: PropertyKey): readonly PropertyKey[] {

@@ -1,6 +1,8 @@
-import { cameraRig, deviceWorldSize, layerPlacement } from "@calcom/product-video/stage/camera-rig";
+import { type LayerGeometry, layerGeometry } from "@calcom/product-video/stage/camera-projection";
+import { deviceWorldSize } from "@calcom/product-video/stage/camera-rig";
 import { type ClipLayer, resolveClipLayers } from "@calcom/product-video/stage/clip-layers";
-import { devicePose } from "@calcom/product-video/stage/device-pose";
+import { depthOfFieldParams } from "@calcom/product-video/stage/depth-of-field";
+import { resolveBlurSettings } from "@calcom/product-video/storyboard/blur-settings";
 import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
 import { WebGLRenderer } from "three";
@@ -15,6 +17,8 @@ export type StageRenderer = {
   setSize: (width: number, height: number, pixelRatio: number) => void;
   /** Draws the composition at `time`; `playing` lets video sources run instead of seeking. */
   render: (time: number, playing: boolean) => void;
+  /** Where a clip drawn by the last render sits, for overlays and canvas tools; null when it wasn't drawn. */
+  layerGeometry: (clipId: string) => LayerGeometry | null;
   dispose: () => void;
 };
 
@@ -25,7 +29,7 @@ function sourceTime(clip: Clip, localTime: number): number {
 
 /**
  * The three.js half of the composition: background, then each visible clip with its own camera,
- * bottom track first, and depth of field when the topmost clip asks for it. Renders only when asked.
+ * bottom track first, and depth of field from the topmost clip that has it on. Renders only when asked.
  */
 export function createStageRenderer({
   canvas,
@@ -45,6 +49,7 @@ export function createStageRenderer({
   let frame = { width: 1, height: 1 };
   let pixelRatio = 1;
   let layers: ClipLayer[] = [];
+  const geometries = new Map<string, LayerGeometry>();
   const views = new Map<string, ClipView>();
   const sources = createFrameSourcePool({
     maxAnisotropy,
@@ -95,6 +100,7 @@ export function createStageRenderer({
       if (!project || disposed) return;
       layers = resolveClipLayers(activeClipsAt(project, time));
       sources.idleExcept(new Set(layers.map((layer) => layer.active.clip.id)));
+      geometries.clear();
 
       for (const layer of layers) {
         const clip = layer.active.clip;
@@ -106,13 +112,10 @@ export function createStageRenderer({
           view = createClipView();
           views.set(clip.id, view);
         }
-        const device = deviceWorldSize(source.size);
+        const geometry = layerGeometry(layer.view, layer, deviceWorldSize(source.size), frame);
+        geometries.set(clip.id, geometry);
         view.update({
-          rig: cameraRig(layer.view, device, frame),
-          pose: devicePose(layer.view, device),
-          placement: layerPlacement(layer),
-          frame,
-          device,
+          ...geometry,
           texture: source.texture,
           opacity: layer.opacity,
           blur: layer.blur,
@@ -120,15 +123,22 @@ export function createStageRenderer({
         });
       }
 
-      const focused = layers.findLast((layer) => layer.view.blur > 0);
+      const focused = layers.findLast(
+        (layer) => layer.view.blur > 0 && resolveBlurSettings(layer.active.clip).enabled
+      );
       const focusedView = focused ? views.get(focused.active.clip.id) : undefined;
-      if (!focused || !focusedView) {
+      const focusedGeometry = focused ? geometries.get(focused.active.clip.id) : undefined;
+      if (!focused || !focusedView || !focusedGeometry) {
         renderer.setRenderTarget(null);
         drawComposite();
         return;
       }
-      ensureDepthOfField().render(focusedView, focused.view.blur);
+      ensureDepthOfField().render(
+        focusedView,
+        depthOfFieldParams(resolveBlurSettings(focused.active.clip), focused.view, focusedGeometry)
+      );
     },
+    layerGeometry: (clipId) => geometries.get(clipId) ?? null,
     dispose() {
       disposed = true;
       sources.dispose();

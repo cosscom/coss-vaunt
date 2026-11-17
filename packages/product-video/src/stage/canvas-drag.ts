@@ -1,8 +1,9 @@
 import type { PropertyValues } from "../storyboard/property-evaluation";
 import { PROPERTY_SPECS, type PropertyKey } from "../storyboard/property-specs";
 import type { ActiveClip } from "../storyboard/track-resolution";
+import { frameToDevice, type LayerGeometry } from "./camera-projection";
 
-export type CanvasMode = "camera" | "orbit" | "rotate";
+export type CanvasMode = "camera" | "orbit" | "rotate" | "focus";
 
 export type PropertyChanges = Partial<Record<PropertyKey, number>>;
 
@@ -17,6 +18,7 @@ const RESET_KEYS: Record<CanvasMode, PropertyKey[]> = {
   camera: ["panX", "panY", "zoom"],
   orbit: ["cameraX", "cameraY", "cameraZ"],
   rotate: ["rotateX", "rotateY", "rotateZ"],
+  focus: ["focusX", "focusY"],
 };
 
 function fitSpec(key: PropertyKey, value: number): number {
@@ -33,7 +35,8 @@ function changes(entries: Array<[PropertyKey, number]>): PropertyChanges {
  * Property values for a drag of (`dx`, `dy`) CSS px since the pointer went down, from the values at
  * that moment. Camera mode grabs the device so it follows the pointer one to one at any zoom. Orbit
  * moves the camera so the scene turns towards the drag; Rotate turns the device itself. `roll`
- * turns horizontal drags into a roll, clockwise for a drag to the right.
+ * turns horizontal drags into a roll, clockwise for a drag to the right. Focus drags are absolute: see
+ * `focusAt`.
  */
 export function dragProperties({
   mode,
@@ -50,6 +53,7 @@ export function dragProperties({
   frame: { width: number; height: number };
   roll?: boolean;
 }): PropertyChanges {
+  if (mode === "focus") return {};
   if (mode === "camera") {
     return changes([
       ["panX", start.panX - dx / frame.width / start.zoom],
@@ -71,6 +75,26 @@ export function dragProperties({
     ["rotateY", start.rotateY + yaw],
     ["rotateX", start.rotateX + pitch],
   ]);
+}
+
+/** Focus mode: the focus point goes where the pointer meets the device, kept on the device. */
+export function focusAt(geometry: LayerGeometry, x: number, y: number): PropertyChanges | null {
+  const hit = frameToDevice(geometry, x, y);
+  if (!hit) return null;
+  return changes([
+    ["focusX", hit[0]],
+    ["focusY", hit[1]],
+  ]);
+}
+
+/** A gizmo ring drag: `degrees` turned about one rotation axis from `start`, wrapped into −180°..180°. */
+export function ringRotation(
+  key: "rotateX" | "rotateY" | "rotateZ",
+  start: number,
+  degrees: number
+): PropertyChanges {
+  const turned = start + degrees;
+  return changes([[key, turned - 360 * Math.round(turned / 360)]]);
 }
 
 /** Wheel zoom in every mode: scrolling up (negative delta) zooms in. */
