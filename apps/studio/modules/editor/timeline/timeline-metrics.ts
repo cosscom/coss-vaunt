@@ -1,0 +1,8 @@
+export const TRACK_HEADER_WIDTH_PX = 176;
+export const CONTENT_PADDING_PX = 12;
+export const RULER_HEIGHT_PX = 28;
+export const VIDEO_TRACK_HEIGHT_PX = 52;
+export const KEYFRAME_LANE_HEIGHT_PX = 24;
+export const AUDIO_TRACK_HEIGHT_PX = 40;
+export const MIN_VISIBLE_SECONDS = 20;
+export const TAIL_SECONDS = 6;

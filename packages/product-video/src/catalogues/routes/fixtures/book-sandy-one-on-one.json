@@ -1,0 +1,82 @@
+{
+  "title": "Book a 1on1 with Sandy",
+  "turns": [
+    {
+      "steps": [
+        [
+          { "kind": "pause", "ms": 400 },
+          {
+            "kind": "reasoning",
+            "text": "Sandy has a public 1on1 link. I'll check her Friday afternoon and pick the first open slot.",
+            "ms": 900
+          },
+          {
+            "kind": "tool",
+            "toolName": "find_booking_links",
+            "input": { "query": "Sandy" },
+            "output": {
+              "username": "sandy",
+              "links": [
+                {
+                  "eventTypeId": 4101,
+                  "title": "1on1",
+                  "lengthInMinutes": 30,
+                  "requiresConfirmation": false,
+                  "questions": []
+                }
+              ]
+            },
+            "ms": 500
+          },
+          {
+            "kind": "tool",
+            "toolName": "get_availability",
+            "input": {
+              "username": "sandy",
+              "eventTypeId": 4101,
+              "dateFrom": "2026-11-20",
+              "dateTo": "2026-11-20"
+            },
+            "output": {
+              "timeZone": "Europe/Sofia",
+              "slots": ["2026-11-20T15:00:00+02:00", "2026-11-20T15:30:00+02:00", "2026-11-20T16:30:00+02:00"]
+            },
+            "ms": 600
+          }
+        ],
+        [
+          {
+            "kind": "text",
+            "text": "Sandy is free on Friday at 3:00 pm. Here's a 30-minute 1on1 on Cal Video – approve it and I'll book it.",
+            "ms": 1100
+          },
+          {
+            "kind": "approval",
+            "toolName": "create_booking",
+            "input": { "username": "sandy", "eventTypeId": 4101, "start": "2026-11-20T15:00:00+02:00" },
+            "display": {
+              "hostName": "Sandy Rivera",
+              "title": "1on1",
+              "startTime": "2026-11-20T15:00:00+02:00",
+              "lengthInMinutes": 30,
+              "requiresConfirmation": false,
+              "location": { "type": "integrations:daily" },
+              "timeWindow": { "conflicts": [], "outsideWorkingHours": "no", "calendarReadFailed": false }
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "steps": [
+        [
+          {
+            "kind": "text",
+            "text": "Booked. Sandy and you both have an invite for Friday at 3:00 pm.",
+            "ms": 700
+          }
+        ]
+      ]
+    }
+  ]
+}

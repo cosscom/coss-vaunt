@@ -1,0 +1,21 @@
+export const YOUTUBE_IMPORT_COPY = {
+  trigger: "Import",
+  title: "Import media",
+  modeLabel: "Import from",
+  youtubeMode: "YouTube",
+  uploadMode: "Upload",
+  description: "Downloads a YouTube video into this project as an import clip. For internal testing only.",
+  uploadDescription:
+    "Adds videos and images from your computer to this project. You can also paste or drop them on the editor.",
+  inputLabel: "Video",
+  inputPlaceholder: "aqz-KE-bpKQ or https://youtu.be/…",
+  inputDescription: "A video id or a YouTube URL. Use footage you’re allowed to use.",
+  submit: "Import",
+  cancel: "Cancel",
+  starting: "Starting…",
+  downloading: "Downloading…",
+  downloadingPercent: (percent: number) => `Downloading… ${percent}%`,
+  cached: "Already downloaded – reading the file…",
+  probing: "Reading the file…",
+  failed: "The import failed",
+} as const;

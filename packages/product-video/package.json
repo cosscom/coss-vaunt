@@ -1,0 +1,168 @@
+{
+  "name": "@calcom/product-video",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    "./storyboard/storyboard-schema": "./src/storyboard/storyboard-schema.ts",
+    "./storyboard/storyboard-factories": "./src/storyboard/storyboard-factories.ts",
+    "./storyboard/storyboard-edits": "./src/storyboard/storyboard-edits.ts",
+    "./project-store/project-store": "./src/project-store/project-store.ts",
+    "./project-store/file-project-store": "./src/project-store/file-project-store.ts",
+    "./storyboard/property-specs": "./src/storyboard/property-specs.ts",
+    "./storyboard/property-evaluation": "./src/storyboard/property-evaluation.ts",
+    "./storyboard/track-resolution": "./src/storyboard/track-resolution.ts",
+    "./recording/recording-manifest": "./src/recording/recording-manifest.ts",
+    "./stage/camera-rig": "./src/stage/camera-rig.ts",
+    "./stage/device-pose": "./src/stage/device-pose.ts",
+    "./stage/clip-layers": "./src/stage/clip-layers.ts",
+    "./stage/canvas-drag": "./src/stage/canvas-drag.ts",
+    "./stage/frame-letterbox": "./src/stage/frame-letterbox.ts",
+    "./stage/background-gradient": "./src/stage/background-gradient.ts",
+    "./imports/youtube-import": "./src/imports/youtube-import.ts",
+    "./catalogues/text-effects/text-effect-catalogue": "./src/catalogues/text-effects/text-effect-catalogue.ts",
+    "./catalogues/text-effects/text-effect": "./src/catalogues/text-effects/text-effect.ts",
+    "./text/evaluate-text-effect": "./src/text/evaluate-text-effect.ts",
+    "./text/unit-style": "./src/text/unit-style.ts",
+    "./recording/recording-jobs": "./src/recording/recording-jobs.ts",
+    "./recording/recording-status": "./src/recording/recording-status.ts",
+    "./recording/recording-events": "./src/recording/recording-events.ts",
+    "./recording/capture-hash": "./src/recording/capture-hash.ts",
+    "./recording/capture-dpr": "./src/recording/capture-dpr.ts",
+    "./catalogues/routes/route-catalogue": "./src/catalogues/routes/route-catalogue.ts",
+    "./imports/media-upload": "./src/imports/media-upload.ts",
+    "./imports/media-types": "./src/imports/media-types.ts",
+    "./audio/waveform-peaks": "./src/audio/waveform-peaks.ts",
+    "./audio/audio-volume": "./src/audio/audio-volume.ts",
+    "./audio/audio-ducking": "./src/audio/audio-ducking.ts",
+    "./audio/audio-schedule": "./src/audio/audio-schedule.ts",
+    "./audio/audio-edits": "./src/audio/audio-edits.ts",
+    "./imports/audio-upload": "./src/imports/audio-upload.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "storyboard/storyboard-schema": [
+        "./src/storyboard/storyboard-schema.ts"
+      ],
+      "storyboard/storyboard-factories": [
+        "./src/storyboard/storyboard-factories.ts"
+      ],
+      "storyboard/storyboard-edits": [
+        "./src/storyboard/storyboard-edits.ts"
+      ],
+      "project-store/project-store": [
+        "./src/project-store/project-store.ts"
+      ],
+      "project-store/file-project-store": [
+        "./src/project-store/file-project-store.ts"
+      ],
+      "storyboard/property-specs": [
+        "./src/storyboard/property-specs.ts"
+      ],
+      "storyboard/property-evaluation": [
+        "./src/storyboard/property-evaluation.ts"
+      ],
+      "storyboard/track-resolution": [
+        "./src/storyboard/track-resolution.ts"
+      ],
+      "recording/recording-manifest": [
+        "./src/recording/recording-manifest.ts"
+      ],
+      "stage/camera-rig": [
+        "./src/stage/camera-rig.ts"
+      ],
+      "stage/device-pose": [
+        "./src/stage/device-pose.ts"
+      ],
+      "stage/clip-layers": [
+        "./src/stage/clip-layers.ts"
+      ],
+      "stage/canvas-drag": [
+        "./src/stage/canvas-drag.ts"
+      ],
+      "stage/frame-letterbox": [
+        "./src/stage/frame-letterbox.ts"
+      ],
+      "stage/background-gradient": [
+        "./src/stage/background-gradient.ts"
+      ],
+      "imports/youtube-import": [
+        "./src/imports/youtube-import.ts"
+      ],
+      "catalogues/text-effects/text-effect-catalogue": [
+        "./src/catalogues/text-effects/text-effect-catalogue.ts"
+      ],
+      "catalogues/text-effects/text-effect": [
+        "./src/catalogues/text-effects/text-effect.ts"
+      ],
+      "text/evaluate-text-effect": [
+        "./src/text/evaluate-text-effect.ts"
+      ],
+      "text/unit-style": [
+        "./src/text/unit-style.ts"
+      ],
+      "recording/recording-jobs": [
+        "./src/recording/recording-jobs.ts"
+      ],
+      "recording/recording-status": [
+        "./src/recording/recording-status.ts"
+      ],
+      "recording/recording-events": [
+        "./src/recording/recording-events.ts"
+      ],
+      "recording/capture-hash": [
+        "./src/recording/capture-hash.ts"
+      ],
+      "recording/capture-dpr": [
+        "./src/recording/capture-dpr.ts"
+      ],
+      "catalogues/routes/route-catalogue": [
+        "./src/catalogues/routes/route-catalogue.ts"
+      ],
+      "imports/media-upload": [
+        "./src/imports/media-upload.ts"
+      ],
+      "imports/media-types": [
+        "./src/imports/media-types.ts"
+      ],
+      "audio/waveform-peaks": [
+        "./src/audio/waveform-peaks.ts"
+      ],
+      "audio/audio-volume": [
+        "./src/audio/audio-volume.ts"
+      ],
+      "audio/audio-ducking": [
+        "./src/audio/audio-ducking.ts"
+      ],
+      "audio/audio-schedule": [
+        "./src/audio/audio-schedule.ts"
+      ],
+      "audio/audio-edits": [
+        "./src/audio/audio-edits.ts"
+      ],
+      "imports/audio-upload": [
+        "./src/imports/audio-upload.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "biome lint src",
+    "lint:fix": "biome lint --write src",
+    "type-check": "tsc --pretty --noEmit",
+    "type-check:ci": "node \"$PROJECT_CWD/scripts/type-check-ci.js\" --pretty --noEmit",
+    "record": "tsx src/recording/record-clip-cli.ts"
+  },
+  "dependencies": {
+    "playwright": "1.64.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@calcom/tsconfig": "workspace:*",
+    "@types/node": "20.17.23",
+    "tsx": "4.23.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}
