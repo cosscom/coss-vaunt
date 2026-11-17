@@ -23,9 +23,12 @@ export type RecordingManifest = {
   focus: Array<Rect | null>;
   /** Smaller frames for smooth playback in the editor, at `proxy/<6-digit index>.webp`. */
   proxy: { dpr: number } | null;
+  /** One H.264 file at viewport size and the recording's fps, frame N at N/fps, for playback and scrubbing; absent on older recordings until backfilled. */
+  video?: { file: string; width: number; height: number } | null;
 };
 
 export const RECORDING_MANIFEST_FILE = "manifest.json";
+export const RECORDING_VIDEO_FILE = "proxy.mp4";
 
 export function frameFileName(frame: number, extension: "png" | "webp" = "png"): string {
   return `${String(frame).padStart(6, "0")}.${extension}`;

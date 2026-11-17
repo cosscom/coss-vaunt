@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../../../packages/coss-ui/src/styles/globals.css";
+@import "../modules/editor/storyboard/storyboard-flow.css";
 
 @source "../**/*.{js,ts,jsx,tsx}";
 @source "../../../packages/coss-ui/src/**/*.{js,ts,jsx,tsx}";

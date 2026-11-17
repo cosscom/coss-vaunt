@@ -19,9 +19,20 @@ describe("recordingHashFor", () => {
     expect(recordingHashFor(project, { ...clip, duration: clip.duration - 1 })).not.toBe(base);
   });
 
+  it("is the pinned take when the author chose one", () => {
+    const pinned: Clip = {
+      ...clip,
+      source: { kind: "recording", route: "/home", actions: [], take: "0123456789abcdef" },
+    };
+    expect(recordingHashFor(project, pinned)).toBe("0123456789abcdef");
+  });
+
   it("is null for clips that aren't recordable", () => {
     expect(
-      recordingHashFor(project, { ...clip, source: { kind: "recording", route: "/nope", actions: [] } })
+      recordingHashFor(project, {
+        ...clip,
+        source: { kind: "recording", route: "//elsewhere.example", actions: [] },
+      })
     ).toBeNull();
     expect(
       recordingHashFor(project, {

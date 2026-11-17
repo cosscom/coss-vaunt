@@ -19,6 +19,11 @@ export async function deleteProjectAction(id: unknown): Promise<void> {
   await studioProjectStore.delete(projectId.parse(id));
 }
 
+export async function deleteProjectsAction(ids: unknown): Promise<void> {
+  const parsed = projectId.array().min(1).parse(ids);
+  for (const id of parsed) await studioProjectStore.delete(id);
+}
+
 export async function saveProjectAction(project: unknown): Promise<{ updatedAt: string }> {
   const saved = await studioProjectStore.save(projectSchema.parse(project));
   return { updatedAt: saved.updatedAt };

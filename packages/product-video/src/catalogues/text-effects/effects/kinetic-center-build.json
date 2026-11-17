@@ -77,22 +77,14 @@
       "exit_blur_px": 2.5,
       "easing": "cubic-bezier(0.2, 0.8, 0.2, 1)",
       "exit_easing": "cubic-bezier(0.4, 0, 0.2, 1)",
-      "phrase_samples": [
-        ["Words", "push", "left"],
-        ["Type", "locks", "center"],
-        ["Build", "the", "line"]
-      ]
+      "phrase_samples": [["Words", "push", "left"], ["Type", "locks", "center"], ["Build", "the", "line"]]
     },
     "usage_notes": "Layout-aware effect: each incoming word changes the target x-position of the whole line. Best for short three-word phrases; implementation requires measuring word widths and animating existing words to new positions. A small entry and reflow blur helps the push feel smoother without extending the timing."
   },
   "showcase": {
     "content": {
       "sample": "Words push left.",
-      "phrases": [
-        ["Words", "push", "left"],
-        ["Type", "locks", "center"],
-        ["Build", "the", "line"]
-      ]
+      "phrases": [["Words", "push", "left"], ["Type", "locks", "center"], ["Build", "the", "line"]]
     },
     "content_usage": {
       "default_policy": "When applying an effect to an existing heading or text section, preserve the section text. Do not replace user/application copy with showcase sample text unless the user explicitly asks to reproduce the demo copy.",
@@ -121,11 +113,7 @@
         "exit_blur_px": 2.5,
         "easing": "cubic-bezier(0.2, 0.8, 0.2, 1)",
         "exit_easing": "cubic-bezier(0.4, 0, 0.2, 1)",
-        "phrase_samples": [
-          ["Words", "push", "left"],
-          ["Type", "locks", "center"],
-          ["Build", "the", "line"]
-        ]
+        "phrase_samples": [["Words", "push", "left"], ["Type", "locks", "center"], ["Build", "the", "line"]]
       },
       "recipe": {
         "id": "kinetic-center-build",

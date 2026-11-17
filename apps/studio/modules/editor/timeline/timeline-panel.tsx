@@ -6,6 +6,7 @@ import { projectDuration } from "@calcom/product-video/storyboard/track-resoluti
 import { ContextMenu, ContextMenuTrigger } from "@coss/ui/components/context-menu";
 import type * as React from "react";
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { ASSET_DRAG_TYPE, parseAssetDrag } from "../assets/asset-drag";
 import { mediaFilesFromDrop } from "../media/clipboard-media";
 import type { PlaybackClock } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";
@@ -287,13 +288,17 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
                 onClipPointerDown={(event, clip, mode) =>
                   gestures.onClipPointerDown(event, clip, trackIndex, mode)
                 }
-                onDropFiles={(dataTransfer, clientX) =>
-                  void editor.importMediaAt(
-                    mediaFilesFromDrop(dataTransfer),
-                    gestures.timeAt(clientX),
-                    trackIndex
-                  )
-                }
+                onDropFiles={(dataTransfer, clientX) => {
+                  const asset = parseAssetDrag(dataTransfer.getData(ASSET_DRAG_TYPE), "video");
+                  if (asset?.kind === "video")
+                    editor.placeAssetAt(asset.clip, gestures.timeAt(clientX), trackIndex);
+                  else
+                    void editor.importMediaAt(
+                      mediaFilesFromDrop(dataTransfer),
+                      gestures.timeAt(clientX),
+                      trackIndex
+                    );
+                }}
                 onKeyframePointerDown={(event, clip, keyframe, key) =>
                   gestures.onKeyframePointerDown(event, clip, key, keyframe)
                 }

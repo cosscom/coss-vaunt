@@ -13,6 +13,7 @@ export const RECORDING_COPY = {
     login: "Signing in…",
     load: "Loading the page…",
     preroll: "Letting the page settle…",
+    replay: "Replaying the previous clip…",
     capture: "Recording…",
     proxy: "Making preview frames…",
   } satisfies Record<RecordingPhase, string>,

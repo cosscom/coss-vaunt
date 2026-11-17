@@ -4,13 +4,12 @@ import type { Project } from "@calcom/product-video/storyboard/storyboard-schema
 import { projectDuration } from "@calcom/product-video/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
-import { EasingSection } from "./easing/easing-section";
 import { InspectorPanel } from "./inspector/inspector-panel";
 import { ResizableSplit } from "./layout/resizable-split";
 import { PANEL_SPECS, usePanelLayout } from "./layout/use-panel-layout";
+import { LeftSidebar } from "./left-sidebar";
 import { createPlaybackClock } from "./player/playback-clock";
 import { ProjectBar } from "./project-bar";
-import { PromptPanel } from "./prompt-panel";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { StagePanel } from "./stage/stage-panel";
 import { StageContextMenu } from "./stage-context-menu";
@@ -57,8 +56,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
       <div className="flex min-h-0 flex-1">
         {prompt.collapsed ? null : (
           <div className="flex min-h-0 shrink-0 flex-col overflow-y-auto" style={{ width: prompt.size }}>
-            <PromptPanel />
-            <EasingSection clock={clock} editor={editor} />
+            <LeftSidebar clock={clock} editor={editor} />
           </div>
         )}
         <ResizableSplit

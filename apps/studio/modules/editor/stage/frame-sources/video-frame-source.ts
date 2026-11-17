@@ -17,14 +17,17 @@ export function createVideoFrameSource({
   size,
   fps,
   maxAnisotropy,
+  mipmaps = true,
   onFrame,
 }: {
   url: string;
   size: { width: number; height: number };
   fps: number;
   maxAnisotropy: number;
+  /** Off for recording proxies: a full mip chain per decoded frame is the cost that makes playback stutter. */
+  mipmaps?: boolean;
   onFrame: () => void;
-}): FrameSource {
+}): FrameSource & { video: HTMLVideoElement } {
   const video = document.createElement("video");
   video.muted = true;
   video.playsInline = true;
@@ -33,8 +36,8 @@ export function createVideoFrameSource({
 
   const texture = new VideoTexture(video);
   texture.colorSpace = SRGBColorSpace;
-  texture.generateMipmaps = true;
-  texture.minFilter = LinearMipmapLinearFilter;
+  texture.generateMipmaps = mipmaps;
+  texture.minFilter = mipmaps ? LinearMipmapLinearFilter : LinearFilter;
   texture.magFilter = LinearFilter;
   texture.anisotropy = maxAnisotropy;
 
@@ -81,6 +84,7 @@ export function createVideoFrameSource({
   watchFrames();
 
   return {
+    video,
     texture,
     size,
     show(time, nextPlaying) {

@@ -7,12 +7,15 @@ import {
   duplicateClip,
   duplicateClips,
   duplicateVideoTrack,
+  editLocalTime,
   editTimeFor,
   findClip,
   frameLocalTime,
   incomingOverlap,
   keyframePasteTime,
   keyframeTimes,
+  keyPoseBefore,
+  keyStaticPose,
   moveClip,
   moveClips,
   moveKeyframe,
@@ -447,5 +450,75 @@ describe("editTimeFor", () => {
   it("uses the playhead when the selected keyframe is further away or on another property", () => {
     expect(editTimeFor(keyed, ["rotateX"], [ref], 1.5, 30)).toBe(1.5);
     expect(editTimeFor(keyed, ["cameraX"], [ref], 1.01, 30)).toBe(1.01);
+  });
+});
+
+describe("editLocalTime", () => {
+  const recording = { start: 2.5, duration: 4 };
+
+  it("lands an edit at or past the clip's end on its last drawn frame", () => {
+    expect(editLocalTime(recording, 6.5, 60)).toBeCloseTo(4 - 1 / 60);
+    expect(editLocalTime(recording, 9, 60)).toBeCloseTo(4 - 1 / 60);
+    expect(editLocalTime({ start: 3.7, duration: 4 }, 7.7, 30)).toBeCloseTo(230 / 30 - 3.7);
+  });
+
+  it("keeps frames inside the clip and holds before its start", () => {
+    expect(editLocalTime(recording, 3.8, 60)).toBeCloseTo(1.3);
+    expect(editLocalTime(recording, 6.5 - 1 / 60, 60)).toBeCloseTo(4 - 1 / 60);
+    expect(editLocalTime(recording, 1, 60)).toBe(0);
+  });
+});
+
+describe("keyStaticPose", () => {
+  it("keys static values that differ from the default and leaves default or keyed ones alone", () => {
+    const posed = setPropertyAt(setPropertyAt(clip, "rotateX", 0, -25), "rotateZ", 0, 0);
+    const keyed = keyStaticPose(posed, ["rotateX", "rotateY", "rotateZ"], 0);
+    expect(keyed.properties.rotateX?.keyframes.map((k) => [k.at, k.value])).toEqual([[0, -25]]);
+    expect(keyed.properties.rotateY).toBeUndefined();
+    expect(keyed.properties.rotateZ?.keyframes).toEqual([]);
+    expect(keyStaticPose(keyed, ["rotateX"], 2)).toBe(keyed);
+  });
+});
+
+describe("keyPoseBefore", () => {
+  const rotation = ["rotateX", "rotateY", "rotateZ"] as const;
+  const posed = setCompoundPropertyAt(setCompoundPropertyAt(clip, "rotateX", 0, -25), "rotateY", 0, -40);
+
+  it("animates from a static pose to an edit made at a later time", () => {
+    const end = 4 - 1 / 60;
+    const edited = setCompoundPropertyAt(keyPoseBefore(posed, rotation, end, 0), "rotateX", end, 20);
+    expect(edited.properties.rotateX?.keyframes.map((k) => [k.at, k.value])).toEqual([
+      [0, -25],
+      [end, 20],
+    ]);
+    expect(edited.properties.rotateY?.keyframes.map((k) => [k.at, k.value])).toEqual([
+      [0, -40],
+      [end, -40],
+    ]);
+    expect(edited.properties.rotateZ?.keyframes.map((k) => [k.at, k.value])).toEqual([[end, 0]]);
+  });
+
+  it("keys a pose set mid-clip at the clip start when the next edit is later", () => {
+    const edited = keyPoseBefore(posed, rotation, 3, 1.3);
+    expect(keyframeTimes(edited)).toEqual([0]);
+  });
+
+  it("keeps the pose at its own time when the next edit is earlier", () => {
+    const edited = keyPoseBefore(posed, rotation, 1, 3);
+    expect(keyframeTimes(edited)).toEqual([3]);
+  });
+
+  it("stays static for edits at the same frame and for poses at their defaults", () => {
+    expect(keyPoseBefore(posed, rotation, 1 / 240, 0)).toBe(posed);
+    expect(keyPoseBefore(clip, rotation, 3, 0)).toBe(clip);
+  });
+
+  it("keeps the start pose when the first diamond is clicked later in the clip", () => {
+    const toggled = toggleKeyframesAt(keyPoseBefore(posed, rotation, 3, 0), rotation, 3);
+    const edited = setCompoundPropertyAt(toggled, "rotateX", 3, 20);
+    expect(edited.properties.rotateX?.keyframes.map((k) => [k.at, k.value])).toEqual([
+      [0, -25],
+      [3, 20],
+    ]);
   });
 });

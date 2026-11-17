@@ -1,0 +1,37 @@
+/* React Flow's own base.css is imported by the canvas; these map its variables to coss tokens. */
+.storyboard-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: color-mix(in srgb, var(--muted-foreground) 48%, transparent);
+  --xy-edge-stroke-selected: var(--ring);
+  --xy-edge-stroke-width: 1.5;
+  --xy-connectionline-stroke: var(--ring);
+  --xy-connectionline-stroke-width: 1.5;
+  --xy-handle-background-color: var(--muted-foreground);
+  --xy-selection-background-color: color-mix(in srgb, var(--ring) 8%, transparent);
+  --xy-selection-border: 1px solid color-mix(in srgb, var(--ring) 48%, transparent);
+  font-family: var(--font-sans);
+}
+
+.storyboard-flow .react-flow__node:focus-visible,
+.storyboard-flow .react-flow__edge:focus-visible {
+  outline: none;
+}
+
+.storyboard-flow .react-flow__edge.selected .react-flow__edge-path,
+.storyboard-flow .react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--xy-edge-stroke-selected);
+}
+
+.storyboard-flow .react-flow__panel {
+  margin: 0.5rem;
+}
+
+/* Selected cards draw their own ring; React Flow's square group box would sit behind them. */
+.storyboard-flow .react-flow__nodesselection-rect {
+  background: transparent;
+  border: none;
+}
+
+.storyboard-flow .react-flow__selection {
+  border-radius: var(--radius-lg, 0.5rem);
+}

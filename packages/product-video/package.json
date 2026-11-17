@@ -25,6 +25,9 @@
     "./stage/blur-guides": "./src/stage/blur-guides.ts",
     "./stage/rotation-gizmo": "./src/stage/rotation-gizmo.ts",
     "./storyboard/blur-settings": "./src/storyboard/blur-settings.ts",
+    "./storyboard/cursor-settings": "./src/storyboard/cursor-settings.ts",
+    "./stage/cursor-track": "./src/stage/cursor-track.ts",
+    "./stage/cursor-plane-layout": "./src/stage/cursor-plane-layout.ts",
     "./stage/frame-letterbox": "./src/stage/frame-letterbox.ts",
     "./stage/background-gradient": "./src/stage/background-gradient.ts",
     "./imports/youtube-import": "./src/imports/youtube-import.ts",
@@ -45,7 +48,18 @@
     "./audio/audio-ducking": "./src/audio/audio-ducking.ts",
     "./audio/audio-schedule": "./src/audio/audio-schedule.ts",
     "./audio/audio-edits": "./src/audio/audio-edits.ts",
-    "./imports/audio-upload": "./src/imports/audio-upload.ts"
+    "./imports/audio-upload": "./src/imports/audio-upload.ts",
+    "./storyboard/board-schema": "./src/storyboard/board-schema.ts",
+    "./storyboard/board-edits": "./src/storyboard/board-edits.ts",
+    "./project-store/project-assets": "./src/project-store/project-assets.ts",
+    "./project-store/scan-project-assets": "./src/project-store/scan-project-assets.ts",
+    "./storyboard/board-generation": "./src/storyboard/board-generation.ts",
+    "./storyboard/board-order": "./src/storyboard/board-order.ts",
+    "./ai/board-draft": "./src/ai/board-draft.ts",
+    "./ai/studio-model": "./src/ai/studio-model.ts",
+    "./ai/generation-events": "./src/ai/generation-events.ts",
+    "./ai/generation-jobs": "./src/ai/generation-jobs.ts",
+    "./recording/recording-video": "./src/recording/recording-video.ts"
   },
   "typesVersions": {
     "*": {
@@ -96,6 +110,15 @@
       ],
       "storyboard/blur-settings": [
         "./src/storyboard/blur-settings.ts"
+      ],
+      "storyboard/cursor-settings": [
+        "./src/storyboard/cursor-settings.ts"
+      ],
+      "stage/cursor-track": [
+        "./src/stage/cursor-track.ts"
+      ],
+      "stage/cursor-plane-layout": [
+        "./src/stage/cursor-plane-layout.ts"
       ],
       "stage/blur-guides": [
         "./src/stage/blur-guides.ts"
@@ -171,6 +194,39 @@
       ],
       "imports/audio-upload": [
         "./src/imports/audio-upload.ts"
+      ],
+      "storyboard/board-schema": [
+        "./src/storyboard/board-schema.ts"
+      ],
+      "storyboard/board-edits": [
+        "./src/storyboard/board-edits.ts"
+      ],
+      "project-store/project-assets": [
+        "./src/project-store/project-assets.ts"
+      ],
+      "project-store/scan-project-assets": [
+        "./src/project-store/scan-project-assets.ts"
+      ],
+      "storyboard/board-generation": [
+        "./src/storyboard/board-generation.ts"
+      ],
+      "storyboard/board-order": [
+        "./src/storyboard/board-order.ts"
+      ],
+      "ai/board-draft": [
+        "./src/ai/board-draft.ts"
+      ],
+      "ai/studio-model": [
+        "./src/ai/studio-model.ts"
+      ],
+      "ai/generation-events": [
+        "./src/ai/generation-events.ts"
+      ],
+      "ai/generation-jobs": [
+        "./src/ai/generation-jobs.ts"
+      ],
+      "recording/recording-video": [
+        "./src/recording/recording-video.ts"
       ]
     }
   },
@@ -179,9 +235,12 @@
     "lint:fix": "biome lint --write src",
     "type-check": "tsc --pretty --noEmit",
     "type-check:ci": "node \"$PROJECT_CWD/scripts/type-check-ci.js\" --pretty --noEmit",
-    "record": "tsx src/recording/record-clip-cli.ts"
+    "record": "tsx src/recording/record-clip-cli.ts",
+    "backfill-videos": "tsx src/recording/backfill-recording-videos-cli.ts"
   },
   "dependencies": {
+    "@calcom/ai": "workspace:*",
+    "agent-browser": "0.43.0",
     "playwright": "1.64.1",
     "zod": "4.6.7"
   },

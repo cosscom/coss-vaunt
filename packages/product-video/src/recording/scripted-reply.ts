@@ -26,11 +26,40 @@ export const scriptedReplyPartSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const scriptedReplyFixtureSchema = z.object({
+  /** The message this reply answers; any other message gets `GENERIC_REPLY`. Absent: it answers every message. */
+  prompt: z.string().min(1).optional(),
   /** What `/api/ai/chat/session/title` answers once the turn has started. */
   title: z.string().min(1).max(80),
   /** One reply per user turn, in order; each reply is a list of model steps. */
   turns: z.array(z.object({ steps: z.array(z.array(scriptedReplyPartSchema).min(1)).min(1) })).min(1),
 });
+
+/** What the agent says to a message no fixture answers: a short greeting, with no tools or approval. */
+export const GENERIC_REPLY: ScriptedReplyFixture = {
+  title: "Chat with your agent",
+  turns: [
+    {
+      steps: [
+        [
+          { kind: "pause", ms: 400 },
+          {
+            kind: "text",
+            text: "Hi! I can find times, book meetings and manage your calendar. What would you like to do?",
+            ms: 1200,
+          },
+        ],
+      ],
+    },
+  ],
+};
+
+/** Case, spacing and punctuation don't matter when matching a typed message to a fixture's prompt. */
+export function normalisePrompt(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
 
 export type ScriptedReplyPart = z.infer<typeof scriptedReplyPartSchema>;
 export type ScriptedReplyFixture = z.infer<typeof scriptedReplyFixtureSchema>;

@@ -10,6 +10,7 @@ import {
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useId, useRef, useState } from "react";
+import type { KeyframeState } from "./keyframe-state";
 import { KeyframeToggle } from "./keyframe-toggle";
 import { propertyFormat } from "./property-controls";
 import { ROTATION_SPHERE_COPY } from "./rotation-sphere-copy";
@@ -122,7 +123,8 @@ function useSphereDrag(rotation: Rotation, onChange: RotationSphereProps["onChan
       const zone = dragZone(start, FRAME, RING + 2);
       if (!zone) return;
       event.preventDefault();
-      event.currentTarget.focus();
+      // Focus stays off the sphere and inputs so playhead keys (End, arrows) still move the playhead after a drag.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       event.currentTarget.setPointerCapture(event.pointerId);
       drag.current = {
         zone,
@@ -187,14 +189,14 @@ function SphereBezel({ rotateZ, active }: { rotateZ: number; active: boolean }):
 function AxisRow({
   axis,
   value,
-  keyframed,
+  keyframe,
   onChange,
   onToggleKeyframe,
   disabled,
 }: {
   axis: RotationKey;
   value: number;
-  keyframed: boolean;
+  keyframe: KeyframeState;
   onChange: RotationSphereProps["onChange"];
   onToggleKeyframe: RotationSphereProps["onToggleKeyframe"];
   disabled?: boolean;
@@ -216,13 +218,13 @@ function AxisRow({
         label={ROTATION_SPHERE_COPY.axes[axis]}
       />
       <NumberFieldGroup>
-        <NumberFieldInput aria-label={spec.label} className="px-2 text-end tabular-nums" />
+        <NumberFieldInput
+          aria-label={spec.label}
+          className="px-2 text-end tabular-nums"
+          onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+        />
       </NumberFieldGroup>
-      <KeyframeToggle
-        label={spec.label}
-        onToggle={() => onToggleKeyframe(axis)}
-        state={keyframed ? "at-playhead" : "none"}
-      />
+      <KeyframeToggle label={spec.label} onToggle={() => onToggleKeyframe(axis)} state={keyframe} />
     </NumberField>
   );
 }
@@ -231,7 +233,7 @@ export type RotationSphereProps = {
   rotateX: number;
   rotateY: number;
   rotateZ: number;
-  keyframed: { rotateX: boolean; rotateY: boolean; rotateZ: boolean };
+  keyframes: Record<RotationKey, KeyframeState>;
   onChange: (key: RotationKey, value: number) => void;
   onToggleKeyframe: (key: RotationKey) => void;
   onReset: () => void;
@@ -242,7 +244,7 @@ export function RotationSphere({
   rotateX,
   rotateY,
   rotateZ,
-  keyframed,
+  keyframes,
   onChange,
   onToggleKeyframe,
   onReset,
@@ -303,7 +305,7 @@ export function RotationSphere({
             axis={axis}
             disabled={disabled}
             key={axis}
-            keyframed={keyframed[axis]}
+            keyframe={keyframes[axis]}
             onChange={onChange}
             onToggleKeyframe={onToggleKeyframe}
             value={rotation[axis]}

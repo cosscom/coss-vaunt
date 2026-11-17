@@ -51,7 +51,7 @@ export function InspectorPanel({
               onEdit={editor.edit}
               project={editor.project}
             />
-            <SourceSection clip={clip} onClipChange={onClipChange} projectId={editor.project.id} />
+            <SourceSection clip={clip} onClipChange={onClipChange} project={editor.project} />
             <PropertyGroupSection
               clip={clip}
               clock={clock}

@@ -85,13 +85,13 @@ describe("captureHashForClip", () => {
     expect(hash({}, { theme: "dark" })).toBe(hash({}, {}, "dark"));
   });
 
-  it("refuses routes outside the catalogue and non-recording clips", () => {
+  it("refuses routes that aren't app paths and non-recording clips", () => {
     expect(() =>
       captureSpecFor({
         project,
-        clip: { ...clip, source: { kind: "recording", route: "/nope", actions: [] } },
+        clip: { ...clip, source: { kind: "recording", route: "//elsewhere.example", actions: [] } },
       })
-    ).toThrow("/nope");
+    ).toThrow("//elsewhere.example");
     expect(() =>
       captureSpecFor({
         project,

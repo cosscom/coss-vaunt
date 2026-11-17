@@ -87,11 +87,7 @@
   "showcase": {
     "content": {
       "sample": "Build from above.",
-      "phrases": [
-        ["Drop", "into", "place"],
-        ["Words", "settle", "lower"],
-        ["Build", "from", "above"]
-      ]
+      "phrases": [["Drop", "into", "place"], ["Words", "settle", "lower"], ["Build", "from", "above"]]
     },
     "content_usage": {
       "default_policy": "When applying an effect to an existing heading or text section, preserve the section text. Do not replace user/application copy with showcase sample text unless the user explicitly asks to reproduce the demo copy.",

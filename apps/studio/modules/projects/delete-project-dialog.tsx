@@ -17,14 +17,18 @@ import { STUDIO_COPY } from "@/modules/studio-copy";
 type DeleteProjectDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectName: string;
+  title: string;
+  description: string;
+  confirmLabel: string;
   onConfirm: () => Promise<void>;
 };
 
 export function DeleteProjectDialog({
   open,
   onOpenChange,
-  projectName,
+  title,
+  description,
+  confirmLabel,
   onConfirm,
 }: DeleteProjectDialogProps): React.ReactElement {
   const [pending, setPending] = useState(false);
@@ -33,8 +37,8 @@ export function DeleteProjectDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogPopup>
         <AlertDialogHeader>
-          <AlertDialogTitle>{STUDIO_COPY.projects.deleteTitle(projectName)}</AlertDialogTitle>
-          <AlertDialogDescription>{STUDIO_COPY.projects.deleteDescription}</AlertDialogDescription>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="ghost" />}>
@@ -51,7 +55,7 @@ export function DeleteProjectDialog({
               }
             }}
             variant="destructive">
-            {STUDIO_COPY.projects.deleteConfirm}
+            {confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogPopup>

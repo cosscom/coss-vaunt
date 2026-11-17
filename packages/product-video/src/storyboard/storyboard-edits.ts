@@ -776,3 +776,28 @@ export function editTimeFor(
   }
   return best ?? playheadLocal;
 }
+
+/** The clip time an edit at project time `time` lands on: its frame, held to the clip's last drawn frame, since a clip isn't drawn at its end. */
+export function editLocalTime(clip: Span, time: number, fps: number): number {
+  const lastFrame = Math.ceil(clipEnd(clip) * fps - EPSILON) - 1;
+  return Math.min(frameLocalTime(clip, time, fps), Math.max(0, lastFrame / fps - clip.start));
+}
+
+/** Keys each of `keys` that has no keyframes and a static value other than its default at `time`, holding that value. */
+export function keyStaticPose(clip: Clip, keys: readonly PropertyKey[], time: number): Clip {
+  return keys.reduce((current, key) => {
+    const property = current.properties[key];
+    if (!property || property.keyframes.length > 0 || property.value === PROPERTY_SPECS[key].defaultValue)
+      return current;
+    return toggleKeyframeAt(current, key, time);
+  }, clip);
+}
+
+/**
+ * Before keying `keys` at `time`, keys the static pose set at `posedAt` (at the clip start when `time` is
+ * later), so the new keyframe animates from that pose instead of replacing it.
+ */
+export function keyPoseBefore(clip: Clip, keys: readonly PropertyKey[], time: number, posedAt: number): Clip {
+  if (Math.abs(time - posedAt) <= KEYFRAME_SNAP_SECONDS) return clip;
+  return keyStaticPose(clip, keys, time > posedAt ? 0 : posedAt);
+}

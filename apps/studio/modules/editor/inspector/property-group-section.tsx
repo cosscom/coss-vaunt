@@ -7,7 +7,7 @@ import {
   type PropertyGroup,
   type PropertyKey,
 } from "@calcom/product-video/storyboard/property-specs";
-import { clipLocalTime, frameTolerance } from "@calcom/product-video/storyboard/storyboard-edits";
+import { editLocalTime, frameTolerance } from "@calcom/product-video/storyboard/storyboard-edits";
 import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   ContextMenu,
@@ -58,7 +58,7 @@ export function PropertyGroupSection({
 }: PropertyGroupSectionProps): React.ReactElement {
   const time = usePlaybackState(clock, (state) => state.time);
   const [menuKey, setMenuKey] = useState<PropertyKey | null>(null);
-  const localTime = clipLocalTime(clip, time);
+  const localTime = editLocalTime(clip, time, editor.project.settings.fps);
   const tolerance = frameTolerance(editor.project.settings.fps);
   const withSphere = group === "device";
   const keys =
@@ -105,10 +105,10 @@ export function PropertyGroupSection({
             <div className="flex flex-col gap-1.5" data-property-key={lastRotationKey(editor.lastProperty)}>
               <span className="text-muted-foreground text-xs">{STUDIO_COPY.inspector.rotation}</span>
               <RotationSphere
-                keyframed={{
-                  rotateX: keyframeState(clip.properties.rotateX, localTime, tolerance) === "at-playhead",
-                  rotateY: keyframeState(clip.properties.rotateY, localTime, tolerance) === "at-playhead",
-                  rotateZ: keyframeState(clip.properties.rotateZ, localTime, tolerance) === "at-playhead",
+                keyframes={{
+                  rotateX: keyframeState(clip.properties.rotateX, localTime, tolerance),
+                  rotateY: keyframeState(clip.properties.rotateY, localTime, tolerance),
+                  rotateZ: keyframeState(clip.properties.rotateZ, localTime, tolerance),
                 }}
                 onChange={(key, value) =>
                   editor.setCompoundAtPlayhead(clip.id, key, value, `rotation:${clip.id}`)

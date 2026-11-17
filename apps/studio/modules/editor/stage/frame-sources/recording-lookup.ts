@@ -1,4 +1,4 @@
-import { captureHashForClip } from "@calcom/product-video/recording/capture-hash";
+import { activeTakeHash } from "@calcom/product-video/project-store/project-assets";
 import {
   RECORDING_MANIFEST_FILE,
   type RecordingManifest,
@@ -8,14 +8,9 @@ import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-
 
 export type LoadedRecording = { directoryUrl: string; manifest: RecordingManifest };
 
-/** The capture hash a recording clip's frames live under for the project's theme; null when it can't be recorded. */
+/** The capture hash a recording clip's frames live under: its pinned take, or the one for the project's theme; null when it can't be recorded. */
 export function recordingHashFor(project: Pick<Project, "settings">, clip: Clip): string | null {
-  if (clip.source.kind !== "recording") return null;
-  try {
-    return captureHashForClip({ project, clip });
-  } catch {
-    return null;
-  }
+  return activeTakeHash(project, clip);
 }
 
 export function recordingDirectoryUrl(filesUrl: string, clipId: string, captureHash: string): string {
@@ -32,4 +27,21 @@ export async function loadRecording(
   const response = await fetch(`${directoryUrl}/${RECORDING_MANIFEST_FILE}`, { cache: "no-store" });
   if (!response.ok) return null;
   return { directoryUrl, manifest: (await response.json()) as RecordingManifest };
+}
+
+/** Asks the studio to make a recording's playback video; the updated recording once it has one, else null. */
+export async function requestRecordingVideo(
+  projectUrl: string,
+  recording: LoadedRecording,
+  clipId: string,
+  captureHash: string
+): Promise<LoadedRecording | null> {
+  const response = await fetch(`${projectUrl}/clips/${encodeURIComponent(clipId)}/recording-video`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ captureHash }),
+  });
+  if (!response.ok) return null;
+  const { manifest } = (await response.json()) as { manifest: RecordingManifest };
+  return manifest.video ? { ...recording, manifest } : null;
 }

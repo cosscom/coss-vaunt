@@ -20,6 +20,7 @@ import {
   ContextMenuSubTrigger,
 } from "@coss/ui/components/context-menu";
 import type * as React from "react";
+import { UseTakeSubmenu } from "../assets/use-take-submenu";
 import { easeLabel } from "../easing/easing-copy";
 import type { SelectedKeyframe } from "../editor-selection";
 import { MenuShortcut } from "../menu-shortcut";
@@ -120,6 +121,7 @@ function ClipItems({ editor, clipId }: { editor: EditorState; clipId: string }):
             ))}
         </ContextMenuSubPopup>
       </ContextMenuSub>
+      <UseTakeSubmenu clipId={clipId} editor={editor} />
       {overlapping ? (
         <ContextMenuSub>
           <ContextMenuSubTrigger>{copy.transitionIn}</ContextMenuSubTrigger>

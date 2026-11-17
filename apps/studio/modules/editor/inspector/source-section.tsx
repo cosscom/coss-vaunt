@@ -3,6 +3,7 @@
 import {
   type Clip,
   type ClipSource,
+  type Project,
   TEXT_ALIGNS,
   TEXT_SIZES,
 } from "@calcom/product-video/storyboard/storyboard-schema";
@@ -11,6 +12,7 @@ import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-r
 import type * as React from "react";
 import { RecordClipButton } from "../recording/record-clip-button";
 import { TextEffectPicker } from "../text-effects/text-effect-picker";
+import { CursorControls } from "./cursor-controls";
 import { DraftTextarea } from "./draft-text-field";
 import { InspectorNumberRow } from "./inspector-number-row";
 import { InspectorRow } from "./inspector-row";
@@ -27,7 +29,7 @@ const MAX_TEXT_LENGTH = 200;
 type SourceOf<Kind extends ClipSource["kind"]> = Extract<ClipSource, { kind: Kind }>;
 
 type SourceSectionProps = {
-  projectId: string;
+  project: Project;
   clip: Clip;
   onClipChange: (update: (clip: Clip) => Clip) => void;
 };
@@ -36,7 +38,7 @@ function fileName(file: string): string {
   return file.split("/").pop() ?? file;
 }
 
-export function SourceSection({ projectId, clip, onClipChange }: SourceSectionProps): React.ReactElement {
+export function SourceSection({ project, clip, onClipChange }: SourceSectionProps): React.ReactElement {
   const { source } = clip;
   const updateSource = <Kind extends ClipSource["kind"]>(
     kind: Kind,
@@ -64,7 +66,8 @@ export function SourceSection({ projectId, clip, onClipChange }: SourceSectionPr
             onChange={(route) => updateSource("recording", (current) => ({ ...current, route }))}
             value={source.route}
           />
-          <RecordClipButton clip={clip} projectId={projectId} />
+          <RecordClipButton clip={clip} projectId={project.id} />
+          <CursorControls clip={clip} onClipChange={onClipChange} project={project} />
         </>
       ) : null}
 

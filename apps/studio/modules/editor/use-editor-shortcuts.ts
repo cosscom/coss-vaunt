@@ -12,11 +12,18 @@ import type { EditorState } from "./use-editor-state";
 const TEXT_TARGET = "input, textarea, select, [contenteditable=''], [contenteditable='true']";
 const WIDGET_TARGET =
   "[role='slider'], [role='menu'], [role='menuitem'], [role='listbox'], [role='option'], [role='dialog'], [role='separator']";
+/** The storyboard canvas handles its own keys (arrows move nodes, Delete removes them); undo and redo stay global. */
+const STORYBOARD_TARGET = "[data-storyboard-canvas]";
+const STORYBOARD_PASSTHROUGH: EditorAction[] = ["undo", "redo"];
 /** Copy and paste run from the clipboard events so the browser hands over pasted files. */
 const CLIPBOARD_ACTIONS: EditorAction[] = ["copy", "paste"];
 
 function isTyping(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(TEXT_TARGET) !== null;
+}
+
+function inStoryboard(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(STORYBOARD_TARGET) !== null;
 }
 
 function ownsKey(event: KeyboardEvent): boolean {
@@ -82,12 +89,14 @@ export function useEditorShortcuts({
       if (ownsKey(event)) return;
       const action = matchShortcut(event);
       if (!action || CLIPBOARD_ACTIONS.includes(action)) return;
+      if (inStoryboard(event.target) && !STORYBOARD_PASSTHROUGH.includes(action)) return;
       event.preventDefault();
       run(action);
     };
     const onCopy = (event: ClipboardEvent) => {
       if (
         isTyping(event.target) ||
+        inStoryboard(event.target) ||
         (editor.selection.clipIds.length === 0 && editor.selection.keyframes.length === 0)
       )
         return;
@@ -100,7 +109,7 @@ export function useEditorShortcuts({
       event.preventDefault();
     };
     const onPaste = (event: ClipboardEvent) => {
-      if (isTyping(event.target)) return;
+      if (isTyping(event.target) || inStoryboard(event.target)) return;
       const files = mediaFilesFromClipboard(event);
       if (files.length > 0) void editor.importMediaAtPlayhead(files);
       else if (editor.canPasteKeyframes && editor.selection.keyframes.length > 0) editor.pasteKeyframes();

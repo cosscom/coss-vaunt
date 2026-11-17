@@ -1,5 +1,8 @@
 /// <reference lib="dom" />
+import { classifyRequest, fakeTrpcResponse } from "./request-fakes";
 import type { TimedChunk } from "./scripted-reply";
+
+type StudioRequests = { classify: typeof classifyRequest; fakeTrpc: typeof fakeTrpcResponse };
 
 export type RecordingPageConfig = {
   seed: number;
@@ -10,6 +13,10 @@ export type RecordingPageConfig = {
   title: string | null;
   /** Timed chunks per user turn; empty when the route has no scripted reply. */
   turns: TimedChunk[][];
+  /** The normalised message the turns answer; null answers every message. */
+  prompt: string | null;
+  /** Played, every turn, when the first message isn't `prompt`. */
+  fallback: { title: string | null; turn: TimedChunk[] };
 };
 
 export type PageRect = { x: number; y: number; width: number; height: number };
@@ -19,6 +26,8 @@ export type RecordingPageApi = {
   stepAnimations(): void;
   settle(): Promise<void>;
   rectOf(selector: string): PageRect | null;
+  /** Scrolls an element that's in the page but off screen to the middle of the view; false when there's nothing to do. */
+  reveal(selector: string): boolean;
 };
 
 type ObserverGate = { deliver(): Promise<void>; renderingUpdate(): Promise<void> };
@@ -106,20 +115,53 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
   document.addEventListener("DOMContentLoaded", ensureStyle);
 
   const originalFetch = window.fetch;
+  const requests = (globalThis as unknown as { __studioRequests: StudioRequests }).__studioRequests;
+  /** What the page tried to write, for a look in DevTools: `window.__studioFaked`. */
+  const faked: Array<{ kind: string; method: string; url: string }> = [];
+  (window as unknown as { __studioFaked: typeof faked }).__studioFaked = faked;
   let turn = 0;
+  let answered: "fixture" | "fallback" | null = null;
+  // The newest user message's text, from the AI SDK request body; null when the body has none.
+  const userText = (body: unknown): string | null => {
+    const messages = (
+      body as { messages?: Array<{ role?: string; parts?: Array<{ type?: string; text?: string }> }> }
+    )?.messages;
+    const last = Array.isArray(messages)
+      ? [...messages].reverse().find((message) => message.role === "user")
+      : null;
+    const text = (last?.parts ?? []).map((part) => (part.type === "text" ? (part.text ?? "") : "")).join(" ");
+    return text.trim() ? text : null;
+  };
+  const normalise = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
   window.fetch = function scriptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const request = input instanceof Request ? input : null;
     const url = new URL(request ? request.url : String(input), location.href);
     const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
     const local = url.origin === location.origin;
-    if (local && config.turns.length > 0 && url.pathname === config.chatPath && method === "POST") {
+    // Every chat goes to a scripted reply: the route's fixture, or the generic one; never the real agent.
+    if (local && url.pathname === config.chatPath && method === "POST") {
       let sessionUid: unknown;
+      let body: unknown;
       try {
-        sessionUid = JSON.parse(typeof init?.body === "string" ? init.body : "{}").sessionUid;
+        body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
+        sessionUid = (body as { sessionUid?: unknown }).sessionUid;
       } catch {
         sessionUid = undefined;
       }
-      const chunks = config.turns[Math.min(turn, config.turns.length - 1)];
+      if (answered === null) {
+        const text = userText(body);
+        answered =
+          config.turns.length > 0 &&
+          (config.prompt === null || text === null || normalise(text) === config.prompt)
+            ? "fixture"
+            : "fallback";
+      }
+      const chunks =
+        answered === "fixture" ? config.turns[Math.min(turn, config.turns.length - 1)] : config.fallback.turn;
       turn++;
       const encoder = new TextEncoder();
       const stream = new ReadableStream<Uint8Array>({
@@ -142,13 +184,72 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
       if (typeof sessionUid === "string") headers.set("x-cal-agent-session-uid", sessionUid);
       return Promise.resolve(new Response(stream, { status: 200, headers }));
     }
-    if (local && config.title !== null && url.pathname === config.titlePath && method === "GET") {
-      const body = JSON.stringify({ title: turn > 0 ? config.title : null });
+    if (local && url.pathname === config.titlePath && method === "GET") {
+      const title = answered === "fallback" ? config.fallback.title : config.title;
+      const body = JSON.stringify({ title: turn > 0 ? title : null });
       return Promise.resolve(
         new Response(body, { status: 200, headers: { "content-type": "application/json" } })
       );
     }
-    return originalFetch.call(window, input, init);
+    const headerOf = (name: string) =>
+      new Headers(init?.headers ?? request?.headers ?? undefined).get(name) ?? null;
+    const kind = requests.classify({
+      method,
+      url: url.href,
+      pageOrigin: location.origin,
+      serverAction: headerOf("next-action") !== null,
+    });
+    if (kind === "read" || kind === "trpc-query") return originalFetch.call(window, input, init);
+    faked.push({ kind, method, url: `${url.pathname}${url.search}` });
+    const json = (body: string) =>
+      new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+    if (kind === "trpc-mutation") {
+      const calls = decodeURIComponent(url.pathname.split("/").pop() ?? "").split(",").length;
+      const batch = url.searchParams.get("batch") === "1";
+      const bodyText =
+        typeof init?.body === "string"
+          ? Promise.resolve(init.body)
+          : request
+            ? request.clone().text()
+            : Promise.resolve("");
+      return bodyText.then((body) => json(requests.fakeTrpc({ body, batch, calls })));
+    }
+    if (kind === "server-action") {
+      console.warn(`[studio] faked a server action at ${url.pathname}; the page may not update`);
+      return Promise.resolve(
+        new Response("", { status: 200, headers: { "content-type": "text/x-component" } })
+      );
+    }
+    if (kind === "unclassified") {
+      console.warn(`[studio] couldn't classify ${method} ${url.pathname}; blocked it`);
+      return Promise.resolve(new Response("", { status: 204 }));
+    }
+    return Promise.resolve(json("{}"));
+  };
+
+  navigator.sendBeacon = (url: string | URL) => {
+    faked.push({ kind: "external-write", method: "BEACON", url: String(url) });
+    return true;
+  };
+  const xhrMethods = new WeakMap<XMLHttpRequest, { method: string; url: string }>();
+  const nativeOpen = XMLHttpRequest.prototype.open as (this: XMLHttpRequest, ...args: unknown[]) => void;
+  const nativeSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function open(this: XMLHttpRequest, ...args: unknown[]) {
+    xhrMethods.set(this, { method: String(args[0]).toUpperCase(), url: String(args[1]) });
+    nativeOpen.apply(this, args);
+  } as typeof XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.send = function send(
+    this: XMLHttpRequest,
+    body?: Document | XMLHttpRequestBodyInit | null
+  ) {
+    const opened = xhrMethods.get(this);
+    if (opened && !["GET", "HEAD", "OPTIONS"].includes(opened.method)) {
+      console.warn(`[studio] couldn't classify XHR ${opened.method} ${opened.url}; blocked it`);
+      faked.push({ kind: "unclassified", method: opened.method, url: opened.url });
+      this.abort();
+      return;
+    }
+    nativeSend.call(this, body);
   };
 
   const births = new WeakMap<Animation | SVGSVGElement, number>();
@@ -224,6 +325,12 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
       if (!inViewport(rect)) return null;
       return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     },
+    reveal(selector) {
+      const element = document.querySelector(selector);
+      if (!element || inViewport(element.getBoundingClientRect())) return false;
+      element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+      return true;
+    },
   };
   (window as unknown as { __studio: RecordingPageApi }).__studio = api;
 }
@@ -232,6 +339,7 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
 export function recordingRuntimeScript(config: RecordingPageConfig): string {
   return [
     "globalThis.__name ??= (target) => target;",
+    `globalThis.__studioRequests = { classify: (${classifyRequest.toString()}), fakeTrpc: (${fakeTrpcResponse.toString()}) };`,
     `(${installObserverGate.toString()})();`,
     `(${installRecordingRuntime.toString()})(${JSON.stringify(config)});`,
   ].join("\n");

@@ -2,6 +2,7 @@
 
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@coss/ui/components/collapsible";
 import { ChevronDownIcon } from "@coss/ui/icons";
+import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 
 type InspectorSectionProps = {
@@ -10,6 +11,8 @@ type InspectorSectionProps = {
   /** A control beside the title, outside the toggle so it can be a button of its own. */
   action?: React.ReactNode;
   children: React.ReactNode;
+  /** Replaces the default body padding, for lists whose rows bring their own. */
+  bodyClassName?: string;
 };
 
 export function InspectorSection({
@@ -17,6 +20,7 @@ export function InspectorSection({
   aside,
   action,
   children,
+  bodyClassName,
 }: InspectorSectionProps): React.ReactElement {
   return (
     <Collapsible className="border-b" defaultOpen>
@@ -32,7 +36,7 @@ export function InspectorSection({
         {action ? <span className="flex h-10 items-center pe-2">{action}</span> : null}
       </div>
       <CollapsiblePanel>
-        <div className="flex flex-col gap-2 px-4 pt-1 pb-4">{children}</div>
+        <div className={cn("flex flex-col gap-2 px-4 pt-1 pb-4", bodyClassName)}>{children}</div>
       </CollapsiblePanel>
     </Collapsible>
   );

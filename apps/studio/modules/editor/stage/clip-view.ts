@@ -6,12 +6,52 @@ import {
 } from "@calcom/product-video/stage/device-pose";
 import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Matrix4, Mesh, PerspectiveCamera, PlaneGeometry, Scene, type Texture } from "three";
+import { type CursorDraw, createCursorSprite } from "./cursor-sprite";
 import { createDeviceMaterial } from "./device-material";
 import { createShadowMaterial, SHADOW_MARGIN } from "./shadow-material";
 
 /** Corner radius is set in px of a device drawn 1080 px tall. */
 const RADIUS_REFERENCE_PX = 1080;
 const SHADOW_LIFT = 0.001;
+
+/** The clip's camera, with its placement (scale and offset) applied after projection. */
+function aimCamera(
+  camera: PerspectiveCamera,
+  rig: CameraRig,
+  placement: LayerPlacement,
+  frame: Size,
+  placementMatrix: Matrix4
+): void {
+  camera.fov = rig.fov;
+  camera.aspect = frame.width / frame.height;
+  camera.near = rig.near;
+  camera.far = rig.far;
+  camera.position.set(...rig.position);
+  camera.up.set(...rig.up);
+  camera.lookAt(...rig.target);
+  camera.updateProjectionMatrix();
+  placementMatrix.set(
+    placement.scale,
+    0,
+    0,
+    placement.offsetX,
+    0,
+    placement.scale,
+    0,
+    placement.offsetY,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  );
+  camera.projectionMatrix.premultiply(placementMatrix);
+  camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+}
+
 /** The contact shadow's quad covers floor far past its visible shade, so depth of field leaves it out. */
 export const NO_DEPTH_LAYER = 1;
 
@@ -25,6 +65,7 @@ export type ClipViewInput = {
   opacity: number;
   blur: number;
   settings: ProjectSettings;
+  cursor: Pick<CursorDraw, "layout" | "style"> | null;
 };
 
 /** One visible clip: its own scene and camera, so every clip keeps its own framing and perspective. */
@@ -39,7 +80,7 @@ export type ClipView = {
  * The device turns about its centre above a level floor. Its reflection is the same plane mirrored
  * through the floor in world space, so it shows the turned device without turning with it.
  */
-export function createClipView(): ClipView {
+export function createClipView({ maxAnisotropy }: { maxAnisotropy: number }): ClipView {
   const scene = new Scene();
   const camera = new PerspectiveCamera();
   const geometry = new PlaneGeometry(1, 1);
@@ -62,42 +103,17 @@ export function createClipView(): ClipView {
   shadow.layers.set(NO_DEPTH_LAYER);
   camera.layers.enable(NO_DEPTH_LAYER);
 
-  scene.add(shadow, reflection, device);
+  const cursor = createCursorSprite({ geometry, maxAnisotropy, renderOrder: 3, layer: NO_DEPTH_LAYER });
+
+  scene.add(shadow, reflection, device, ...cursor.meshes);
   const placementMatrix = new Matrix4();
   const mirror = new Matrix4();
 
   return {
     scene,
     camera,
-    update({ rig, pose, placement, frame, device: size, texture, opacity, blur, settings }) {
-      camera.fov = rig.fov;
-      camera.aspect = frame.width / frame.height;
-      camera.near = rig.near;
-      camera.far = rig.far;
-      camera.position.set(...rig.position);
-      camera.up.set(...rig.up);
-      camera.lookAt(...rig.target);
-      camera.updateProjectionMatrix();
-      placementMatrix.set(
-        placement.scale,
-        0,
-        0,
-        placement.offsetX,
-        0,
-        placement.scale,
-        0,
-        placement.offsetY,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      );
-      camera.projectionMatrix.premultiply(placementMatrix);
-      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+    update({ rig, pose, placement, frame, device: size, texture, opacity, blur, settings, cursor: pointer }) {
+      aimCamera(camera, rig, placement, frame, placementMatrix);
 
       const [r0, r1, r2] = pose.rotation;
       device.matrix.set(
@@ -119,6 +135,7 @@ export function createClipView(): ClipView {
         1
       );
       device.matrixWorldNeedsUpdate = true;
+      cursor.update(device.matrix, pointer && { ...pointer, opacity, blur, theme: settings.theme });
       mirror.set(1, 0, 0, 0, 0, -1, 0, 2 * pose.floorY, 0, 0, 1, 0, 0, 0, 0, 1);
       reflection.matrix.multiplyMatrices(mirror, device.matrix);
       reflection.matrixWorldNeedsUpdate = true;
@@ -151,6 +168,7 @@ export function createClipView(): ClipView {
       deviceMaterial.dispose();
       reflectionMaterial.dispose();
       shadowMaterial.dispose();
+      cursor.dispose();
     },
   };
 }

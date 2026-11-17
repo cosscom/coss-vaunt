@@ -8,6 +8,7 @@ import { MusicIcon, UploadIcon, Volume2Icon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useState } from "react";
+import { hasAssetDrag } from "../assets/asset-drag";
 import { AUDIO_COPY } from "../audio/audio-copy";
 import type { PlaybackClock } from "../player/playback-clock";
 import type { AudioActions } from "./audio/audio-actions";
@@ -71,7 +72,8 @@ export function AudioTrackRow({
 }: AudioTrackRowProps): React.ReactElement {
   const [dropping, setDropping] = useState(false);
   const muteLabel = track.muted ? copy.unmute(track.name) : copy.mute(track.name);
-  const hasFiles = (event: React.DragEvent) => event.dataTransfer.types.includes("Files");
+  const hasFiles = (event: React.DragEvent) =>
+    event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer);
 
   return (
     <TimelineRow

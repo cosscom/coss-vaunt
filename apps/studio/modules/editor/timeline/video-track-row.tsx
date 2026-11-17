@@ -9,6 +9,7 @@ import { ChevronDownIcon, EyeIcon, EyeOffIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useState } from "react";
+import { hasAssetDrag } from "../assets/asset-drag";
 import type { PlaybackClock } from "../player/playback-clock";
 import { AddLaneMenu } from "./add-lane-menu";
 import { KeyframeLane } from "./keyframe-lane";
@@ -112,7 +113,8 @@ export function VideoTrackRow({
     const region = regions.find((candidate) => candidate[side] === clipId);
     return region ? (region.end - region.start) * pxPerSecond : 0;
   };
-  const hasFiles = (event: React.DragEvent) => event.dataTransfer.types.includes("Files");
+  const hasFiles = (event: React.DragEvent) =>
+    event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer);
 
   return (
     <div data-testid="video-track">

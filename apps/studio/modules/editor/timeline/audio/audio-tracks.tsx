@@ -1,9 +1,10 @@
 "use client";
 
-import { findAudioClip } from "@calcom/product-video/audio/audio-edits";
+import { findAudioClip, placeAudioClips } from "@calcom/product-video/audio/audio-edits";
 import { ACCEPTED_AUDIO } from "@calcom/product-video/imports/media-types";
 import type * as React from "react";
 import { useEffect, useRef } from "react";
+import { ASSET_DRAG_TYPE, parseAssetDrag } from "../../assets/asset-drag";
 import {
   audioSelectionFor,
   EMPTY_AUDIO_SELECTION,
@@ -88,9 +89,12 @@ export function AudioTracks({
             contentWidth={contentWidth}
             onClearSelection={() => store.set(EMPTY_AUDIO_SELECTION)}
             onClipPointerDown={gestures.onClipPointerDown}
-            onDropFiles={(dataTransfer, time) =>
-              void editing.importAt(audioFilesFromDrop(dataTransfer), trackIndex, time)
-            }
+            onDropFiles={(dataTransfer, time) => {
+              const asset = parseAssetDrag(dataTransfer.getData(ASSET_DRAG_TYPE), "audio");
+              if (asset?.kind === "audio")
+                editor.edit((current) => placeAudioClips(current, trackIndex, [asset.clip], time));
+              else void editing.importAt(audioFilesFromDrop(dataTransfer), trackIndex, time);
+            }}
             onImport={() => {
               importTrack.current = trackIndex;
               fileInputRef.current?.click();

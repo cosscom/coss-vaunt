@@ -12,7 +12,7 @@ import {
 } from "playwright";
 import type { RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
 import { MAX_RECORDING_SECONDS, type Project } from "../storyboard/storyboard-schema";
-import { scheduleActions } from "./action-schedule";
+import { type FrameInput, scheduleActions } from "./action-schedule";
 import { type CaptureSpec, captureHash, captureSpecFor } from "./capture-hash";
 import { cursorPointAtFrame, type Point, restPoint } from "./cursor-path";
 import { assertAllowedRecordingHost } from "./host-allowlist";
@@ -27,7 +27,9 @@ import {
 } from "./recording-manifest";
 import { type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
 import { findClip, readRecordingManifest } from "./recording-status";
-import { scriptedTurnChunks } from "./scripted-reply";
+import { writeRecordingVideo } from "./recording-video";
+import type { ReplayStep } from "./replay-chain";
+import { GENERIC_REPLY, normalisePrompt, scriptedTurnChunks } from "./scripted-reply";
 
 const runFile = promisify(execFile);
 
@@ -37,6 +39,7 @@ const SETTLE_TIMEOUT_MS = 10_000;
 const PREROLL_STEPS = 30;
 const PREROLL_STEP_MS = 100;
 const PAGE_SEED = 20_261_118;
+const REPLAY_FPS = 10;
 const PROXY_DPR = 1;
 const FFMPEG = "/usr/bin/ffmpeg";
 
@@ -100,7 +103,8 @@ export async function recordClip({
     });
     onProgress({ type: "phase", phase: "proxy" });
     const proxy = await writeProxies({ dir: partial, dpr: spec.dpr });
-    const final: RecordingManifest = { ...manifest, proxy };
+    const video = await writeRecordingVideo({ dir: partial, fps: spec.fps, viewport: spec.viewport });
+    const final: RecordingManifest = { ...manifest, proxy, video };
     await writeFile(path.join(partial, RECORDING_MANIFEST_FILE), `${JSON.stringify(final, null, 2)}\n`);
     await rm(directory, { recursive: true, force: true });
     await rename(partial, directory);
@@ -109,6 +113,26 @@ export async function recordClip({
     await rm(partial, { recursive: true, force: true });
     throw error;
   }
+}
+
+/**
+ * Plays a clip exactly as `recordClip` would, on the same fake clock and page runtime, without taking
+ * screenshots; throws what the recording would. A missing target's error says when, if ever, it shows up.
+ */
+export async function rehearseClip({ project, clipId }: { project: Project; clipId: string }): Promise<void> {
+  const clip = findClip(project, clipId);
+  if (!clip || clip.source.kind !== "recording")
+    throw new Error(`Clip ${clipId} is not a recording in this project`);
+  assertAllowedRecordingHost(project.settings.baseUrl);
+  const spec = captureSpecFor({ project, clip });
+  await capture({
+    spec,
+    hash: captureHash(spec),
+    clipId,
+    baseUrl: project.settings.baseUrl,
+    framesDir: null,
+    onProgress: () => undefined,
+  });
 }
 
 async function capture({
@@ -123,11 +147,11 @@ async function capture({
   hash: string;
   clipId: string;
   baseUrl: string;
-  framesDir: string;
+  /** Null rehearses: the same run with no screenshots. */
+  framesDir: string | null;
   onProgress: (progress: RecordingProgress) => void;
 }): Promise<{ manifest: Omit<RecordingManifest, "proxy">; secondsPerFrame: number }> {
   const entry = spec.routeEntry;
-  const fixture = entry.replyFixture;
   const browser = await chromium.launch({ args: ["--force-color-profile=srgb", "--hide-scrollbars"] });
   try {
     onProgress({ type: "phase", phase: "login" });
@@ -146,27 +170,27 @@ async function capture({
     const startTime = Date.parse(entry.clockTime);
     await context.clock.install({ time: startTime });
     await context.clock.pauseAt(startTime + 1000);
-    await context.addInitScript({
-      content: recordingRuntimeScript({
-        seed: PAGE_SEED,
-        css: [
-          BASE_CSS,
-          ...entry.hiddenSelectors.map((selector) => `${selector} { visibility: hidden !important; }`),
-        ].join("\n"),
-        chatPath: "/api/ai/chat",
-        titlePath: "/api/ai/chat/session/title",
-        title: fixture?.title ?? null,
-        turns: fixture ? fixture.turns.map((_, turnIndex) => scriptedTurnChunks(fixture, turnIndex)) : [],
-      }),
-    });
+    await context.addInitScript({ content: routeRuntimeScript(entry, BASE_CSS) });
     const page = await context.newPage();
+    // The page runtime reports writes it couldn't classify; they belong in the job's log, not lost in the page.
+    page.on("console", (message) => {
+      if (message.text().startsWith("[studio]")) process.stderr.write(`${message.text()}\n`);
+    });
     const network = trackNetwork(page);
     await holdNetworkWhileClockRuns(page, network);
-    await page.goto(new URL(spec.route, baseUrl).toString(), { waitUntil: "load", timeout: 120_000 });
+    const startRoute = spec.replay?.[0]?.route ?? spec.route;
+    await page.goto(new URL(startRoute, baseUrl).toString(), { waitUntil: "load", timeout: 120_000 });
 
     onProgress({ type: "phase", phase: "preroll" });
     for (let step = 0; step < PREROLL_STEPS; step++) {
       await network.runClock(PREROLL_STEP_MS);
+      await settle(page, network);
+    }
+    if (spec.replay) {
+      onProgress({ type: "phase", phase: "replay" });
+      for (const step of spec.replay) await replayRecording(page, network, step);
+      const rest = restPoint(spec.viewport);
+      await page.mouse.move(rest.x, rest.y);
       await settle(page, network);
     }
 
@@ -179,7 +203,26 @@ async function capture({
   }
 }
 
-async function signIn({
+/** The page runtime for a route: seeded randomness, its scripted agent reply and its hidden elements. */
+export function routeRuntimeScript(entry: RouteCatalogueEntry, css = ""): string {
+  const fixture = entry.replyFixture;
+  return recordingRuntimeScript({
+    seed: PAGE_SEED,
+    css: [
+      css,
+      ...entry.hiddenSelectors.map((selector) => `${selector} { visibility: hidden !important; }`),
+    ].join("\n"),
+    chatPath: "/api/ai/chat",
+    titlePath: "/api/ai/chat/session/title",
+    title: fixture?.title ?? null,
+    turns: fixture ? fixture.turns.map((_, turnIndex) => scriptedTurnChunks(fixture, turnIndex)) : [],
+    prompt: fixture?.prompt ? normalisePrompt(fixture.prompt) : null,
+    fallback: { title: GENERIC_REPLY.title, turn: scriptedTurnChunks(GENERIC_REPLY, 0) },
+  });
+}
+
+/** Signs in as the route's synthetic user and returns the browser storage state. */
+export async function signIn({
   baseUrl,
   entry,
   newContext,
@@ -286,6 +329,39 @@ async function settle(page: Page, network: NetworkTracker): Promise<void> {
   await page.evaluate("window.__studio.stepAnimations()");
 }
 
+class TargetMissingError extends Error {
+  constructor(
+    readonly selector: string,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
+const PROBE_STEP_MS = 100;
+const PROBE_LIMIT_MS = 5_000;
+
+/** Runs page time on until the missing target shows, so the error can say how late the action was. */
+async function explainMissingTarget(
+  page: Page,
+  network: NetworkTracker,
+  error: TargetMissingError,
+  atSeconds: number
+): Promise<Error> {
+  for (let waited = PROBE_STEP_MS; waited <= PROBE_LIMIT_MS; waited += PROBE_STEP_MS) {
+    await network.runClock(PROBE_STEP_MS);
+    await settle(page, network);
+    if (await rectOf(page, error.selector)) {
+      return new Error(
+        `${error.message}: page time doesn't move while the recorder waits, and at ${atSeconds.toFixed(2)} s into the clip it wasn't on screen yet; it shows ${(waited / 1000).toFixed(1)} s later`
+      );
+    }
+  }
+  return new Error(
+    `${error.message}: at ${atSeconds.toFixed(2)} s into the clip it wasn't on screen, and it doesn't show within ${PROBE_LIMIT_MS / 1000} s after`
+  );
+}
+
 async function rectOf(page: Page, selector: string): Promise<PageRect | null> {
   return (await page.evaluate(`window.__studio.rectOf(${JSON.stringify(selector)})`)) as PageRect | null;
 }
@@ -299,8 +375,14 @@ async function waitForTarget(
   for (;;) {
     const rect = await rectOf(page, selector);
     if (rect) return rect;
+    // Like a viewer scrolling to it: a target below the fold comes into view instead of failing.
+    if (await page.evaluate(`window.__studio.reveal(${JSON.stringify(selector)})`)) {
+      await settle(page, network);
+      continue;
+    }
     if (Date.now() > deadline) {
-      throw new Error(
+      throw new TargetMissingError(
+        selector,
         `Action ${actionIndex} (${kind}) couldn't find ${selector} on screen within ${TARGET_TIMEOUT_MS / 1000} s`
       );
     }
@@ -313,6 +395,68 @@ const centre = (rect: PageRect): Point => ({ x: rect.x + rect.width / 2, y: rect
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const roundRect = (rect: PageRect | null): Rect | null =>
   rect && { x: round2(rect.x), y: round2(rect.y), width: round2(rect.width), height: round2(rect.height) };
+
+async function sendInput(
+  page: Page,
+  network: NetworkTracker,
+  input: FrameInput,
+  typeKind: string
+): Promise<void> {
+  switch (input.kind) {
+    case "down":
+      await page.mouse.down();
+      break;
+    case "up":
+      await page.mouse.up();
+      break;
+    case "focus": {
+      await waitForTarget(page, network, {
+        selector: input.target,
+        actionIndex: input.actionIndex,
+        kind: typeKind,
+      });
+      const focused = await page.evaluate(
+        (selector) => document.querySelector(selector)?.contains(document.activeElement) ?? false,
+        input.target
+      );
+      if (!focused) await page.locator(input.target).first().focus();
+      break;
+    }
+    case "text":
+      await page.keyboard.type(input.text);
+      break;
+    case "key":
+      await page.keyboard.press(input.key);
+      break;
+  }
+}
+
+/**
+ * Plays a recording this clip continues from at a coarse frame rate on the same fake clock, with no screenshots,
+ * so the page reaches the same state on every run; the pointer jumps straight to each target.
+ */
+async function replayRecording(page: Page, network: NetworkTracker, step: ReplayStep): Promise<void> {
+  const schedule = scheduleActions({ actions: step.actions, duration: step.duration, fps: REPLAY_FPS });
+  const stepMs = 1000 / REPLAY_FPS;
+  for (let frame = 0; frame < schedule.frameCount; frame++) {
+    for (const travel of schedule.travels) {
+      if (travel.endFrame !== frame) continue;
+      const kind = `replayed ${step.actions[travel.actionIndex]?.kind ?? "action"}`;
+      const rect = await waitForTarget(page, network, {
+        selector: travel.target,
+        actionIndex: travel.actionIndex,
+        kind,
+      });
+      const point = centre(rect);
+      await page.mouse.move(point.x, point.y);
+    }
+    for (const input of schedule.inputs[frame]) await sendInput(page, network, input, "replayed type");
+    await page.evaluate("window.__studioObservers.renderingUpdate()");
+    if (schedule.inputs[frame].length > 0) await settle(page, network);
+    await network.runClock(stepMs);
+    await settle(page, network);
+  }
+}
 
 async function captureFrames({
   page,
@@ -329,7 +473,7 @@ async function captureFrames({
   spec: CaptureSpec;
   hash: string;
   clipId: string;
-  framesDir: string;
+  framesDir: string | null;
   network: NetworkTracker;
   onProgress: (progress: RecordingProgress) => void;
 }): Promise<{ manifest: Omit<RecordingManifest, "proxy">; secondsPerFrame: number }> {
@@ -350,59 +494,16 @@ async function captureFrames({
   const kindOf = (actionIndex: number) => spec.actions[actionIndex]?.kind ?? "action";
   const started = Date.now();
   let clockMs = 0;
+  let point: Point = rest;
 
   for (let frame = 0; frame < frameCount; frame++) {
-    for (const [index, travel] of travels.entries()) {
-      if (frame < travel.startFrame || frame > travel.endFrame) continue;
-      const target = {
-        selector: travel.target,
-        actionIndex: travel.actionIndex,
-        kind: kindOf(travel.actionIndex),
-      };
-      // Re-read every frame of the travel, so the cursor lands on a target that moved while it travelled.
-      destinations[index] = centre(await waitForTarget(page, network, target));
+    try {
+      await stepFrame(frame);
+    } catch (error) {
+      if (framesDir !== null || !(error instanceof TargetMissingError)) throw error;
+      throw await explainMissingTarget(page, network, error, frame / spec.fps);
     }
-    const point = cursorPointAtFrame({ frame, travels, destinations, rest });
-    await page.mouse.move(point.x, point.y);
-
-    for (const input of schedule.inputs[frame]) {
-      switch (input.kind) {
-        case "down":
-          await page.mouse.down();
-          break;
-        case "up":
-          await page.mouse.up();
-          break;
-        case "focus": {
-          await waitForTarget(page, network, {
-            selector: input.target,
-            actionIndex: input.actionIndex,
-            kind: "type",
-          });
-          const focused = await page.evaluate(
-            (selector) => document.querySelector(selector)?.contains(document.activeElement) ?? false,
-            input.target
-          );
-          if (!focused) await page.locator(input.target).first().focus();
-          break;
-        }
-        case "text":
-          await page.keyboard.type(input.text);
-          break;
-        case "key":
-          await page.keyboard.press(input.key);
-          break;
-      }
-    }
-
-    // Chrome dispatches mouse moves at the next rendering update; wait for it so hover starts on this frame,
-    // and let what an input started (a send, a render) finish before page time moves on.
-    await page.evaluate("window.__studioObservers.renderingUpdate()");
-    if (schedule.inputs[frame].length > 0) await settle(page, network);
-    const nextClockMs = Math.round(((frame + 1) * 1000) / spec.fps);
-    await network.runClock(nextClockMs - clockMs);
-    clockMs = nextClockMs;
-    await settle(page, network);
+    if (framesDir === null) continue;
 
     const shot = (await cdp.send("Page.captureScreenshot", {
       format: "png",
@@ -422,6 +523,32 @@ async function captureFrames({
       elapsedSeconds,
       etaSeconds: (elapsedSeconds / (frame + 1)) * (frameCount - frame - 1),
     });
+  }
+
+  async function stepFrame(frame: number): Promise<void> {
+    for (const [index, travel] of travels.entries()) {
+      if (frame < travel.startFrame || frame > travel.endFrame) continue;
+      const target = {
+        selector: travel.target,
+        actionIndex: travel.actionIndex,
+        kind: kindOf(travel.actionIndex),
+      };
+      // Re-read every frame of the travel, so the cursor lands on a target that moved while it travelled.
+      destinations[index] = centre(await waitForTarget(page, network, target));
+    }
+    point = cursorPointAtFrame({ frame, travels, destinations, rest });
+    await page.mouse.move(point.x, point.y);
+
+    for (const input of schedule.inputs[frame]) await sendInput(page, network, input, "type");
+
+    // Chrome dispatches mouse moves at the next rendering update; wait for it so hover starts on this frame,
+    // and let what an input started (a send, a render) finish before page time moves on.
+    await page.evaluate("window.__studioObservers.renderingUpdate()");
+    if (schedule.inputs[frame].length > 0) await settle(page, network);
+    const nextClockMs = Math.round(((frame + 1) * 1000) / spec.fps);
+    await network.runClock(nextClockMs - clockMs);
+    clockMs = nextClockMs;
+    await settle(page, network);
   }
 
   return {

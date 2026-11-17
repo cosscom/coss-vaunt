@@ -72,7 +72,11 @@ export function InspectorNumberRow({
         <span className="truncate text-end text-muted-foreground text-xs">{hint}</span>
       )}
       <NumberFieldGroup>
-        <NumberFieldInput aria-label={label} className="px-2 text-end tabular-nums" />
+        <NumberFieldInput
+          aria-label={label}
+          className="px-2 text-end tabular-nums"
+          onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+        />
       </NumberFieldGroup>
       {keyframe ? (
         <KeyframeToggle label={label} onToggle={keyframe.onToggle} state={keyframe.state} />

@@ -3,7 +3,12 @@ import type { FrameSource } from "./frame-source";
 import { createImageFrameSource } from "./image-frame-source";
 import { createPlaceholderFrameSource } from "./placeholder-frame-source";
 import { createRecordingFrameSource } from "./recording-frame-source";
-import { loadRecording, recordingHashFor } from "./recording-lookup";
+import {
+  type LoadedRecording,
+  loadRecording,
+  recordingHashFor,
+  requestRecordingVideo,
+} from "./recording-lookup";
 import { createVideoFrameSource } from "./video-frame-source";
 
 /** How often a recording clip still on its placeholder looks for its recording, e.g. one just finished. */
@@ -47,6 +52,7 @@ export function createFrameSourcePool({
   onFrame: () => void;
 }): FrameSourcePool {
   const entries = new Map<string, Entry>();
+  let projectUrl = "";
   let filesUrl = "";
   let disposed = false;
 
@@ -62,10 +68,23 @@ export function createFrameSourcePool({
         entry.source = createRecordingFrameSource({ recording, maxAnisotropy, onFrame });
         entry.found = true;
         onFrame();
+        if (!recording.manifest.video) upgradeToVideo(clipId, entry, recording, hash);
       })
       .catch(() => {
         entry.checking = false;
       });
+  };
+
+  // Older recordings have no playback video: they play their WebP frames until the studio has made one.
+  const upgradeToVideo = (clipId: string, entry: Entry, recording: LoadedRecording, hash: string) => {
+    void requestRecordingVideo(projectUrl, recording, clipId, hash)
+      .then((withVideo) => {
+        if (disposed || !withVideo || entries.get(clipId) !== entry) return;
+        entry.source.dispose();
+        entry.source = createRecordingFrameSource({ recording: withVideo, maxAnisotropy, onFrame });
+        onFrame();
+      })
+      .catch(() => undefined);
   };
 
   const recheck = setInterval(() => {
@@ -98,7 +117,8 @@ export function createFrameSourcePool({
 
   return {
     sync(project) {
-      filesUrl = `/api/projects/${encodeURIComponent(project.id)}/files`;
+      projectUrl = `/api/projects/${encodeURIComponent(project.id)}`;
+      filesUrl = `${projectUrl}/files`;
       const clips = project.videoTracks
         .flatMap((track) => track.clips)
         .filter((clip) => clip.source.kind !== "text");

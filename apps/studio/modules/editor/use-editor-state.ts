@@ -1,5 +1,7 @@
 "use client";
 
+import { applyGeneratedClips } from "@calcom/product-video/storyboard/board-generation";
+import { type Board, EMPTY_BOARD } from "@calcom/product-video/storyboard/board-schema";
 import {
   PROPERTY_KEYS,
   PROPERTY_SPECS,
@@ -14,6 +16,7 @@ import {
   copyKeyframes,
   duplicateClips,
   duplicateVideoTrack,
+  editLocalTime,
   editTimeFor,
   findClip,
   findClipLocation,
@@ -21,6 +24,7 @@ import {
   insertVideoTrack,
   keyframePasteTime,
   keyframeTimes,
+  keyPoseBefore,
   moveClip,
   moveClips,
   pasteClips,
@@ -56,7 +60,7 @@ import {
   type TransitionKind,
 } from "@calcom/product-video/storyboard/storyboard-schema";
 import { clipEnd } from "@calcom/product-video/storyboard/track-resolution";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   type EditorSelection,
   EMPTY_SELECTION,
@@ -113,6 +117,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
   const [keyframeClipboard, setKeyframeClipboard] = useState<CopiedKeyframe[] | null>(null);
   const [laneState, setLaneState] = useState<LaneState>({ clipId: null, selected: [], shown: [] });
   const [valueClipboard, setValueClipboard] = useState<number | null>(null);
+  const poseTimes = useRef(new Map<string, number>());
   const media = useMediaImport(initialProject.id);
   const project = history.present;
   const selection = pruneSelection(rawSelection, project);
@@ -145,8 +150,8 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
   const editClip = (clipId: string, update: (clip: Clip) => Clip, group?: string) =>
     edit((current) => updateClip(current, clipId, update), group);
 
-  /** Edits land on the frame grid, in project time. */
-  const atPlayhead = (clip: Clip) => frameLocalTime(clip, playhead(), project.settings.fps);
+  /** Edits land on the frame grid, in project time, and no later than the clip's last drawn frame. */
+  const atPlayhead = (clip: Clip) => editLocalTime(clip, playhead(), project.settings.fps);
   /** A selected keyframe of `keys` at the playhead wins over adding a new one beside it. */
   const editTime = (clip: Clip, keys: readonly PropertyKey[]) =>
     editTimeFor(
@@ -156,6 +161,28 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       atPlayhead(clip),
       project.settings.fps
     );
+  /** Adding the first keyframes after the clip start also keys the static pose at the start. */
+  const posed = (clip: Clip, keys: readonly PropertyKey[], time: number) =>
+    keyPoseBefore(clip, keys, time, 0);
+  /** Editing `keys` again at another time than their last edit keys that pose first, so the two animate. */
+  const editPose = (
+    clipId: string,
+    keys: readonly PropertyKey[],
+    group: string,
+    set: (clip: Clip, time: number) => Clip
+  ) => {
+    const clip = findClip(project, clipId);
+    if (!clip) return;
+    const time = editTime(clip, keys);
+    const poseId = `${clipId}:${keys.join()}`;
+    const posedAt = poseTimes.current.get(poseId);
+    poseTimes.current.set(poseId, time);
+    editClip(
+      clipId,
+      (current) => set(posedAt === undefined ? current : keyPoseBefore(current, keys, time, posedAt), time),
+      group
+    );
+  };
 
   const clipsAtPlayhead = () =>
     project.videoTracks
@@ -286,6 +313,14 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     addClipAt: (kind: NewClipKind, time: number, trackIndex: number) =>
       placeNew(newClip(kind, time), trackIndex, true),
     insertImported: (clip: Clip) => placeNew({ ...clip, start: playhead() }, 0, false),
+    /** A clip dragged from the assets pane, already given a fresh id. */
+    placeAssetAt: (clip: Clip, time: number, trackIndex: number) =>
+      placeNew({ ...clip, start: time }, trackIndex, true),
+    /** `take` is a capture hash; undefined goes back to the take matching the clip's script. */
+    setClipTake: (clipId: string, take: string | undefined) =>
+      editClip(clipId, (clip) =>
+        clip.source.kind === "recording" ? { ...clip, source: { ...clip.source, take } } : clip
+      ),
     importMediaAt: async (files: File[], time: number, trackIndex: number) => {
       if (files.length === 0) return;
       placeSequentially(await media.importFiles(files), trackIndex, time);
@@ -328,39 +363,49 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       group = `property:${clipId}:${key}`
     ) => {
       setLastProperty(key);
-      editClip(clipId, (clip) => setPropertyAt(clip, key, editTime(clip, [key]), value), group);
+      editPose(clipId, [key], group, (clip, time) => setPropertyAt(clip, key, time, value));
     },
     /** Sphere and canvas drags: once any axis of the compound is keyed, every axis is keyed together. */
     setCompoundAtPlayhead: (clipId: string, key: PropertyKey, value: number, group: string) => {
       setLastProperty(key);
-      editClip(
-        clipId,
-        (clip) => setCompoundPropertyAt(clip, key, editTime(clip, compoundOf(key)), value),
-        group
-      );
+      editPose(clipId, compoundOf(key), group, (clip, time) => setCompoundPropertyAt(clip, key, time, value));
     },
     toggleCompoundKeyframe: (clipId: string, key: PropertyKey) => {
       setLastProperty(key);
-      editClip(clipId, (clip) => toggleKeyframesAt(clip, compoundOf(key), editTime(clip, compoundOf(key))));
+      const keys = compoundOf(key);
+      editClip(clipId, (clip) => {
+        const time = editTime(clip, keys);
+        return toggleKeyframesAt(posed(clip, keys, time), keys, time);
+      });
     },
     toggleKeyframe: (clipId: string, key: PropertyKey) => {
       setLastProperty(key);
-      editClip(clipId, (clip) => toggleKeyframeAt(clip, key, editTime(clip, [key])));
+      editClip(clipId, (clip) => {
+        const time = editTime(clip, [key]);
+        return toggleKeyframeAt(posed(clip, [key], time), key, time);
+      });
     },
     addKeyframeAtPlayhead: (clipId: string, key: PropertyKey) => {
       setLastProperty(key);
-      editClip(clipId, (clip) => addKeyframesAt(clip, [key], atPlayhead(clip)));
+      editClip(clipId, (clip) =>
+        addKeyframesAt(posed(clip, [key], atPlayhead(clip)), [key], atPlayhead(clip))
+      );
     },
     /** K: the selected lanes, or the property edited last. */
     toggleLastPropertyKeyframe: () => {
       const keys = keyframeTargetKeys(lanes.selected, lastProperty);
       if (primaryClip && keys.length > 0)
-        editClip(primaryClip.id, (clip) => toggleKeyframesAt(clip, keys, atPlayhead(clip)));
+        editClip(primaryClip.id, (clip) =>
+          toggleKeyframesAt(posed(clip, keys, atPlayhead(clip)), keys, atPlayhead(clip))
+        );
     },
     /** Shift+K: every property in the group of the property edited last, camera by default. */
     toggleGroupKeyframes: () => {
       const keys = groupTargetKeys(lastProperty);
-      if (primaryClip) editClip(primaryClip.id, (clip) => toggleKeyframesAt(clip, keys, atPlayhead(clip)));
+      if (primaryClip)
+        editClip(primaryClip.id, (clip) =>
+          toggleKeyframesAt(posed(clip, keys, atPlayhead(clip)), keys, atPlayhead(clip))
+        );
     },
     hasKeyframeClipboard: () => keyframeClipboard !== null && keyframeClipboard.length > 0,
     /** Pastes copied keyframes at clip time `at` (default: 5 frames after the last selected keyframe, or the playhead). */
@@ -397,14 +442,18 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     showLane: (key: PropertyKey) =>
       setLanes((current) => ({ selected: [key], shown: [...new Set([...current.shown, key])] })),
     addCameraKeyframes: (clipId: string | null = primaryId) => {
-      if (clipId) editClip(clipId, (clip) => addKeyframesAt(clip, CAMERA_KEYS, atPlayhead(clip)));
+      if (clipId)
+        editClip(clipId, (clip) =>
+          addKeyframesAt(posed(clip, CAMERA_KEYS, atPlayhead(clip)), CAMERA_KEYS, atPlayhead(clip))
+        );
     },
     resetCamera: (clipId: string) => editClip(clipId, resetCamera),
     resetProperty: (clipId: string, key: PropertyKey) => editClip(clipId, (clip) => resetProperty(clip, key)),
     setKeyframesEase: (clipId: string, refs: SelectedKeyframe[], ease: Ease, group?: string) =>
       editClip(
         clipId,
-        (clip) => refs.reduce((current, ref) => setKeyframeEase(current, ref.key, ref.keyframeId, ease), clip),
+        (clip) =>
+          refs.reduce((current, ref) => setKeyframeEase(current, ref.key, ref.keyframeId, ease), clip),
         group
       ),
     deleteKeyframes: (clipId: string, refs: SelectedKeyframe[]) =>
@@ -412,7 +461,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     jumpToKeyframe: (direction: 1 | -1) => {
       if (!primaryClip) return;
       const refs = selection.keyframes.length > 0 ? selection.keyframes : undefined;
-      const local = atPlayhead(primaryClip);
+      const local = frameLocalTime(primaryClip, playhead(), project.settings.fps);
       const times = keyframeTimes(primaryClip, refs);
       const target =
         direction > 0
@@ -450,6 +499,18 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     setTrackHidden: (trackIndex: number, hidden: boolean) =>
       commit(updateVideoTrack(project, trackIndex, (track) => ({ ...track, hidden: hidden || undefined }))),
     moveSelection: (next: Project) => commit(next),
+
+    board: project.storyboard ?? EMPTY_BOARD,
+    /** Board edits share the project's undo history; `group` merges a node drag into one step. */
+    editBoard: (update: (board: Board) => Board, group?: string) =>
+      edit((current) => {
+        const board = current.storyboard ?? EMPTY_BOARD;
+        const next = update(board);
+        return next === board ? current : { ...current, storyboard: next };
+      }, group),
+    /** Generated clips arrive while the author keeps editing, so this applies to the latest project. */
+    applyGeneratedClips: (nodeId: string, clips: Clip[]) =>
+      edit((current) => applyGeneratedClips(current, nodeId, clips)),
   };
 }
 

@@ -1,12 +1,16 @@
 import { type LayerGeometry, layerGeometry } from "@calcom/product-video/stage/camera-projection";
 import { deviceWorldSize } from "@calcom/product-video/stage/camera-rig";
 import { type ClipLayer, resolveClipLayers } from "@calcom/product-video/stage/clip-layers";
+import { cursorPlaneLayout } from "@calcom/product-video/stage/cursor-plane-layout";
+import { cursorFrameAt } from "@calcom/product-video/stage/cursor-track";
 import { depthOfFieldParams } from "@calcom/product-video/stage/depth-of-field";
 import { resolveBlurSettings } from "@calcom/product-video/storyboard/blur-settings";
+import { resolveCursorSettings } from "@calcom/product-video/storyboard/cursor-settings";
 import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
 import { WebGLRenderer } from "three";
-import { type ClipView, createClipView } from "./clip-view";
+import { type ClipView, type ClipViewInput, createClipView } from "./clip-view";
+import { createCursorTracks } from "./cursor-tracks";
 import { createDepthOfField, type DepthOfField } from "./depth-of-field";
 import { createFrameSourcePool } from "./frame-sources/frame-source-pool";
 import { createStageBackground } from "./stage-background";
@@ -56,8 +60,17 @@ export function createStageRenderer({
     placeholderLabel: STAGE_COPY.notRecorded,
     onFrame: onInvalidate,
   });
+  const cursorTracks = createCursorTracks({ onLoad: onInvalidate });
   let depthOfField: DepthOfField | null = null;
   let disposed = false;
+
+  const cursorFor = (clip: Clip, localTime: number): ClipViewInput["cursor"] => {
+    const settings = resolveCursorSettings(clip);
+    const loaded = settings?.visible ? cursorTracks.get(clip.id) : null;
+    const pointer = loaded && cursorFrameAt(loaded.track, localTime);
+    if (!settings || !loaded || !pointer) return null;
+    return { layout: cursorPlaneLayout(pointer, settings, loaded.viewport), style: settings.style };
+  };
 
   const drawComposite = () => {
     background.draw();
@@ -80,6 +93,7 @@ export function createStageRenderer({
     setProject(next) {
       project = next;
       sources.sync(next);
+      cursorTracks.sync(next);
       const live = new Set(next.videoTracks.flatMap((track) => track.clips.map((clip) => clip.id)));
       for (const [clipId, view] of views) {
         if (live.has(clipId)) continue;
@@ -109,7 +123,7 @@ export function createStageRenderer({
         source.show(sourceTime(clip, layer.active.localTime), playing);
         let view = views.get(clip.id);
         if (!view) {
-          view = createClipView();
+          view = createClipView({ maxAnisotropy });
           views.set(clip.id, view);
         }
         const geometry = layerGeometry(layer.view, layer, deviceWorldSize(source.size), frame);
@@ -120,6 +134,7 @@ export function createStageRenderer({
           opacity: layer.opacity,
           blur: layer.blur,
           settings: project.settings,
+          cursor: cursorFor(clip, layer.active.localTime),
         });
       }
 
@@ -142,6 +157,7 @@ export function createStageRenderer({
     dispose() {
       disposed = true;
       sources.dispose();
+      cursorTracks.dispose();
       for (const view of views.values()) view.dispose();
       views.clear();
       depthOfField?.dispose();

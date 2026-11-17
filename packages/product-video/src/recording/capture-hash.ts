@@ -1,9 +1,10 @@
-import { findRouteEntry, type RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
+import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
 import type { Action, Clip, Project } from "../storyboard/storyboard-schema";
 import { captureDpr } from "./capture-dpr";
+import { type ReplayStep, replayChain } from "./replay-chain";
 
 /** Bump when the recorder changes what it captures, so old recordings stop matching. */
-export const RECORDER_VERSION = 1;
+export const RECORDER_VERSION = 2;
 
 /** Everything that changes a recording's pixels; camera, text and audio edits stay out. */
 export type CaptureSpec = {
@@ -18,6 +19,8 @@ export type CaptureSpec = {
   /** The manifest logs this selector's rect per frame. */
   focus: string | null;
   routeEntry: RouteCatalogueEntry;
+  /** Recordings replayed before capture, earliest first; absent for a fresh start so older hashes still match. */
+  replay?: ReplayStep[];
 };
 
 export function captureSpecFor({
@@ -25,13 +28,14 @@ export function captureSpecFor({
   clip,
   theme = project.settings.theme,
 }: {
-  project: Pick<Project, "settings">;
+  project: Pick<Project, "settings"> & Partial<Pick<Project, "videoTracks">>;
   clip: Clip;
   theme?: "light" | "dark";
 }): CaptureSpec {
   if (clip.source.kind !== "recording") throw new Error(`Clip "${clip.name}" is not a recording`);
-  const routeEntry = findRouteEntry(clip.source.route);
-  if (!routeEntry) throw new Error(`Route ${clip.source.route} is not in the route catalogue`);
+  const routeEntry = routeEntryFor(clip.source.route);
+  if (!routeEntry) throw new Error(`Route ${clip.source.route} is not a path in the app`);
+  const replay = replayChain(project.videoTracks, clip);
   return {
     recorderVersion: RECORDER_VERSION,
     route: clip.source.route,
@@ -43,6 +47,7 @@ export function captureSpecFor({
     dpr: captureDpr({ aspectRatio: project.settings.aspectRatio, viewport: routeEntry.viewport, clip }).dpr,
     focus: clip.focus ?? null,
     routeEntry,
+    replay: replay.length > 0 ? replay : undefined,
   };
 }
 
@@ -72,8 +77,14 @@ function fnv1a64(text: string): string {
   return hash.toString(16).padStart(16, "0");
 }
 
+/** The parts of a route's entry that reach the page; targets, labels and descriptions only guide planning. */
+function pixelInputs(entry: RouteCatalogueEntry) {
+  const { hiddenSelectors, viewport, login, timezone, clockTime, replyFixture } = entry;
+  return { hiddenSelectors, viewport, login, timezone, clockTime, replyFixture };
+}
+
 export function captureHash(spec: CaptureSpec): string {
-  return fnv1a64(canonicalJson(spec));
+  return fnv1a64(canonicalJson({ ...spec, routeEntry: pixelInputs(spec.routeEntry) }));
 }
 
 export function captureHashForClip(args: Parameters<typeof captureSpecFor>[0]): string {

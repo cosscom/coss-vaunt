@@ -1,23 +1,29 @@
 import { z } from "zod";
+import { boardSchema } from "./board-schema";
 import { PROPERTY_KEYS, PROPERTY_SPECS, type PropertyKey } from "./property-specs";
+import {
+  MAX_CLIP_SECONDS,
+  MAX_RECORDING_SECONDS,
+  MAX_TRANSITION_SECONDS,
+  TRANSITION_KINDS,
+} from "./storyboard-limits";
+
+export { MAX_CLIP_SECONDS, MAX_RECORDING_SECONDS, MAX_TRANSITION_SECONDS, TRANSITION_KINDS };
 
 const id = z.string().min(1);
 const seconds = z.number().min(0);
 
 /** Recorded clips are short so a frame-stepped recording stays a few minutes of work. */
-export const MAX_RECORDING_SECONDS = 8;
-export const MAX_CLIP_SECONDS = 60;
-export const MAX_TRANSITION_SECONDS = 2;
 export const DEFAULT_IMAGE_CLIP_SECONDS = 3;
 
 export const ASPECT_RATIOS = ["9:16", "4:5", "1:1", "16:9"] as const;
 export const VIDEO_THEMES = ["light", "dark"] as const;
-export const TRANSITION_KINDS = ["cut", "crossfade", "cross-blur", "zoom-through", "slide"] as const;
 export const EASES = ["linear", "ease-in", "ease-out", "ease-in-out", "hold"] as const;
 export const TEXT_SIZES = ["display", "title", "body"] as const;
 export const TEXT_ALIGNS = ["start", "center", "end"] as const;
 export const BLUR_MODES = ["lens", "radial", "directional", "tilt-shift"] as const;
 export const BLUR_FOCUS_MODES = ["auto", "manual"] as const;
+export const CURSOR_STYLES = ["arrow", "dot"] as const;
 
 export const aspectRatioSchema = z.enum(ASPECT_RATIOS);
 
@@ -58,11 +64,26 @@ export const blurSettingsSchema = z.object({
   focus: z.enum(BLUR_FOCUS_MODES),
 });
 
+export const cursorSettingsSchema = z.object({
+  visible: z.boolean(),
+  size: z.number().min(0.5).max(3),
+  style: z.enum(CURSOR_STYLES),
+});
+
 export const clipSourceSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("recording"),
     route: z.string().startsWith("/"),
     actions: z.array(actionSchema),
+    /** Capture hash of an earlier take the author pinned; without it the clip shows the take matching its current script. */
+    take: z
+      .string()
+      .regex(/^[0-9a-f]{16}$/)
+      .optional(),
+    /** The recording clip this one continues: the recorder replays its actions, uncaptured, before capturing. */
+    startFrom: z.object({ clipId: id }).optional(),
+    /** The cursor drawn over the recording; absent means visible, size 1, arrow. */
+    cursor: cursorSettingsSchema.optional(),
   }),
   z.object({
     kind: z.literal("import"),
@@ -108,6 +129,8 @@ export const clipSchema = z
     /** CSS selector inside a recording that depth of field focuses on. */
     focus: z.string().min(1).optional(),
     source: clipSourceSchema,
+    /** The storyboard node this clip was generated from, so regenerating a scene replaces only its clip. */
+    storyboardNodeId: z.string().min(1).optional(),
   })
   .superRefine((clip, ctx) => {
     if (clip.source.kind === "recording" && clip.duration > MAX_RECORDING_SECONDS) {
@@ -273,6 +296,7 @@ export const projectSchema = z.object({
   /** Index 0 is the bottom track; later tracks draw over earlier ones. */
   videoTracks: z.array(videoTrackSchema).min(1),
   audioTracks: z.array(audioTrackSchema),
+  storyboard: boardSchema.optional(),
 });
 
 export type AspectRatio = z.infer<typeof aspectRatioSchema>;
@@ -287,6 +311,8 @@ export type ClipSource = z.infer<typeof clipSourceSchema>;
 export type BlurSettings = z.infer<typeof blurSettingsSchema>;
 export type BlurMode = (typeof BLUR_MODES)[number];
 export type BlurFocusMode = (typeof BLUR_FOCUS_MODES)[number];
+export type CursorSettings = z.infer<typeof cursorSettingsSchema>;
+export type CursorStyle = (typeof CURSOR_STYLES)[number];
 export type Clip = z.infer<typeof clipSchema>;
 export type TransitionKind = (typeof TRANSITION_KINDS)[number];
 export type VideoTrack = z.infer<typeof videoTrackSchema>;
