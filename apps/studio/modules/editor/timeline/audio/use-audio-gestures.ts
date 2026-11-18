@@ -4,6 +4,7 @@ import { audioClipEdges } from "@calcom/product-video/audio/audio-edits";
 import type { AudioClip, Keyframe, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
+import { AUDIO_COPY } from "../../audio/audio-copy";
 import {
   type AudioSelection,
   type AudioSelectionStore,
@@ -75,6 +76,7 @@ export function useAudioGestures({
           seconds: dx / pxPerSecond,
           heightFraction: (clientY - originY) / height,
           trackDelta: mode === "move" ? (trackIndexAt(clientX, clientY) ?? originTrack) - originTrack : 0,
+          newTrackName: AUDIO_COPY.newTrackName(base.audioTracks.length + 1),
           snap: { targets, thresholdSeconds: SNAP_DISTANCE_PX / pxPerSecond, free: shiftKey },
           frameSeconds: 1 / base.settings.fps,
         });

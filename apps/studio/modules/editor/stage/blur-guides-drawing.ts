@@ -1,7 +1,8 @@
 import type { BlurGuideShapes, Point } from "@calcom/product-video/stage/blur-guides";
 
-const GUIDE = "rgb(255 140 26)";
-const SHADE = (alpha: number) => `rgb(255 140 26 / ${alpha})`;
+/** The theme's info blue (blue-500), as the rotation gizmo's Z ring uses. */
+const GUIDE = "rgb(59 130 246)";
+const SHADE = (alpha: number) => `rgb(59 130 246 / ${alpha})`;
 /** Shade at full blur; the content under it must stay readable. */
 const MAX_SHADE = 0.3;
 const GIZMO_RADIUS = 8;

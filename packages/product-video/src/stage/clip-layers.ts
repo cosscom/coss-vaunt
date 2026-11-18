@@ -1,6 +1,8 @@
 import { applyEase, evaluateClipProperties, type PropertyValues } from "../storyboard/property-evaluation";
 import { PROPERTY_KEYS, PROPERTY_SPECS } from "../storyboard/property-specs";
 import type { ActiveClip } from "../storyboard/track-resolution";
+import type { Size } from "./camera-rig";
+import { aimPan, driftView } from "./clip-drift";
 
 /** One clip to draw, bottom first, with its transition folded into plain render parameters. */
 export type ClipLayer = {
@@ -33,13 +35,22 @@ function blendView(
   return values;
 }
 
-/** Folds each video clip's properties and transition into what the stage draws. */
-export function resolveClipLayers(active: ActiveClip[]): ClipLayer[] {
+/** Sizes a drift's focus point needs to become camera pan; without them the drift aims at the centre. */
+export type LayerSizes = { frame: Size; deviceFor: (clipId: string) => Size | null };
+
+function ownView(entry: ActiveClip, sizes: LayerSizes | undefined): PropertyValues {
+  const own = evaluateClipProperties(entry.clip, entry.localTime);
+  const drift = entry.clip.drift;
+  if (!drift) return own;
+  const device = sizes?.deviceFor(entry.clip.id);
+  const aim = device && sizes ? aimPan(drift.focus, device, sizes.frame, own.fov) : { panX: 0, panY: 0 };
+  return driftView(own, drift, entry.localTime / entry.clip.duration, aim);
+}
+
+/** Folds each video clip's properties, drift and transition into what the stage draws. */
+export function resolveClipLayers(active: ActiveClip[], sizes?: LayerSizes): ClipLayer[] {
   const videos = active.filter((entry) => entry.clip.source.kind !== "text");
-  const resolved = videos.map((entry) => ({
-    entry,
-    own: evaluateClipProperties(entry.clip, entry.localTime),
-  }));
+  const resolved = videos.map((entry) => ({ entry, own: ownView(entry, sizes) }));
 
   return resolved.flatMap(({ entry, own }): ClipLayer[] => {
     const base = { active: entry, opacity: own.opacity, blur: 0, scale: own.scale, x: own.x, y: own.y };

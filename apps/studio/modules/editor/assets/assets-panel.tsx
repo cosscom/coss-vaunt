@@ -120,17 +120,25 @@ function TakeRow({
       ) : null}
     </>
   );
+  const draggable = take.template ? "cursor-grab active:cursor-grabbing" : undefined;
   const row =
     onUse && !take.active && take.thumbnail ? (
       <button
         aria-label={`${copy.useTake}: ${copy.take(index)}`}
-        className={ROW}
+        className={cn(ROW, draggable)}
         onClick={onUse}
-        type="button">
+        title={take.template ? copy.takeDragHint : undefined}
+        type="button"
+        {...dragProps(take.template)}>
         {body}
       </button>
     ) : (
-      <div className={ROW}>{body}</div>
+      <div
+        className={cn(ROW, draggable)}
+        title={take.template ? copy.dragHint : undefined}
+        {...dragProps(take.template)}>
+        {body}
+      </div>
     );
   const media = takeMedia(take, projectId);
   if (!media) return row;

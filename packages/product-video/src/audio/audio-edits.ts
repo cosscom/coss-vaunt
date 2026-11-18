@@ -64,6 +64,11 @@ export function addAudioTrack(project: Project, name: string): Project {
   return { ...project, audioTracks: [...project.audioTracks, createAudioTrack(name)] };
 }
 
+/** Adds an empty audio track when `trackIndex` is one below the last track, e.g. a drop on the new-track row. */
+export function ensureAudioTrack(project: Project, trackIndex: number, name: string): Project {
+  return trackIndex === project.audioTracks.length ? addAudioTrack(project, name) : project;
+}
+
 /** Lays `clips` end to end on a track from `start`, e.g. several files dropped at once. */
 export function placeAudioClips(
   project: Project,

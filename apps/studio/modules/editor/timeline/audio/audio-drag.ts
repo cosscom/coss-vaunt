@@ -1,4 +1,5 @@
 import {
+  ensureAudioTrack,
   findAudioClip,
   moveAudioClips,
   moveVolumeKeyframes,
@@ -30,6 +31,8 @@ export type AudioDrag = {
   /** Vertical travel as a fraction of the clip's height, down positive. */
   heightFraction: number;
   trackDelta: number;
+  /** Name for the track a move onto the new-track row adds. */
+  newTrackName: string;
   snap: { targets: number[]; thresholdSeconds: number; free: boolean };
   /** Keyframes move in whole frames. */
   frameSeconds: number;
@@ -45,7 +48,8 @@ export function applyAudioDrag(base: Project, drag: AudioDrag): Project {
   switch (drag.mode) {
     case "move": {
       const start = snapSpanStart(clip.start + drag.seconds, clip.duration, drag.snap);
-      return moveAudioClips(base, drag.ids, start - clip.start, drag.trackDelta);
+      const room = ensureAudioTrack(base, found.trackIndex + drag.trackDelta, drag.newTrackName);
+      return moveAudioClips(room, drag.ids, start - clip.start, drag.trackDelta);
     }
     case "trim-start":
       return edit((current) =>

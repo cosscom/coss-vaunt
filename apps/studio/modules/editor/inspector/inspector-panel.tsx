@@ -10,6 +10,7 @@ import type { EditorState } from "../use-editor-state";
 import { BlurSection } from "./blur-section";
 import { ClipSection } from "./clip-section";
 import { DraftInput } from "./draft-text-field";
+import { DriftSection } from "./drift-section";
 import { InspectorRow } from "./inspector-row";
 import { ProjectSections } from "./project-sections";
 import { PropertyGroupSection } from "./property-group-section";
@@ -84,6 +85,7 @@ export function InspectorPanel({
                 </InspectorRow>
               ) : null}
             </PropertyGroupSection>
+            {clip.source.kind === "text" ? null : <DriftSection clip={clip} editor={editor} />}
             {clip.source.kind === "text" ? null : (
               <BlurSection clip={clip} clock={clock} editor={editor} onEditingChange={onBlurEditingChange} />
             )}

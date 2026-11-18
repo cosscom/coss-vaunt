@@ -10,8 +10,11 @@ import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useState } from "react";
 import { hasAssetDrag } from "../assets/asset-drag";
+import { CLOSE_UP_SECTION_ID } from "../inspector/drift-section";
+import type { MotionDrop } from "../motion/motion-drag";
 import type { PlaybackClock } from "../player/playback-clock";
 import { AddLaneMenu } from "./add-lane-menu";
+import { CloseUpLane } from "./close-up-lane";
 import { KeyframeLane } from "./keyframe-lane";
 import { laneProperties } from "./keyframed-properties";
 import { PROPERTY_GROUP_TONE } from "./property-group-tone";
@@ -55,6 +58,7 @@ type VideoTrackRowProps = {
   ) => void;
   onMarqueePointerDown: (event: React.PointerEvent, kind: "clips" | "keyframes") => void;
   onDropFiles: (dataTransfer: DataTransfer, clientX: number) => void;
+  onMotionDrop: (clipId: string, drop: MotionDrop) => void;
 };
 
 /** Disabled buttons swallow pointer events, so the tooltip anchors on a wrapper that still says why. */
@@ -100,13 +104,16 @@ export function VideoTrackRow({
   onKeyframePointerDown,
   onMarqueePointerDown,
   onDropFiles,
+  onMotionDrop,
 }: VideoTrackRowProps): React.ReactElement {
   const [dropping, setDropping] = useState(false);
   const laneClip = track.clips.find((clip) => clip.id === primaryClipId) ?? null;
   const lanes = laneClip ? laneProperties(laneClip, shownLanes) : [];
-  const showLanes = lanesOpen && lanes.length > 0;
+  const closeUp = laneClip?.drift ?? null;
+  const hasLanes = lanes.length > 0 || closeUp !== null;
+  const showLanes = lanesOpen && hasLanes;
   const toggleLabel = showLanes ? copy.collapseLanes : copy.expandLanes;
-  const laneLabel = lanes.length === 0 ? copy.noKeyframes : toggleLabel;
+  const laneLabel = hasLanes ? toggleLabel : copy.noKeyframes;
   const visibilityLabel = track.hidden ? copy.trackHidden(track.name) : copy.trackVisible(track.name);
   const regions = transitionRegions(track);
   const overlapPx = (clipId: string, side: "clipId" | "outgoingClipId") => {
@@ -157,7 +164,7 @@ export function VideoTrackRow({
             {laneClip ? <AddLaneMenu onShowLane={onShowLane} shown={lanes.map((lane) => lane.key)} /> : null}
             <HeaderButton
               aria-expanded={showLanes}
-              disabled={lanes.length === 0}
+              disabled={!hasLanes}
               label={laneLabel}
               onClick={onToggleLanes}>
               <ChevronDownIcon
@@ -197,6 +204,7 @@ export function VideoTrackRow({
               key={clip.id}
               left={toX(clip.start)}
               onPointerDown={(event, mode) => onClipPointerDown(event, clip, mode)}
+              onMotionDrop={(drop) => onMotionDrop(clip.id, drop)}
               onSelect={() => onSelectClip(clip.id)}
               selected={selectedClipIds.has(clip.id)}
               width={Math.max(4, clip.duration * pxPerSecond)}
@@ -214,6 +222,21 @@ export function VideoTrackRow({
           />
         ))}
       </TimelineRow>
+      {laneClip && closeUp && showLanes ? (
+        <CloseUpLane
+          clip={laneClip}
+          contentWidth={contentWidth}
+          drift={closeUp}
+          left={toX(laneClip.start)}
+          onOpen={() => {
+            onSelectClip(laneClip.id);
+            document
+              .getElementById(CLOSE_UP_SECTION_ID)
+              ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }}
+          width={Math.max(4, laneClip.duration * pxPerSecond)}
+        />
+      ) : null}
       {laneClip && showLanes
         ? lanes.map(({ key, keyframes }) => (
             <TimelineRow

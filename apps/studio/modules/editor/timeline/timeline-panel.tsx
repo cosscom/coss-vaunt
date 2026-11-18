@@ -11,6 +11,7 @@ import { mediaFilesFromDrop } from "../media/clipboard-media";
 import type { PlaybackClock } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";
 import { AudioTracks } from "./audio/audio-tracks";
+import { NewVideoTrackRow } from "./new-video-track-row";
 import { TimelineContextMenu, type TimelineMenuTarget } from "./timeline-context-menu";
 import {
   CONTENT_PADDING_PX,
@@ -199,6 +200,15 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
   const selectedKeyframeIds = new Set(selection.keyframes.map((keyframe) => keyframe.keyframeId));
   const primaryId = editor.primaryClip?.id ?? null;
   const hasClips = view.videoTracks.some((track) => track.clips.length > 0);
+  /** An asset from the assets pane, or files from the desktop; `trackIndex` one above the top track adds one. */
+  const dropMedia = (dataTransfer: DataTransfer, clientX: number, trackIndex: number) => {
+    const asset = parseAssetDrag(dataTransfer.getData(ASSET_DRAG_TYPE), "video");
+    const time = gestures.timeAt(clientX);
+    if (asset?.kind === "video" && asset.recordingOf)
+      void editor.placeTakeAt(asset.clip, asset.recordingOf, time, trackIndex);
+    else if (asset?.kind === "video") editor.placeAssetAt(asset.clip, time, trackIndex);
+    else void editor.importMediaAt(mediaFilesFromDrop(dataTransfer), time, trackIndex);
+  };
   const videoTracks = view.videoTracks.map((track, trackIndex) => ({ track, trackIndex })).reverse();
 
   return (
@@ -267,6 +277,14 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
 
             <TimelinePlayhead clock={clock} offset={TRACK_HEADER_WIDTH_PX} scrollRef={scrollRef} toX={toX} />
 
+            <NewVideoTrackRow
+              contentWidth={contentWidth}
+              left={toX(0)}
+              onDropFiles={(dataTransfer, clientX) =>
+                dropMedia(dataTransfer, clientX, project.videoTracks.length)
+              }
+              trackIndex={project.videoTracks.length}
+            />
             {videoTracks.map(({ track, trackIndex }) => (
               <VideoTrackRow
                 clock={clock}
@@ -288,16 +306,14 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
                 onClipPointerDown={(event, clip, mode) =>
                   gestures.onClipPointerDown(event, clip, trackIndex, mode)
                 }
-                onDropFiles={(dataTransfer, clientX) => {
-                  const asset = parseAssetDrag(dataTransfer.getData(ASSET_DRAG_TYPE), "video");
-                  if (asset?.kind === "video")
-                    editor.placeAssetAt(asset.clip, gestures.timeAt(clientX), trackIndex);
-                  else
-                    void editor.importMediaAt(
-                      mediaFilesFromDrop(dataTransfer),
-                      gestures.timeAt(clientX),
-                      trackIndex
-                    );
+                onDropFiles={(dataTransfer, clientX) => dropMedia(dataTransfer, clientX, trackIndex)}
+                onMotionDrop={(clipId, drop) => {
+                  editor.applyMotionPreset(clipId, drop.presetId, drop.placement);
+                  setCollapsedTracks((current) => {
+                    const next = new Set(current);
+                    next.delete(track.id);
+                    return next;
+                  });
                 }}
                 onKeyframePointerDown={(event, clip, keyframe, key) =>
                   gestures.onKeyframePointerDown(event, clip, key, keyframe)

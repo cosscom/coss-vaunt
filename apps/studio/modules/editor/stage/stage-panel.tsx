@@ -5,7 +5,7 @@ import { aspectRatioSize, letterbox } from "@calcom/product-video/stage/frame-le
 import type { PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
-import { BoxIcon, FocusIcon, HandIcon, RotateCwIcon } from "@coss/ui/icons";
+import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RotateCwIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
@@ -13,10 +13,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";
 import { STAGE_COPY as copy } from "./stage-copy";
 import { drawStageOverlay, rotationGizmoTarget, type StageOverlayState } from "./stage-overlay";
+import { clipAtPoint, textRectFor } from "./stage-picking";
 import { createStageRenderer, type StageRenderer } from "./stage-renderer";
 import { textColorForBackground } from "./text/text-contrast";
 import { TextOverlay } from "./text-overlay";
 import { useCanvasDrag } from "./use-canvas-drag";
+import { useStageHover } from "./use-stage-hover";
 
 export type StagePanelProps = {
   project: Project;
@@ -28,7 +30,12 @@ export type StagePanelProps = {
   blurEditing: boolean;
   /** Called by canvas drags (every canvas mode); the editor applies `setPropertyAt` at the playhead. */
   onSetProperty: (clipId: string, key: PropertyKey, value: number) => void;
+  /** A layer picked on the stage, or null for a click on the background. */
+  onSelectClip: (clipId: string | null, additive: boolean) => void;
 };
+
+type StageTool = "select" | CanvasMode;
+const TOOLS: readonly StageTool[] = ["select", "camera", "orbit", "rotate", "focus"];
 
 const FRAME_PADDING = 24;
 const MAX_PIXEL_RATIO = 2;
@@ -64,13 +71,15 @@ export function StagePanel({
   singleClipSelected,
   blurEditing,
   onSetProperty,
+  onSelectClip,
 }: StagePanelProps): React.ReactElement {
   const [area, setArea] = useState<HTMLDivElement | null>(null);
   const [frameElement, setFrameElement] = useState<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const stage = useRef<{ renderer: StageRenderer; invalidate: () => void } | null>(null);
-  const [mode, setMode] = useState<CanvasMode>("camera");
+  const [tool, setTool] = useState<StageTool>("select");
+  const mode: CanvasMode = tool === "select" ? "camera" : tool;
   const [failed, setFailed] = useState(false);
 
   const areaSize = useElementSize(area);
@@ -86,6 +95,9 @@ export function StagePanel({
     mode,
     blurEditing,
     activeRing: null,
+    hoveredClipId: null,
+    outlineSelection: tool === "select",
+    textRect: () => null,
   });
   const layerAt = (clipId: string) => stage.current?.renderer.layerGeometry(clipId) ?? null;
   const hasText = project.videoTracks.some((track) =>
@@ -150,6 +162,10 @@ export function StagePanel({
     stage.current?.invalidate();
   }, [frame.width, frame.height]);
 
+  const pickAt = (x: number, y: number) =>
+    frameElement ? clipAtPoint({ frameElement, project, time: clock.getState().time, layerAt, x, y }) : null;
+  const textRect = (clipId: string) => (frameElement ? textRectFor(frameElement, clipId) : null);
+
   const { dragging, activeRing, handlers } = useCanvasDrag({
     element: frameElement,
     mode,
@@ -160,15 +176,39 @@ export function StagePanel({
     onSetProperty,
     layerGeometry: layerAt,
     gizmoAt: () => rotationGizmoTarget(latest.current, clock.getState().time, layerAt),
+    selecting: tool === "select",
+    pickAt,
+    onPick: onSelectClip,
   });
+  const hover = useStageHover({
+    pick: (event) => {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      return pickAt(event.clientX - bounds.left, event.clientY - bounds.top);
+    },
+    selectedClipId,
+    canSelect: (event) => event.buttons === 0 && !clock.getState().playing && !activeRing,
+    onSelect: (clipId) => onSelectClip(clipId, false),
+  });
+  const hoveredClipId = hover.hoveredClipId;
   useLayoutEffect(() => {
-    latest.current = { project, frame, selectedClipId, singleClipSelected, mode, blurEditing, activeRing };
+    latest.current = {
+      project,
+      frame,
+      selectedClipId,
+      singleClipSelected,
+      mode,
+      blurEditing,
+      activeRing,
+      hoveredClipId,
+      outlineSelection: tool === "select",
+      textRect,
+    };
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the overlay reads these through `latest`; changing one must redraw it.
   useEffect(() => {
     stage.current?.invalidate();
-  }, [blurEditing, mode, selectedClipId, singleClipSelected, activeRing]);
+  }, [blurEditing, mode, tool, selectedClipId, singleClipSelected, activeRing, hoveredClipId]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
@@ -176,10 +216,15 @@ export function StagePanel({
         <SegmentedRadioGroup
           aria-label={copy.canvasMode}
           onValueChange={(next) => {
-            if (next === "camera" || next === "orbit" || next === "rotate" || next === "focus") setMode(next);
+            const picked = TOOLS.find((candidate) => candidate === next);
+            if (picked) setTool(picked);
           }}
           size="sm"
-          value={mode}>
+          value={tool}>
+          <SegmentedRadio title={copy.selectHint} value="select">
+            <MousePointer2Icon aria-hidden="true" />
+            {copy.select}
+          </SegmentedRadio>
           <SegmentedRadio title={copy.cameraHint} value="camera">
             <HandIcon aria-hidden="true" />
             {copy.camera}
@@ -208,11 +253,25 @@ export function StagePanel({
                 ? "cursor-pointer"
                 : dragging
                   ? "cursor-grabbing"
-                  : "cursor-grab"
+                  : tool === "select"
+                    ? "cursor-default"
+                    : "cursor-grab"
           )}
           ref={setFrameElement}
           style={{ left: frame.x, top: frame.y, width: frame.width, height: frame.height }}
-          {...handlers}>
+          {...handlers}
+          onPointerDown={(event) => {
+            hover.handlers.onPointerDown?.(event);
+            handlers.onPointerDown?.(event);
+          }}
+          onPointerLeave={(event) => {
+            hover.handlers.onPointerLeave?.(event);
+            handlers.onPointerLeave?.(event);
+          }}
+          onPointerMove={(event) => {
+            hover.handlers.onPointerMove?.(event);
+            handlers.onPointerMove?.(event);
+          }}>
           <canvas className="block size-full" ref={canvasRef} />
           <canvas
             aria-hidden="true"

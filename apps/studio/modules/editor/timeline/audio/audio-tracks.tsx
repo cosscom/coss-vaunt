@@ -1,10 +1,11 @@
 "use client";
 
-import { findAudioClip, placeAudioClips } from "@calcom/product-video/audio/audio-edits";
+import { addAudioTrack, findAudioClip, placeAudioClips } from "@calcom/product-video/audio/audio-edits";
 import { ACCEPTED_AUDIO } from "@calcom/product-video/imports/media-types";
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import { ASSET_DRAG_TYPE, parseAssetDrag } from "../../assets/asset-drag";
+import { AUDIO_COPY } from "../../audio/audio-copy";
 import {
   audioSelectionFor,
   EMPTY_AUDIO_SELECTION,
@@ -122,14 +123,25 @@ export function AudioTracks({
           ) : null}
         </div>
       ))}
-      {view.audioTracks.length === 0 ? (
-        <AddAudioTrackRow
-          contentWidth={contentWidth}
-          onDrop={(dataTransfer, time) => void editing.importAt(audioFilesFromDrop(dataTransfer), null, time)}
-          pxPerSecond={pxPerSecond}
-          toX={toX}
-        />
-      ) : null}
+      <AddAudioTrackRow
+        compact={view.audioTracks.length > 0}
+        contentWidth={contentWidth}
+        onDrop={(dataTransfer, time) => {
+          const asset = parseAssetDrag(dataTransfer.getData(ASSET_DRAG_TYPE), "audio");
+          if (asset?.kind !== "audio") {
+            void editing.importAt(audioFilesFromDrop(dataTransfer), null, time);
+            return;
+          }
+          editor.edit((current) => {
+            const trackIndex = current.audioTracks.length;
+            const withTrack = addAudioTrack(current, AUDIO_COPY.newTrackName(trackIndex + 1));
+            return placeAudioClips(withTrack, trackIndex, [asset.clip], time);
+          });
+        }}
+        pxPerSecond={pxPerSecond}
+        toX={toX}
+        trackIndex={view.audioTracks.length}
+      />
     </div>
   );
 }

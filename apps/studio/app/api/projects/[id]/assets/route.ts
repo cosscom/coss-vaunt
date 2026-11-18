@@ -1,4 +1,5 @@
 import path from "node:path";
+import { withImportTemplates } from "@calcom/product-video/project-store/import-templates";
 import { listProjectAssets } from "@calcom/product-video/project-store/project-assets";
 import { scanProjectAssets } from "@calcom/product-video/project-store/scan-project-assets";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
@@ -12,6 +13,8 @@ export async function GET(_request: Request, { params }: AssetsRouteContext): Pr
   const { id } = await params;
   const project = await studioProjectStore.get(id);
   if (!project) return new Response("Not found", { status: 404 });
-  const scan = await scanProjectAssets(path.join(STUDIO_ROOT, project.id));
-  return Response.json(listProjectAssets(project, scan), { headers: { "Cache-Control": "no-store" } });
+  const projectDir = path.join(STUDIO_ROOT, project.id);
+  const scan = await scanProjectAssets(projectDir);
+  const assets = await withImportTemplates(projectDir, listProjectAssets(project, scan));
+  return Response.json(assets, { headers: { "Cache-Control": "no-store" } });
 }

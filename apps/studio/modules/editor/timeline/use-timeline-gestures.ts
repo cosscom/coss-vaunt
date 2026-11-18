@@ -2,6 +2,7 @@
 
 import { PROPERTY_KEYS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import {
+  ensureVideoTrack,
   moveClip,
   moveClips,
   shiftKeyframes,
@@ -20,6 +21,9 @@ import type { ClipDragMode } from "./timeline-clip";
 import { CONTENT_PADDING_PX } from "./timeline-metrics";
 import { SNAP_DISTANCE_PX, snapSpanStart, snapTargets, snapTime } from "./timeline-snapping";
 import { type DragMove, usePointerDrag } from "./use-pointer-drag";
+import { STUDIO_COPY } from "@/modules/studio-copy";
+
+const copy = STUDIO_COPY.timeline;
 
 type TimelineGestureOptions = {
   editor: EditorState;
@@ -38,7 +42,10 @@ const additive = (event: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean
 
 function trackIndexAt(clientX: number, clientY: number, fallback: number): number {
   for (const element of document.elementsFromPoint(clientX, clientY)) {
-    if (element instanceof HTMLElement && element.dataset.menu === "video-lane")
+    if (
+      element instanceof HTMLElement &&
+      (element.dataset.menu === "video-lane" || element.dataset.newVideoTrack !== undefined)
+    )
       return Number(element.dataset.trackIndex);
   }
   return fallback;
@@ -128,8 +135,9 @@ export function useTimelineGestures({
           return trimClip(project, clip.id, "end", snapTime(clipEnd(clip) + delta, options));
         target = trackIndexAt(move.clientX, move.clientY, target);
         const start = snapSpanStart(clip.start + delta, clip.duration, options);
-        if (group.length === 1) return moveClip(project, clip.id, { start, trackIndex: target });
-        return moveClips(project, group, start - clip.start, target - trackIndex);
+        const base = ensureVideoTrack(project, target, copy.newTrackName(project.videoTracks.length + 1));
+        if (group.length === 1) return moveClip(base, clip.id, { start, trackIndex: target });
+        return moveClips(base, group, start - clip.start, target - trackIndex);
       },
       () => {
         editor.selectClip(clip.id);

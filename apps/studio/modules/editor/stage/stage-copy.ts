@@ -1,5 +1,7 @@
 export const STAGE_COPY = {
   canvasMode: "Canvas mode",
+  select: "Select",
+  selectHint: "Click a layer to select it, drag to move it, ⇧-click to add to the selection",
   camera: "Camera",
   orbit: "Orbit",
   rotate: "Rotate",

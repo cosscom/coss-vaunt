@@ -112,7 +112,13 @@ export function createStageRenderer({
     },
     render(time, playing) {
       if (!project || disposed) return;
-      layers = resolveClipLayers(activeClipsAt(project, time));
+      layers = resolveClipLayers(activeClipsAt(project, time), {
+        frame,
+        deviceFor: (clipId) => {
+          const size = sources.get(clipId)?.size;
+          return size ? deviceWorldSize(size) : null;
+        },
+      });
       sources.idleExcept(new Set(layers.map((layer) => layer.active.clip.id)));
       geometries.clear();
 

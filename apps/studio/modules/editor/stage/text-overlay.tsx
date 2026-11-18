@@ -36,6 +36,7 @@ export function TextOverlay({ clips, frame, color }: TextOverlayProps): React.Re
         const placement = textClipPlacement(active);
         return (
           <div
+            data-stage-clip-id={active.clip.id}
             key={`${active.clip.id}-${active.transition?.role ?? "solo"}`}
             style={{
               position: "absolute",

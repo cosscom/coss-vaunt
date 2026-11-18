@@ -6,3 +6,4 @@ export const KEYFRAME_LANE_HEIGHT_PX = 24;
 export const AUDIO_TRACK_HEIGHT_PX = 40;
 export const MIN_VISIBLE_SECONDS = 20;
 export const TAIL_SECONDS = 6;
+export const NEW_TRACK_ROW_HEIGHT_PX = 28;

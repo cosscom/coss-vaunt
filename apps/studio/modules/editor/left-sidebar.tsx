@@ -9,6 +9,7 @@ import { useState } from "react";
 import { AssetsPanel } from "./assets/assets-panel";
 import { useProjectAssets } from "./assets/use-project-assets";
 import { EasingSection } from "./easing/easing-section";
+import { MotionSection } from "./motion/motion-section";
 import type { PlaybackClock } from "./player/playback-clock";
 import { StoryboardPanel } from "./storyboard/storyboard-panel";
 import type { EditorState } from "./use-editor-state";
@@ -17,7 +18,7 @@ import { STUDIO_COPY } from "@/modules/studio-copy";
 type SidebarTab = "storyboard" | "assets";
 
 /**
- * Storyboard and assets share the top of the left sidebar; the easing editor stays pinned below them. The storyboard
+ * Storyboard and assets share the top of the left sidebar; motion presets and the easing editor stay pinned below. The storyboard
  * canvas takes whatever height the other sections leave.
  */
 export function LeftSidebar({
@@ -67,6 +68,7 @@ export function LeftSidebar({
           <AssetsPanel assets={assets} editor={editor} failed={failed} />
         </TabsPanel>
       </Tabs>
+      <MotionSection editor={editor} />
       <EasingSection clock={clock} editor={editor} />
     </>
   );

@@ -76,6 +76,9 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
                 editor.setCompoundAtPlayhead(clipId, key, value, `canvas:${clipId}`)
               }
               blurEditing={blurEditing}
+              onSelectClip={(clipId, additive) =>
+                clipId ? editor.selectClip(clipId, { additive }) : editor.clearSelection()
+              }
               project={project}
               selectedClipId={editor.primaryClip?.id ?? null}
               singleClipSelected={editor.selection.clipIds.length === 1}

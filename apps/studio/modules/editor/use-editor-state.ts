@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  applyMotionPreset,
+  type MotionPlacement,
+  motionPresetKeys,
+} from "@calcom/product-video/catalogues/motion-presets/apply-motion-preset";
+import { findMotionPreset } from "@calcom/product-video/catalogues/motion-presets/motion-presets";
 import { applyGeneratedClips } from "@calcom/product-video/storyboard/board-generation";
 import { type Board, EMPTY_BOARD } from "@calcom/product-video/storyboard/board-schema";
 import {
@@ -18,6 +24,7 @@ import {
   duplicateVideoTrack,
   editLocalTime,
   editTimeFor,
+  ensureVideoTrack,
   findClip,
   findClipLocation,
   frameLocalTime,
@@ -60,7 +67,9 @@ import {
   type TransitionKind,
 } from "@calcom/product-video/storyboard/storyboard-schema";
 import { clipEnd } from "@calcom/product-video/storyboard/track-resolution";
+import { toastManager } from "@coss/ui/components/toast";
 import { useRef, useState } from "react";
+import { linkTakeRequest } from "./assets/link-take-request";
 import {
   type EditorSelection,
   EMPTY_SELECTION,
@@ -189,8 +198,11 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       .flatMap((track) => track.clips)
       .filter((clip) => playhead() > clip.start && playhead() < clipEnd(clip));
 
+  const withTrack = (trackIndex: number) =>
+    ensureVideoTrack(project, trackIndex, copy.newTrackName(project.videoTracks.length + 1));
+
   const placeNew = (clip: Clip, trackIndex: number, nearest: boolean) =>
-    commit((nearest ? placeClipNearest : placeClip)(project, trackIndex, clip), {
+    commit((nearest ? placeClipNearest : placeClip)(withTrack(trackIndex), trackIndex, clip), {
       selection: { clipIds: [clip.id], keyframes: [] },
     });
 
@@ -204,7 +216,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       : createTextClip({ text: copy.newTextWords, start });
 
   const placeSequentially = (clips: Clip[], trackIndex: number, start: number) => {
-    let next = project;
+    let next = withTrack(trackIndex);
     let cursor = start;
     for (const clip of clips) {
       next = placeClipNearest(next, trackIndex, { ...clip, start: cursor });
@@ -316,6 +328,22 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     /** A clip dragged from the assets pane, already given a fresh id. */
     placeAssetAt: (clip: Clip, time: number, trackIndex: number) =>
       placeNew({ ...clip, start: time }, trackIndex, true),
+    /** A take dragged from the assets pane: the new clip gets a copy of `fromClipId`'s frames before it's placed. */
+    placeTakeAt: async (clip: Clip, fromClipId: string, time: number, trackIndex: number) => {
+      const captureHash = clip.source.kind === "recording" ? clip.source.take : undefined;
+      if (!captureHash) return;
+      const linked = await linkTakeRequest({
+        projectId: project.id,
+        clipId: clip.id,
+        fromClipId,
+        captureHash,
+      });
+      if (!linked) {
+        toastManager.add({ type: "error", title: STUDIO_COPY.assets.takeCopyFailed });
+        return;
+      }
+      placeNew({ ...clip, start: time }, trackIndex, true);
+    },
     /** `take` is a capture hash; undefined goes back to the take matching the clip's script. */
     setClipTake: (clipId: string, take: string | undefined) =>
       editClip(clipId, (clip) =>
@@ -441,6 +469,19 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       })),
     showLane: (key: PropertyKey) =>
       setLanes((current) => ({ selected: [key], shown: [...new Set([...current.shown, key])] })),
+    /** Keys a motion preset onto a clip as one undo step, selects the clip and shows the lanes it animated. */
+    applyMotionPreset: (clipId: string, presetId: string, placement: MotionPlacement) => {
+      const preset = findMotionPreset(presetId);
+      if (!preset) return;
+      const applied = commit(
+        updateClip(project, clipId, (clip) => applyMotionPreset(clip, preset, placement)),
+        { selection: { clipIds: [clipId], keyframes: [] } }
+      );
+      if (!applied) return;
+      const keys = motionPresetKeys(preset);
+      const shown = lanes.clipId === clipId ? lanes.shown : [];
+      setLaneState({ clipId, selected: [], shown: [...new Set([...shown, ...keys])] });
+    },
     addCameraKeyframes: (clipId: string | null = primaryId) => {
       if (clipId)
         editClip(clipId, (clip) =>

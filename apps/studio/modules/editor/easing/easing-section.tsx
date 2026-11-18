@@ -119,7 +119,7 @@ export function EasingSection({
 
   return (
     <Collapsible
-      className="mt-auto shrink-0 border-t"
+      className="shrink-0 border-t"
       onOpenChange={(next) => setOverride({ key: targetKey, open: next })}
       open={open}>
       <CollapsibleTrigger className="group flex h-10 w-full cursor-pointer items-center gap-2 px-4 text-start outline-none hover:bg-accent/40 focus-visible:bg-accent/60">

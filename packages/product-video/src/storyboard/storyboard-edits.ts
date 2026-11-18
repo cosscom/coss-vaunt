@@ -508,6 +508,11 @@ export function moveClips(
   return next.videoTracks.every((track) => spansAreValid(track.clips)) ? next : null;
 }
 
+/** Adds an empty video track when `trackIndex` is one above the top track, e.g. a drop on the new-track row. */
+export function ensureVideoTrack(project: Project, trackIndex: number, name: string): Project {
+  return trackIndex === project.videoTracks.length ? addVideoTrack(project, name) : project;
+}
+
 export function insertVideoTrack(project: Project, index: number, name: string): Project {
   const videoTracks = [...project.videoTracks];
   videoTracks.splice(Math.min(Math.max(0, index), videoTracks.length), 0, createVideoTrack(name));

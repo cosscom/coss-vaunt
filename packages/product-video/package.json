@@ -16,6 +16,7 @@
     "./storyboard/ease-presets": "./src/storyboard/ease-presets.ts",
     "./storyboard/track-resolution": "./src/storyboard/track-resolution.ts",
     "./recording/recording-manifest": "./src/recording/recording-manifest.ts",
+    "./recording/link-recording-take": "./src/recording/link-recording-take.ts",
     "./stage/camera-rig": "./src/stage/camera-rig.ts",
     "./stage/device-pose": "./src/stage/device-pose.ts",
     "./stage/clip-layers": "./src/stage/clip-layers.ts",
@@ -42,6 +43,8 @@
     "./recording/capture-dpr": "./src/recording/capture-dpr.ts",
     "./catalogues/routes/route-catalogue": "./src/catalogues/routes/route-catalogue.ts",
     "./catalogues/routes/app-map": "./src/catalogues/routes/app-map.ts",
+    "./catalogues/motion-presets/motion-presets": "./src/catalogues/motion-presets/motion-presets.ts",
+    "./catalogues/motion-presets/apply-motion-preset": "./src/catalogues/motion-presets/apply-motion-preset.ts",
     "./imports/media-upload": "./src/imports/media-upload.ts",
     "./imports/media-types": "./src/imports/media-types.ts",
     "./audio/waveform-peaks": "./src/audio/waveform-peaks.ts",
@@ -53,6 +56,7 @@
     "./storyboard/board-schema": "./src/storyboard/board-schema.ts",
     "./storyboard/board-edits": "./src/storyboard/board-edits.ts",
     "./project-store/project-assets": "./src/project-store/project-assets.ts",
+    "./project-store/import-templates": "./src/project-store/import-templates.ts",
     "./project-store/scan-project-assets": "./src/project-store/scan-project-assets.ts",
     "./storyboard/board-generation": "./src/storyboard/board-generation.ts",
     "./storyboard/board-order": "./src/storyboard/board-order.ts",
@@ -60,7 +64,9 @@
     "./ai/studio-model": "./src/ai/studio-model.ts",
     "./ai/generation-events": "./src/ai/generation-events.ts",
     "./ai/generation-jobs": "./src/ai/generation-jobs.ts",
-    "./recording/recording-video": "./src/recording/recording-video.ts"
+    "./recording/recording-video": "./src/recording/recording-video.ts",
+    "./project-store/project-still": "./src/project-store/project-still.ts",
+    "./stage/clip-picking": "./src/stage/clip-picking.ts"
   },
   "typesVersions": {
     "*": {
@@ -175,6 +181,12 @@
       "catalogues/routes/app-map": [
         "./src/catalogues/routes/app-map.ts"
       ],
+      "catalogues/motion-presets/motion-presets": [
+        "./src/catalogues/motion-presets/motion-presets.ts"
+      ],
+      "catalogues/motion-presets/apply-motion-preset": [
+        "./src/catalogues/motion-presets/apply-motion-preset.ts"
+      ],
       "imports/media-upload": [
         "./src/imports/media-upload.ts"
       ],
@@ -231,6 +243,18 @@
       ],
       "recording/recording-video": [
         "./src/recording/recording-video.ts"
+      ],
+      "project-store/import-templates": [
+        "./src/project-store/import-templates.ts"
+      ],
+      "recording/link-recording-take": [
+        "./src/recording/link-recording-take.ts"
+      ],
+      "project-store/project-still": [
+        "./src/project-store/project-still.ts"
+      ],
+      "stage/clip-picking": [
+        "./src/stage/clip-picking.ts"
       ]
     }
   },

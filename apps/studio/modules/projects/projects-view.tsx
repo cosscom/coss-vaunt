@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProjectStill } from "@calcom/product-video/project-store/project-still";
 import type { ProjectSummary } from "@calcom/product-video/project-store/project-store";
 import { Button } from "@coss/ui/components/button";
 import {
@@ -41,7 +42,13 @@ function toastError(error: unknown): void {
   toastManager.add({ type: "error", title: error instanceof Error ? error.message : String(error) });
 }
 
-export function ProjectsView({ projects }: { projects: ProjectSummary[] }): React.ReactElement {
+export function ProjectsView({
+  projects,
+  stills,
+}: {
+  projects: ProjectSummary[];
+  stills: Record<string, ProjectStill | null>;
+}): React.ReactElement {
   const router = useRouter();
   const [now] = useState(() => new Date());
   const [createOpen, setCreateOpen] = useState(false);
@@ -196,6 +203,7 @@ export function ProjectsView({ projects }: { projects: ProjectSummary[] }): Reac
                 onSelect={({ range }) => setSelection(selectProject(selection, order, project.id, { range }))}
                 project={project}
                 selected={selection.ids.includes(project.id)}
+                still={stills[project.id] ?? null}
                 selecting={selectedCount > 0}
               />
             </li>

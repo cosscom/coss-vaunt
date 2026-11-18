@@ -31,6 +31,7 @@ const drag = (overrides: Partial<AudioDrag>): AudioDrag => ({
   seconds: 0,
   heightFraction: 0,
   trackDelta: 0,
+  newTrackName: "Audio 9",
   snap: { targets: [0, 10], thresholdSeconds: 0.2, free: false },
   frameSeconds: 1 / 60,
   ...overrides,
@@ -49,6 +50,12 @@ describe("applyAudioDrag", () => {
 
   it("moves to another track", () => {
     const next = applyAudioDrag(project([audio("a")], []), drag({ trackDelta: 1 }));
+    expect(findAudioClip(next, "a")?.trackIndex).toBe(1);
+  });
+
+  it("adds a track when the clip moves onto the new-track row below the last one", () => {
+    const next = applyAudioDrag(project([audio("a")]), drag({ trackDelta: 1 }));
+    expect(next.audioTracks.map((track) => track.name)).toEqual(["A0", "Audio 9"]);
     expect(findAudioClip(next, "a")?.trackIndex).toBe(1);
   });
 

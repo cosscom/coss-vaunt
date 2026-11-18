@@ -27,6 +27,8 @@ export type AssetTake = {
   preview: TakePreview | null;
   /** The take the clip shows now. */
   active: boolean;
+  /** The clip showing this take, to drop on the timeline; null once the clip is deleted or the take is unfinished. */
+  template: AssetTemplate | null;
 };
 
 export type RecordingAsset = {
@@ -46,7 +48,7 @@ export type FileAsset = {
   name: string;
   bytes: number;
   modifiedAt: number;
-  /** Null for a file no clip uses any more: its size and length aren't known without probing it. */
+  /** Null until a file no clip uses has been probed for its size and length, or when it can't be read. */
   template: AssetTemplate | null;
 };
 
@@ -126,6 +128,10 @@ export function listProjectAssets(project: Project, scan: ProjectScan): ProjectA
           thumbnail: thumbnailFor(take),
           preview: previewFor(take),
           active: take.hash === active,
+          template:
+            clip?.source.kind === "recording" && take.manifest
+              ? { kind: "video", clip: { ...clip, source: { ...clip.source, take: take.hash } } }
+              : null,
         })),
     };
   });

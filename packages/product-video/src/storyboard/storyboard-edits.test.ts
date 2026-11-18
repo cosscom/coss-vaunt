@@ -9,6 +9,7 @@ import {
   duplicateVideoTrack,
   editLocalTime,
   editTimeFor,
+  ensureVideoTrack,
   findClip,
   frameLocalTime,
   incomingOverlap,
@@ -307,6 +308,14 @@ describe("track edits", () => {
     expect(copied.videoTracks[1]?.clips[0]?.id).not.toBe("a");
     expect(removeVideoTrack(base, 0)).toBe(base);
     expect(removeVideoTrack(copied, 0).videoTracks).toHaveLength(1);
+  });
+
+  it("adds a track only for the index one above the top track", () => {
+    const base = projectWith(text("a", 0));
+    expect(ensureVideoTrack(base, 0, "Video 2")).toBe(base);
+    const added = ensureVideoTrack(base, 1, "Video 2");
+    expect(added.videoTracks.map((track) => track.name)).toEqual([base.videoTracks[0]?.name, "Video 2"]);
+    expect(moveClip(added, "a", { start: 0, trackIndex: 1 }).videoTracks[1]?.clips[0]?.id).toBe("a");
   });
 });
 

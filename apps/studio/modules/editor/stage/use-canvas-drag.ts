@@ -79,6 +79,9 @@ export function useCanvasDrag({
   onSetProperty,
   layerGeometry,
   gizmoAt,
+  selecting,
+  pickAt,
+  onPick,
 }: {
   element: HTMLElement | null;
   mode: CanvasMode;
@@ -91,6 +94,11 @@ export function useCanvasDrag({
   layerGeometry: (clipId: string) => LayerGeometry | null;
   /** The rotation gizmo on the stage, when it shows; dragging a ring turns that one axis. */
   gizmoAt: () => GizmoTarget | null;
+  /** The Select tool: a press selects the layer under it, then drags it like Camera mode does. */
+  selecting: boolean;
+  /** The clip drawn under a frame point (CSS px). */
+  pickAt: (x: number, y: number) => string | null;
+  onPick: (clipId: string | null, additive: boolean) => void;
 }): { dragging: boolean; activeRing: RotationKey | null; handlers: React.HTMLAttributes<HTMLElement> } {
   const [dragging, setDragging] = useState(false);
   const [activeRing, setActiveRing] = useState<RotationKey | null>(null);
@@ -151,7 +159,16 @@ export function useCanvasDrag({
     onPointerDown(event) {
       if (event.button !== 0) return;
       const ring = ringUnder(event);
-      const found = ring ? { clipId: ring.target.clipId, values: ring.target.values } : target();
+      let found = ring ? { clipId: ring.target.clipId, values: ring.target.values } : target();
+      if (selecting && !ring) {
+        const additive = event.shiftKey || event.metaKey || event.ctrlKey;
+        const picked = pickAt(...framePoint(event));
+        onPick(picked, additive);
+        if (!picked || additive) return;
+        found = findTarget(latest.current.project, picked, clock.getState().time);
+        // Text isn't dragged on the canvas, so the press only selects it.
+        if (found?.clipId !== picked) return;
+      }
       if (!found) return;
       event.currentTarget.setPointerCapture(event.pointerId);
       drag.current = {
@@ -209,6 +226,7 @@ export function useCanvasDrag({
       if (!drag.current) setActiveRing(null);
     },
     onDoubleClick() {
+      if (selecting) return;
       const found = target();
       if (found) apply(found.clipId, resetProperties(mode), found.values);
     },

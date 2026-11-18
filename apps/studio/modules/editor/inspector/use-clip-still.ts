@@ -1,0 +1,46 @@
+"use client";
+
+import { frameFileName } from "@calcom/product-video/recording/recording-manifest";
+import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { useEffect, useState } from "react";
+import { loadRecording, recordingHashFor } from "../stage/frame-sources/recording-lookup";
+
+export type ClipStill = { kind: "image" | "video"; url: string; aspect: number | null };
+
+const fileUrl = (filesUrl: string, file: string) =>
+  `${filesUrl}/${file.split("/").map(encodeURIComponent).join("/")}`;
+
+/** A still of the clip's media to pick a point on: a recording's middle frame, an image, or an imported video. */
+export function useClipStill(project: Project, clip: Clip): ClipStill | null {
+  const filesUrl = `/api/projects/${encodeURIComponent(project.id)}/files`;
+  const hash = clip.source.kind === "recording" ? recordingHashFor(project, clip) : null;
+  const [recorded, setRecorded] = useState<{ key: string; still: ClipStill } | null>(null);
+  const key = `${clip.id}:${hash}`;
+
+  useEffect(() => {
+    if (!hash) return;
+    let cancelled = false;
+    void loadRecording(filesUrl, clip.id, hash)
+      .then((recording) => {
+        if (cancelled || !recording) return;
+        const { manifest, directoryUrl } = recording;
+        const middle = Math.floor(manifest.frameCount / 2);
+        const url = manifest.proxy
+          ? `${directoryUrl}/proxy/${frameFileName(middle, "webp")}`
+          : `${directoryUrl}/frames/${frameFileName(middle, "png")}`;
+        setRecorded({
+          key: `${clip.id}:${hash}`,
+          still: { kind: "image", url, aspect: manifest.viewport.width / manifest.viewport.height },
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [filesUrl, clip.id, hash]);
+
+  const { source } = clip;
+  if (source.kind === "image") return { kind: "image", url: fileUrl(filesUrl, source.file), aspect: null };
+  if (source.kind === "import") return { kind: "video", url: fileUrl(filesUrl, source.file), aspect: null };
+  return recorded?.key === key ? recorded.still : null;
+}

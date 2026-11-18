@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProjectStill } from "@calcom/product-video/project-store/project-still";
 import type { ProjectSummary } from "@calcom/product-video/project-store/project-store";
 import { Badge } from "@coss/ui/components/badge";
 import { Button } from "@coss/ui/components/button";
@@ -10,6 +11,7 @@ import { EllipsisIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "@coss/ui
 import { cn } from "@coss/ui/lib/utils";
 import Link from "next/link";
 import type * as React from "react";
+import { projectFileUrl } from "../editor/audio/project-file-url";
 import { cssAspectRatio } from "./css-aspect-ratio";
 import { projectClickIntent } from "./project-selection";
 import { formatRelativeTime } from "./relative-time";
@@ -22,12 +24,24 @@ type ProjectCardProps = {
   onDelete: () => void;
   onOpen: () => void;
   selected: boolean;
+  still: ProjectStill | null;
   /** While any project is selected, a plain click toggles instead of opening. */
   selecting: boolean;
   onSelect: (event: { range: boolean }) => void;
 };
 
 const INTERACTIVE = "a, button, [role=menuitem], [data-slot=checkbox]";
+
+const FRAME = "max-h-[84%] max-w-[84%] rounded-[3px] object-contain shadow-lg/20";
+
+/** A frame of the project's media, framed on its background like the stage shows it. */
+function StillFrame({ projectId, still }: { projectId: string; still: ProjectStill }): React.ReactElement {
+  const src = projectFileUrl(projectId, still.file);
+  if (still.kind === "video")
+    return <video className={FRAME} muted playsInline preload="metadata" src={`${src}#t=${still.time}`} />;
+  // biome-ignore lint/performance/noImgElement: a project file served by the studio, not a page asset
+  return <img alt="" className={FRAME} draggable={false} loading="lazy" src={src} />;
+}
 
 export function ProjectCard({
   project,
@@ -38,6 +52,7 @@ export function ProjectCard({
   selected,
   selecting,
   onSelect,
+  still,
 }: ProjectCardProps): React.ReactElement {
   const href = `/projects/${project.id}`;
 
@@ -83,9 +98,10 @@ export function ProjectCard({
         />
         <div
           aria-hidden="true"
-          className="h-[64%] rounded-sm shadow-md/10 ring-1 ring-foreground/8"
-          style={{ aspectRatio: cssAspectRatio(project.aspectRatio), background: project.background }}
-        />
+          className="flex h-[64%] items-center justify-center overflow-hidden rounded-sm shadow-md/10 ring-1 ring-foreground/8"
+          style={{ aspectRatio: cssAspectRatio(project.aspectRatio), background: project.background }}>
+          {still ? <StillFrame projectId={project.id} still={still} /> : null}
+        </div>
       </div>
       <div className="flex items-start gap-2 p-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">

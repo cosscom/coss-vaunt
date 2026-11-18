@@ -22,6 +22,9 @@ export const EASES = ["linear", "ease-in", "ease-out", "ease-in-out", "hold"] as
 export const TEXT_SIZES = ["display", "title", "body"] as const;
 export const TEXT_ALIGNS = ["start", "center", "end"] as const;
 export const BLUR_MODES = ["lens", "radial", "directional", "tilt-shift"] as const;
+export const DRIFT_MOTIONS = ["none", "slide", "tilt", "slide-tilt"] as const;
+/** Which way the media travels across the frame. */
+export const DRIFT_DIRECTIONS = ["left", "right", "up", "down"] as const;
 export const BLUR_FOCUS_MODES = ["auto", "manual"] as const;
 export const CURSOR_STYLES = ["arrow", "dot"] as const;
 
@@ -57,6 +60,20 @@ export const animatedPropertySchema = z.object({
 const clipPropertiesSchema = z.partialRecord(z.enum(PROPERTY_KEYS), animatedPropertySchema);
 
 /** Depth of field settings that don't animate; strength, range and focus are keyframed properties. */
+/**
+ * A close-up that drifts: the camera zooms in on `focus` (a point on the media, as fractions of its half-size,
+ * y down) and the media travels steadily across the clip, through that point at its middle. It sits on top of
+ * the clip's keyframes rather than replacing them.
+ */
+export const driftSchema = z.object({
+  focus: z.object({ x: z.number().min(-1).max(1), y: z.number().min(-1).max(1) }),
+  zoom: z.number().min(1).max(4),
+  motion: z.enum(DRIFT_MOTIONS),
+  direction: z.enum(DRIFT_DIRECTIONS),
+  /** 0 holds still; 1 is the most travel. */
+  intensity: z.number().min(0).max(1),
+});
+
 export const blurSettingsSchema = z.object({
   enabled: z.boolean(),
   mode: z.enum(BLUR_MODES),
@@ -126,6 +143,7 @@ export const clipSchema = z
     transitionIn: z.enum(TRANSITION_KINDS),
     properties: clipPropertiesSchema,
     blur: blurSettingsSchema.optional(),
+    drift: driftSchema.optional(),
     /** CSS selector inside a recording that depth of field focuses on. */
     focus: z.string().min(1).optional(),
     source: clipSourceSchema,
@@ -304,6 +322,7 @@ export type Action = z.infer<typeof actionSchema>;
 export type EaseName = (typeof EASES)[number];
 export type CubicEase = z.infer<typeof cubicEaseSchema>;
 export type CubicPoints = CubicEase["cubic"];
+export type Drift = z.infer<typeof driftSchema>;
 export type Ease = z.infer<typeof keyframeSchema>["ease"];
 export type Keyframe = z.infer<typeof keyframeSchema>;
 export type AnimatedProperty = z.infer<typeof animatedPropertySchema>;

@@ -1,6 +1,7 @@
 import { blurGuideShapes } from "@calcom/product-video/stage/blur-guides";
 import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
 import { type CanvasMode, dragTarget } from "@calcom/product-video/stage/canvas-drag";
+import { deviceOutline } from "@calcom/product-video/stage/clip-picking";
 import { depthOfFieldParams } from "@calcom/product-video/stage/depth-of-field";
 import {
   type RotationGizmo,
@@ -16,6 +17,8 @@ import type { Project } from "@calcom/product-video/storyboard/storyboard-schema
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
 import { drawBlurGuides } from "./blur-guides-drawing";
 import { drawRotationGizmo } from "./rotation-gizmo-drawing";
+import { drawLayerOutline } from "./selection-outline-drawing";
+import type { FrameRect } from "./stage-picking";
 
 const MAX_PIXEL_RATIO = 2;
 
@@ -30,6 +33,12 @@ export type StageOverlayState = {
   /** The gizmo ring hovered or dragged. */
   activeRing: RotationKey | null;
   frame: { width: number; height: number };
+  /** The layer under the pointer, outlined while it isn't the selection. */
+  hoveredClipId: string | null;
+  /** The Select tool outlines the selected layer. */
+  outlineSelection: boolean;
+  /** Where a text layer is drawn; text is HTML, so the stage panel measures it. */
+  textRect: (clipId: string) => FrameRect | null;
 };
 
 type LayerAt = (clipId: string) => LayerGeometry | null;
@@ -78,6 +87,29 @@ function drawBlur(
   return true;
 }
 
+function drawOutlines(
+  context: CanvasRenderingContext2D,
+  state: StageOverlayState,
+  time: number,
+  layerAt: LayerAt
+): boolean {
+  const active = new Set(activeClipsAt(state.project, time).map((entry) => entry.clip.id));
+  const outlines: Array<[string | null, "selected" | "hovered"]> = [
+    [state.outlineSelection ? state.selectedClipId : null, "selected"],
+    [state.hoveredClipId !== state.selectedClipId ? state.hoveredClipId : null, "hovered"],
+  ];
+  let drew = false;
+  for (const [clipId, style] of outlines) {
+    if (!clipId || !active.has(clipId)) continue;
+    const geometry = layerAt(clipId);
+    const shape = geometry ? deviceOutline(geometry) : state.textRect(clipId);
+    if (!shape) continue;
+    drawLayerOutline(context, shape, style);
+    drew = true;
+  }
+  return drew;
+}
+
 /**
  * Editing guides over the stage (blur guides, the rotation gizmo), on their own canvas so no composite or
  * export ever contains them. Cleared during playback; otherwise the canvas fades (CSS) in and out.
@@ -102,13 +134,15 @@ export function drawStageOverlay(
   }
   const gizmo = rotationGizmoTarget(state, time, layerAt);
   const wantsBlur = state.blurEditing || state.mode === "focus";
-  if (!gizmo && !wantsBlur) {
+  const wantsOutline = state.outlineSelection || state.hoveredClipId !== null;
+  if (!gizmo && !wantsBlur && !wantsOutline) {
     canvas.style.opacity = "0";
     return;
   }
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, frame.width, frame.height);
   const drewBlur = drawBlur(context, state, time, layerAt);
+  const drewOutline = drawOutlines(context, state, time, layerAt);
   if (gizmo) drawRotationGizmo(context, gizmo.gizmo, state.activeRing, frame);
-  canvas.style.opacity = gizmo || drewBlur ? "1" : "0";
+  canvas.style.opacity = gizmo || drewBlur || drewOutline ? "1" : "0";
 }
