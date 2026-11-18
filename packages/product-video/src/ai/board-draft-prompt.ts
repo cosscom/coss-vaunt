@@ -2,7 +2,7 @@ import { appMapLines } from "../catalogues/routes/app-map";
 import type { RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
 import type { Board } from "../storyboard/board-schema";
 import { MAX_RECORDING_SECONDS, MAX_TRANSITION_SECONDS } from "../storyboard/storyboard-limits";
-import { scriptedReplyNote } from "./recording-explorer-prompt";
+import { agentReplyNote } from "./recording-explorer-prompt";
 
 export type EffectSummary = { id: string; description: string };
 
@@ -20,7 +20,7 @@ function routeLines(routes: readonly RouteCatalogueEntry[]): string {
   return routes
     .map((entry) => {
       const targets = entry.targets.map((target) => `    - ${target.name}: ${target.description}`).join("\n");
-      const reply = scriptedReplyNote(entry)?.trim();
+      const reply = agentReplyNote(entry)?.trim();
       return `- ${entry.route} (${entry.label}): ${entry.description}\n  On-screen targets:\n${targets}${reply ? `\n  ${reply}` : ""}`;
     })
     .join("\n");

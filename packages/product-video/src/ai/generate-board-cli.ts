@@ -35,7 +35,7 @@ async function main(): Promise<void> {
       emit,
       deps: {
         explore: exploreRecording,
-        rehearse: rehearseClip,
+        rehearse: ({ project: withClip, clipId }) => rehearseClip({ project: withClip, clipId, projectDir }),
         record: ({ project: withClip, clipId, onProgress }) =>
           recordClip({ project: withClip, clipId, projectDir, onProgress }),
         mediaClip: (node, clipId) => mediaClipForNode(node, projectDir, clipId),

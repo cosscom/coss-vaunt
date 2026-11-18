@@ -11,6 +11,7 @@ export const RECORDING_COPY = {
     seconds < 60 ? `about ${Math.ceil(seconds)} s left` : `about ${Math.ceil(seconds / 60)} min left`,
   phases: {
     login: "Signing in…",
+    agent: "Asking the agent…",
     load: "Loading the page…",
     preroll: "Letting the page settle…",
     replay: "Replaying the previous clip…",

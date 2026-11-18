@@ -31,7 +31,7 @@ export const ROUTE_CATALOGUE: RouteCatalogueEntry[] = [
     route: "/home",
     label: "Home · Main Agent",
     description:
-      "The Main Agent chat on the home page. Type a request in the composer and send it; the agent replies with a scripted turn that looks things up and asks to approve a booking.",
+      "The Main Agent chat on the home page. Type a request in the composer and send it; the real agent replies, looking things up as it needs to, and a booking request stops on an approval card.",
     targets: [
       { name: "composer", selector: "[data-testid=ai-chat-input]", description: "The chat composer" },
       { name: "send", selector: "[data-testid=ai-chat-send]", description: "The send button" },

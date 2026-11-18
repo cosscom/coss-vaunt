@@ -10,9 +10,17 @@ import {
   type Request,
   type Route,
 } from "playwright";
-import type { RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
+import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
 import { MAX_RECORDING_SECONDS, type Project } from "../storyboard/storyboard-schema";
 import { type FrameInput, scheduleActions } from "./action-schedule";
+import {
+  type AgentConversation,
+  type AgentReplies,
+  agentConversation,
+  paceReply,
+  readAgentReplies,
+  writeAgentReplies,
+} from "./agent-replies";
 import { type CaptureSpec, captureHash, captureSpecFor } from "./capture-hash";
 import { cursorPointAtFrame, type Point, restPoint } from "./cursor-path";
 import { assertAllowedRecordingHost } from "./host-allowlist";
@@ -25,7 +33,7 @@ import {
   type Rect,
   recordingDirectory,
 } from "./recording-manifest";
-import { type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
+import { type AgentCaptureState, type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
 import { findClip, readRecordingManifest } from "./recording-status";
 import { writeRecordingVideo } from "./recording-video";
 import type { ReplayStep } from "./replay-chain";
@@ -89,6 +97,12 @@ export async function recordClip({
   const existing = await readRecordingManifest(directory);
   if (existing && !force) return { manifest: existing, directory, reused: true, secondsPerFrame: null };
 
+  const replies = await ensureAgentReplies({
+    spec,
+    baseUrl: project.settings.baseUrl,
+    projectDir,
+    onProgress,
+  });
   const partial = `${directory}.partial-${process.pid}`;
   await rm(partial, { recursive: true, force: true });
   await mkdir(path.join(partial, "frames"), { recursive: true });
@@ -99,6 +113,7 @@ export async function recordClip({
       clipId: clip.id,
       baseUrl: project.settings.baseUrl,
       framesDir: path.join(partial, "frames"),
+      replies,
       onProgress,
     });
     onProgress({ type: "phase", phase: "proxy" });
@@ -119,20 +134,152 @@ export async function recordClip({
  * Plays a clip exactly as `recordClip` would, on the same fake clock and page runtime, without taking
  * screenshots; throws what the recording would. A missing target's error says when, if ever, it shows up.
  */
-export async function rehearseClip({ project, clipId }: { project: Project; clipId: string }): Promise<void> {
+export async function rehearseClip({
+  project,
+  clipId,
+  projectDir,
+}: {
+  project: Project;
+  clipId: string;
+  /** Where the agent's captured replies are kept; without it a rehearsal captures them and forgets them. */
+  projectDir?: string;
+}): Promise<void> {
   const clip = findClip(project, clipId);
   if (!clip || clip.source.kind !== "recording")
     throw new Error(`Clip ${clipId} is not a recording in this project`);
   assertAllowedRecordingHost(project.settings.baseUrl);
   const spec = captureSpecFor({ project, clip });
+  const replies = await ensureAgentReplies({
+    spec,
+    baseUrl: project.settings.baseUrl,
+    projectDir: projectDir ?? null,
+    onProgress: () => undefined,
+  });
   await capture({
     spec,
     hash: captureHash(spec),
     clipId,
     baseUrl: project.settings.baseUrl,
     framesDir: null,
+    replies,
     onProgress: () => undefined,
   });
+}
+
+/** How long the real agent gets to answer one message while its reply is captured. */
+const AGENT_REPLY_TIMEOUT_MS = 180_000;
+
+/**
+ * The real agent's replies to what the clip sends, captured once in real time and kept in the project, so the
+ * frame-by-frame recording replays a genuine answer and every take shows the same one. Null when the clip
+ * doesn't talk to the agent.
+ */
+async function ensureAgentReplies({
+  spec,
+  baseUrl,
+  projectDir,
+  onProgress,
+}: {
+  spec: CaptureSpec;
+  baseUrl: string;
+  projectDir: string | null;
+  onProgress: (progress: RecordingProgress) => void;
+}): Promise<AgentReplies | null> {
+  const steps = [...(spec.replay ?? []), { route: spec.route, actions: spec.actions }].map((step) => ({
+    ...step,
+    entry: routeEntryFor(step.route),
+  }));
+  const conversation = agentConversation(steps);
+  if (!conversation) return null;
+  if (projectDir) {
+    const stored = await readAgentReplies(projectDir, conversation);
+    if (stored) return stored;
+  }
+  onProgress({ type: "phase", phase: "agent" });
+  const replies = await captureAgentReplies({
+    baseUrl,
+    conversation,
+    entry: steps[0]?.entry ?? spec.routeEntry,
+  });
+  if (projectDir) await writeAgentReplies(projectDir, replies);
+  return replies;
+}
+
+async function captureAgentReplies({
+  baseUrl,
+  conversation,
+  entry,
+}: {
+  baseUrl: string;
+  conversation: AgentConversation;
+  entry: RouteCatalogueEntry;
+}): Promise<AgentReplies> {
+  const composer = entry.targets.find((target) => target.name === "composer")?.selector;
+  const send = entry.targets.find((target) => target.name === "send")?.selector;
+  if (!composer) throw new Error(`${conversation.route} has no agent composer to send messages from`);
+  const browser = await chromium.launch();
+  try {
+    const storageState = await signIn({ baseUrl, entry, newContext: () => browser.newContext() });
+    const context = await browser.newContext({
+      storageState,
+      viewport: entry.viewport,
+      timezoneId: entry.timezone,
+      locale: "en-US",
+    });
+    await context.addInitScript({ content: routeRuntimeScript(entry, "", { capture: true }) });
+    const page = await context.newPage();
+    await page.goto(new URL(conversation.route, baseUrl).toString(), { waitUntil: "load", timeout: 120_000 });
+    for (const [index, message] of conversation.messages.entries()) {
+      await page.locator(composer).first().fill(message, { timeout: 60_000 });
+      if (send) await page.locator(send).first().click();
+      else await page.locator(composer).first().press("Enter");
+      try {
+        await page.waitForFunction(
+          (turn) =>
+            (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture.turns[
+              turn
+            ]?.done === true,
+          index,
+          { timeout: AGENT_REPLY_TIMEOUT_MS }
+        );
+      } catch {
+        throw new Error(
+          `The Cal.com agent at ${baseUrl} didn't answer "${message}". Is its Trigger.dev agent worker running?`
+        );
+      }
+    }
+    // The session title arrives a moment after the first reply.
+    await page
+      .waitForFunction(
+        () =>
+          (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture.title !==
+          null,
+        null,
+        { timeout: 10_000 }
+      )
+      .catch(() => undefined);
+    const captured = await page.evaluate(
+      () => (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture
+    );
+    const turns = captured.turns.map((turn) => turn.chunks);
+    const failed = turns.find(
+      (chunks) => chunks.length === 0 || chunks.some((entry) => entry.chunk.type === "error")
+    );
+    if (failed) {
+      const error = failed.find((entry) => entry.chunk.type === "error")?.chunk;
+      throw new Error(
+        `The Cal.com agent replied with an error${error ? `: ${JSON.stringify(error).slice(0, 300)}` : ""}`
+      );
+    }
+    return {
+      ...conversation,
+      title: captured.title,
+      turns: turns.map(paceReply),
+      capturedAt: new Date().toISOString(),
+    };
+  } finally {
+    await browser.close();
+  }
 }
 
 async function capture({
@@ -141,6 +288,7 @@ async function capture({
   clipId,
   baseUrl,
   framesDir,
+  replies,
   onProgress,
 }: {
   spec: CaptureSpec;
@@ -149,6 +297,8 @@ async function capture({
   baseUrl: string;
   /** Null rehearses: the same run with no screenshots. */
   framesDir: string | null;
+  /** The real agent's captured answers to what the clip sends; null plays the route's script. */
+  replies: AgentReplies | null;
   onProgress: (progress: RecordingProgress) => void;
 }): Promise<{ manifest: Omit<RecordingManifest, "proxy">; secondsPerFrame: number }> {
   const entry = spec.routeEntry;
@@ -170,7 +320,7 @@ async function capture({
     const startTime = Date.parse(entry.clockTime);
     await context.clock.install({ time: startTime });
     await context.clock.pauseAt(startTime + 1000);
-    await context.addInitScript({ content: routeRuntimeScript(entry, BASE_CSS) });
+    await context.addInitScript({ content: routeRuntimeScript(entry, BASE_CSS, { replies }) });
     const page = await context.newPage();
     // The page runtime reports writes it couldn't classify; they belong in the job's log, not lost in the page.
     page.on("console", (message) => {
@@ -203,8 +353,15 @@ async function capture({
   }
 }
 
-/** The page runtime for a route: seeded randomness, its scripted agent reply and its hidden elements. */
-export function routeRuntimeScript(entry: RouteCatalogueEntry, css = ""): string {
+/**
+ * The page runtime for a route: seeded randomness, the agent's replies and its hidden elements. Replies are the
+ * real agent's captured answers when given, else the route's scripted fixture; `capture` lets the real agent answer.
+ */
+export function routeRuntimeScript(
+  entry: RouteCatalogueEntry,
+  css = "",
+  { replies = null, capture = false }: { replies?: AgentReplies | null; capture?: boolean } = {}
+): string {
   const fixture = entry.replyFixture;
   return recordingRuntimeScript({
     seed: PAGE_SEED,
@@ -214,10 +371,15 @@ export function routeRuntimeScript(entry: RouteCatalogueEntry, css = ""): string
     ].join("\n"),
     chatPath: "/api/ai/chat",
     titlePath: "/api/ai/chat/session/title",
-    title: fixture?.title ?? null,
-    turns: fixture ? fixture.turns.map((_, turnIndex) => scriptedTurnChunks(fixture, turnIndex)) : [],
-    prompt: fixture?.prompt ? normalisePrompt(fixture.prompt) : null,
+    title: replies ? replies.title : (fixture?.title ?? null),
+    turns: replies
+      ? replies.turns
+      : fixture
+        ? fixture.turns.map((_, turnIndex) => scriptedTurnChunks(fixture, turnIndex))
+        : [],
+    prompt: replies ? null : fixture?.prompt ? normalisePrompt(fixture.prompt) : null,
     fallback: { title: GENERIC_REPLY.title, turn: scriptedTurnChunks(GENERIC_REPLY, 0) },
+    capture,
   });
 }
 

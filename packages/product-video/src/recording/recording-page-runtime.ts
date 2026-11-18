@@ -17,6 +17,17 @@ export type RecordingPageConfig = {
   prompt: string | null;
   /** Played, every turn, when the first message isn't `prompt`. */
   fallback: { title: string | null; turn: TimedChunk[] };
+  /**
+   * Capturing the real agent: chat and title requests reach the app, and each reply's chunks are recorded with
+   * their arrival times on `window.__studioAgentCapture` while the page shows them as normal.
+   */
+  capture?: boolean;
+};
+
+/** What a capture run leaves on `window.__studioAgentCapture`. */
+export type AgentCaptureState = {
+  turns: Array<{ chunks: TimedChunk[]; done: boolean }>;
+  title: string | null;
 };
 
 export type PageRect = { x: number; y: number; width: number; height: number };
@@ -115,6 +126,11 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
   document.addEventListener("DOMContentLoaded", ensureStyle);
 
   const originalFetch = window.fetch;
+  if (config.capture)
+    (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture = {
+      turns: [],
+      title: null,
+    };
   const requests = (globalThis as unknown as { __studioRequests: StudioRequests }).__studioRequests;
   /** What the page tried to write, for a look in DevTools: `window.__studioFaked`. */
   const faked: Array<{ kind: string; method: string; url: string }> = [];
@@ -142,7 +158,65 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
     const url = new URL(request ? request.url : String(input), location.href);
     const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
     const local = url.origin === location.origin;
-    // Every chat goes to a scripted reply: the route's fixture, or the generic one; never the real agent.
+    if (config.capture && local && url.pathname === config.chatPath && method === "POST") {
+      const state = (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture;
+      const turnState = { chunks: [] as TimedChunk[], done: false };
+      state.turns.push(turnState);
+      const started = performance.now();
+      return originalFetch(input, init).then((response) => {
+        if (!response.body) {
+          turnState.done = true;
+          return response;
+        }
+        const [mine, theirs] = response.body.tee();
+        void (async () => {
+          const reader = mine.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            for (let end = buffer.indexOf("\n\n"); end >= 0; end = buffer.indexOf("\n\n")) {
+              const block = buffer.slice(0, end);
+              buffer = buffer.slice(end + 2);
+              const data = block
+                .split("\n")
+                .filter((line) => line.startsWith("data:"))
+                .map((line) => line.slice(5).trim())
+                .join("");
+              if (!data || data === "[DONE]") continue;
+              try {
+                turnState.chunks.push({
+                  atMs: Math.round(performance.now() - started),
+                  chunk: JSON.parse(data),
+                });
+              } catch {
+                // Not JSON: a keep-alive or comment line.
+              }
+            }
+          }
+          turnState.done = true;
+        })();
+        return new Response(theirs, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      });
+    }
+    if (config.capture && local && url.pathname === config.titlePath && method === "GET") {
+      const state = (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture;
+      return originalFetch(input, init).then(async (response) => {
+        const body = (await response
+          .clone()
+          .json()
+          .catch(() => null)) as { title?: unknown } | null;
+        if (typeof body?.title === "string") state.title = body.title;
+        return response;
+      });
+    }
+    // Every chat goes to a scripted reply: the route's fixture, the captured real one, or the generic one.
     if (local && url.pathname === config.chatPath && method === "POST") {
       let sessionUid: unknown;
       let body: unknown;

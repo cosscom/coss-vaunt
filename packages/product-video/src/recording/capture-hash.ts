@@ -68,7 +68,7 @@ const FNV_PRIME = BigInt("0x100000001b3");
 const MASK_64 = BigInt("0xffffffffffffffff");
 
 /** FNV-1a 64 over UTF-8: the same in the browser and in Node, so the editor finds recordings without a server. */
-function fnv1a64(text: string): string {
+export function fnv1a64(text: string): string {
   let hash = FNV_OFFSET;
   for (const byte of new TextEncoder().encode(text)) {
     hash ^= BigInt(byte);

@@ -67,7 +67,7 @@ describe("recording explorer prompts", () => {
     const system = recordingExplorerSystemPrompt(home);
     expect(system).toContain(`composer: ${composer}`);
     expect(system).toContain(`about ${replySeconds(home)} s`);
-    expect(system).toContain('Sending exactly "Book Sandy for a 1on1 at the end of this week"');
+    expect(system).toContain("the real Cal.com agent");
     expect(system).toContain("must already be on screen when the cursor sets off");
     expect(replySeconds(home)).toBeGreaterThan(0);
   });
