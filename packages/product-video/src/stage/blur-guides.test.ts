@@ -39,12 +39,19 @@ describe("blurGuideShapes", () => {
 
   it("shows a band for tilt shift and a streak for directional", () => {
     const tilt = guides({ mode: "tilt-shift" }, { focusRange: 0.2 });
-    expect(tilt.falloff).toMatchObject({
-      shape: "band",
-      centre: [expect.closeTo(800), expect.closeTo(450)],
-      inner: 90,
-    });
-    expect(tilt.cells).toEqual([]);
+    expect(tilt.falloff?.shape).toBe("band");
+    expect(tilt.falloff?.edges.map((edge) => edge.map(([, y]) => Math.round(y)))).toEqual([
+      [360, 360],
+      [540, 540],
+    ]);
+    expect(tilt.cells).toHaveLength(256);
     expect(guides({ mode: "directional" }, { blurAngle: 90 }).streak?.[1][1]).toBeLessThan(450);
+  });
+
+  it("lays the sharp area on the device, so it foreshortens as the device turns", () => {
+    const ring = guides({ mode: "radial" }, { focusRange: 0.4, rotateY: 60 }).falloff?.edges[0] ?? [];
+    const xs = ring.map(([x]) => x);
+    const ys = ring.map(([, y]) => y);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan((Math.max(...ys) - Math.min(...ys)) * 0.7);
   });
 });

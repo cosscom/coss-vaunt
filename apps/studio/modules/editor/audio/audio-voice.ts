@@ -19,7 +19,7 @@ export function startAudioVoice({
   duck,
   onEnded,
 }: {
-  context: AudioContext;
+  context: BaseAudioContext;
   destination: AudioNode;
   anchor: { context: number; project: number };
   segment: AudioSegment;

@@ -72,6 +72,8 @@ export const driftSchema = z.object({
   direction: z.enum(DRIFT_DIRECTIONS),
   /** 0 holds still; 1 is the most travel. */
   intensity: z.number().min(0).max(1),
+  /** Frames the recorded cursor instead of `focus`, easing after it. */
+  followCursor: z.boolean().optional(),
 });
 
 export const blurSettingsSchema = z.object({
@@ -79,6 +81,8 @@ export const blurSettingsSchema = z.object({
   mode: z.enum(BLUR_MODES),
   /** Auto focuses on the focus point on the device, so focus follows it as it turns; manual on a distance. */
   focus: z.enum(BLUR_FOCUS_MODES),
+  /** Keeps the focus point on the recorded cursor instead of Focus X/Y. */
+  followCursor: z.boolean().optional(),
 });
 
 export const cursorSettingsSchema = z.object({

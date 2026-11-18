@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Clip, TransitionKind } from "../storyboard/storyboard-schema";
 import { activeClipsAt } from "../storyboard/track-resolution";
 import { resolveClipLayers } from "./clip-layers";
+import { createCursorTrack } from "./cursor-track";
 
 const importClip = (id: string, start: number, transitionIn: TransitionKind, rotateY: number): Clip => ({
   id,
@@ -99,5 +100,40 @@ describe("resolveClipLayers", () => {
     const layers = layersAt("cut", 3.5);
     expect(layers.map((layer) => layer.active.clip.id)).toEqual(["b"]);
     expect(layers[0]?.view.rotateY).toBe(20);
+  });
+});
+
+describe("following the cursor", () => {
+  const samples = Array.from({ length: 40 }, () => ({ x: 1800, y: 900, pressed: false, visible: true }));
+  const track = createCursorTrack(samples, 10);
+  const cursor = track ? { track, viewport: { width: 1920, height: 1080 } } : null;
+  const sizes = {
+    frame: { width: 1600, height: 900 },
+    deviceFor: () => ({ width: 16 / 9, height: 1 }),
+    cursorFor: () => cursor,
+  };
+  const drift = {
+    focus: { x: 0, y: 0 },
+    zoom: 2,
+    motion: "none" as const,
+    direction: "left" as const,
+    intensity: 0,
+  };
+  const at = (clip: Clip) =>
+    resolveClipLayers(activeClipsAt({ videoTracks: [{ id: "t", name: "t", clips: [clip] }] }, 1), sizes)[0];
+
+  it("aims the close-up at the cursor instead of its focus point", () => {
+    const still = at({ ...importClip("a", 0, "cut", 0), drift });
+    const following = at({ ...importClip("a", 0, "cut", 0), drift: { ...drift, followCursor: true } });
+    expect(still?.view.panX).toBeCloseTo(0);
+    expect(following?.view.panX).toBeGreaterThan(0.1);
+    expect(following?.view.panY).toBeGreaterThan(0.1);
+  });
+
+  it("puts the blur's focus on the cursor", () => {
+    const blur = { enabled: true, mode: "radial" as const, focus: "auto" as const, followCursor: true };
+    const layer = at({ ...importClip("a", 0, "cut", 0), blur });
+    expect(layer?.view.focusX).toBeCloseTo(1800 / 960 - 1);
+    expect(layer?.view.focusY).toBeCloseTo(900 / 540 - 1);
   });
 });

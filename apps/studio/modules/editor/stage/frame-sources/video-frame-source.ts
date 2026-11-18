@@ -1,6 +1,9 @@
 import { LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, VideoTexture } from "three";
 import type { FrameSource } from "./frame-source";
 
+/** An export waits this long for a seek before drawing whatever frame the video holds. */
+const PREPARE_TIMEOUT_MS = 10_000;
+
 /** Beyond this drift a playing video jumps to the clock; below it, it is nudged by playback rate. */
 const HARD_RESYNC_SECONDS = 0.25;
 const NUDGE_RATE = 0.06;
@@ -110,6 +113,34 @@ export function createVideoFrameSource({
         return;
       }
       video.playbackRate = Math.abs(drift) > frameSeconds ? 1 - Math.sign(drift) * NUDGE_RATE : 1;
+    },
+    prepare(time) {
+      playing = false;
+      if (!video.paused) video.pause();
+      return new Promise<void>((resolve) => {
+        const done = () => {
+          clearTimeout(timer);
+          video.removeEventListener("seeked", done);
+          video.removeEventListener("loadedmetadata", start);
+          video.removeEventListener("error", done);
+          texture.needsUpdate = true;
+          resolve();
+        };
+        const timer = setTimeout(done, PREPARE_TIMEOUT_MS);
+        const start = () => {
+          const end = video.duration - frameSeconds;
+          const target = Math.min(Number.isFinite(end) ? end : time, Math.max(0, time));
+          if (Math.abs(video.currentTime - target) <= frameSeconds / 4 && video.readyState >= 2) {
+            done();
+            return;
+          }
+          video.addEventListener("seeked", done);
+          video.currentTime = target;
+        };
+        video.addEventListener("error", done);
+        if (video.readyState >= 1) start();
+        else video.addEventListener("loadedmetadata", start, { once: true });
+      });
     },
     idle() {
       playing = false;

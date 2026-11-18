@@ -3,6 +3,8 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { isProjectId } from "@calcom/product-video/project-store/file-project-store";
+import { ensureRecordingTake } from "@calcom/product-video/recording/link-recording-take";
+import { RECORDING_MANIFEST_FILE } from "@calcom/product-video/recording/recording-manifest";
 import { parseByteRange } from "@/modules/editor/player/byte-range";
 import { STUDIO_ROOT } from "@/modules/projects/studio-project-store";
 
@@ -10,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
   ".webm": "video/webm",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -47,6 +50,10 @@ export async function GET(request: Request, { params }: FileRouteContext): Promi
   const { id, path: segments } = await params;
   const file = resolveProjectFile(id, segments);
   if (!file) return notFound();
+  const [folder, clipId, captureHash, name] = segments;
+  if (folder === "recordings" && name === RECORDING_MANIFEST_FILE && clipId && captureHash) {
+    await ensureRecordingTake({ projectDir: path.join(STUDIO_ROOT, id), clipId, captureHash });
+  }
   const info = await stat(file).catch(() => null);
   if (!info) return notFound();
 
@@ -75,6 +82,10 @@ export async function GET(request: Request, { params }: FileRouteContext): Promi
     ETag: etag,
     "Last-Modified": info.mtime.toUTCString(),
   });
+  // `?download` saves the file (an export) instead of playing it in the tab.
+  if (new URL(request.url).searchParams.has("download")) {
+    headers.set("Content-Disposition", `attachment; filename="${path.basename(file).replace(/"/g, "")}"`);
+  }
   if (extension !== ".json" && request.headers.get("if-none-match") === etag) {
     return new Response(null, { status: 304, headers });
   }

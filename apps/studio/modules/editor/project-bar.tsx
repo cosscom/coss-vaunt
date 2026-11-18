@@ -14,7 +14,6 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   CircleAlertIcon,
-  DownloadIcon,
   LoaderIcon,
   PanelRightIcon,
   PanelRightOpenIcon,
@@ -25,7 +24,7 @@ import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
 import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";
-import { ComingSoonTooltip } from "./coming-soon-tooltip";
+import { ExportButton } from "./export/export-dialog";
 import type { SaveStatus } from "./use-project-autosave";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
@@ -158,7 +157,7 @@ export function ProjectBar({
         <Separator className="h-5" orientation="vertical" />
         <InlineEditableText
           aria-label={copy.projectName}
-          className="min-w-0 font-medium text-sm *:data-[slot=inline-editable-text-field]:rounded-md *:data-[slot=inline-editable-text-field]:px-1.5 *:data-[slot=inline-editable-text-field]:py-0.5"
+          className="min-w-0 font-medium text-sm *:data-[slot=inline-editable-text-edit]:hidden *:data-[slot=inline-editable-text-field]:rounded-md *:data-[slot=inline-editable-text-field]:px-1.5 *:data-[slot=inline-editable-text-field]:py-0.5"
           maxLength={120}
           onBlur={() => {
             const name = draftName.trim();
@@ -213,12 +212,7 @@ export function ProjectBar({
         />
         <AppThemeToggle />
         <Separator className="mx-1 h-5" orientation="vertical" />
-        <ComingSoonTooltip>
-          <Button disabled size="sm">
-            <DownloadIcon aria-hidden="true" />
-            {copy.export}
-          </Button>
-        </ComingSoonTooltip>
+        <ExportButton project={project} saveStatus={saveStatus} />
       </div>
     </header>
   );

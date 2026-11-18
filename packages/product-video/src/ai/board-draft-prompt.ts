@@ -40,10 +40,12 @@ export function boardDraftSystemPrompt({
 
 The author's request is the story. Show what it asks for, in its order; don't swap in a different flow, and only show the Main Agent booking a meeting when the request is about that.
 
-Write a social-length story of about ${totalSeconds} seconds in total (scene lengths minus transition overlaps):
+Write a social-length story of up to about ${totalSeconds} seconds in total (scene lengths minus transition overlaps):
 1. A hook: a text scene with a few punchy words.
-2. One or more recording scenes of the app, each showing one clear moment.
+2. As many recording scenes as the request needs, each showing one clear moment.
 3. An end card: a text scene that lands the message.
+
+Make exactly the scenes the request asks for. When it says how many scenes or recordings, or describes one moment, use that many recording scenes and no more; the length is a ceiling, so a story that needs less runs shorter. Never add recordings to fill time. Only split a flow across scenes when it can't fit in one.
 
 Scenes
 - text: \`words\` (at most 12 words) and \`effect\`, one of the text effect ids below.

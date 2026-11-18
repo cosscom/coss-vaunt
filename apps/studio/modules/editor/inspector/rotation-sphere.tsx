@@ -1,18 +1,11 @@
 "use client";
 
 import { PROPERTY_SPECS } from "@calcom/product-video/storyboard/property-specs";
-import {
-  NumberField,
-  NumberFieldGroup,
-  NumberFieldInput,
-  NumberFieldScrubArea,
-} from "@coss/ui/components/number-field";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useId, useRef, useState } from "react";
+import { AxisRow } from "./axis-row";
 import type { KeyframeState } from "./keyframe-state";
-import { KeyframeToggle } from "./keyframe-toggle";
-import { propertyFormat } from "./property-controls";
 import { ROTATION_SPHERE_COPY } from "./rotation-sphere-copy";
 import {
   circlePaths,
@@ -186,49 +179,6 @@ function SphereBezel({ rotateZ, active }: { rotateZ: number; active: boolean }):
   );
 }
 
-function AxisRow({
-  axis,
-  value,
-  keyframe,
-  onChange,
-  onToggleKeyframe,
-  disabled,
-}: {
-  axis: RotationKey;
-  value: number;
-  keyframe: KeyframeState;
-  onChange: RotationSphereProps["onChange"];
-  onToggleKeyframe: RotationSphereProps["onToggleKeyframe"];
-  disabled?: boolean;
-}): React.ReactElement {
-  const spec = PROPERTY_SPECS[axis];
-  return (
-    <NumberField
-      className="grid grid-cols-[0.75rem_4.5rem_1.75rem] items-center gap-x-2 gap-y-0"
-      disabled={disabled}
-      format={propertyFormat(spec)}
-      max={spec.max}
-      min={spec.min}
-      onValueChange={(next) => next !== null && next !== value && onChange(axis, next)}
-      size="sm"
-      step={spec.step}
-      value={value}>
-      <NumberFieldScrubArea
-        className="*:data-[slot=label]:font-normal *:data-[slot=label]:text-muted-foreground *:data-[slot=label]:text-xs"
-        label={ROTATION_SPHERE_COPY.axes[axis]}
-      />
-      <NumberFieldGroup>
-        <NumberFieldInput
-          aria-label={spec.label}
-          className="px-2 text-end tabular-nums"
-          onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
-        />
-      </NumberFieldGroup>
-      <KeyframeToggle label={spec.label} onToggle={() => onToggleKeyframe(axis)} state={keyframe} />
-    </NumberField>
-  );
-}
-
 export type RotationSphereProps = {
   rotateX: number;
   rotateY: number;
@@ -302,12 +252,13 @@ export function RotationSphere({
       <div className="flex shrink-0 flex-col gap-1.5">
         {AXES.map((axis) => (
           <AxisRow
-            axis={axis}
             disabled={disabled}
             key={axis}
             keyframe={keyframes[axis]}
-            onChange={onChange}
-            onToggleKeyframe={onToggleKeyframe}
+            label={ROTATION_SPHERE_COPY.axes[axis]}
+            onChange={(value) => onChange(axis, value)}
+            onToggleKeyframe={() => onToggleKeyframe(axis)}
+            propertyKey={axis}
             value={rotation[axis]}
           />
         ))}

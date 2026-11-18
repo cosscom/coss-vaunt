@@ -9,11 +9,10 @@ import type { PlaybackClock } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";
 import { BlurSection } from "./blur-section";
 import { ClipSection } from "./clip-section";
-import { DraftInput } from "./draft-text-field";
 import { DriftSection } from "./drift-section";
-import { InspectorRow } from "./inspector-row";
 import { ProjectSections } from "./project-sections";
 import { PropertyGroupSection } from "./property-group-section";
+import { SectionResetButton } from "./section-reset-button";
 import { SourceSection } from "./source-section";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
@@ -57,6 +56,12 @@ export function InspectorPanel({
               clip={clip}
               clock={clock}
               editor={editor}
+              action={
+                <SectionResetButton
+                  label={copy.resetDevice}
+                  onReset={() => editor.resetPropertyGroup(clip.id, "device")}
+                />
+              }
               group="device"
               title={copy.deviceGroup}
             />
@@ -64,27 +69,15 @@ export function InspectorPanel({
               clip={clip}
               clock={clock}
               editor={editor}
+              action={
+                <SectionResetButton
+                  label={STUDIO_COPY.timeline.menu.resetCamera}
+                  onReset={() => editor.resetCamera(clip.id)}
+                />
+              }
               group="camera"
-              title={copy.camera}>
-              {clip.source.kind === "recording" ? (
-                <InspectorRow htmlFor="clip-focus" label={copy.focus}>
-                  <DraftInput
-                    allowEmpty
-                    id="clip-focus"
-                    key={clip.id}
-                    maxLength={200}
-                    onCommit={(focus) =>
-                      onClipChange((current) => ({
-                        ...current,
-                        focus: focus.trim() ? focus.trim() : undefined,
-                      }))
-                    }
-                    placeholder={copy.focusPlaceholder}
-                    value={clip.focus ?? ""}
-                  />
-                </InspectorRow>
-              ) : null}
-            </PropertyGroupSection>
+              title={copy.camera}
+            />
             {clip.source.kind === "text" ? null : <DriftSection clip={clip} editor={editor} />}
             {clip.source.kind === "text" ? null : (
               <BlurSection clip={clip} clock={clock} editor={editor} onEditingChange={onBlurEditingChange} />
@@ -93,6 +86,12 @@ export function InspectorPanel({
               clip={clip}
               clock={clock}
               editor={editor}
+              action={
+                <SectionResetButton
+                  label={copy.resetTransform}
+                  onReset={() => editor.resetPropertyGroup(clip.id, "clip")}
+                />
+              }
               group="clip"
               title={copy.clipGroup}
             />

@@ -69,7 +69,7 @@ export function createProject({ name, now }: { name: string; now: Date }): Proje
       theme: "light",
       fps: 60,
       background: { kind: "color", value: "#0b0b0c" },
-      device: { cornerRadius: 16, contactShadow: true, plinth: false, reflection: 0 },
+      device: { cornerRadius: 16, contactShadow: false, plinth: false, reflection: 0 },
       baseUrl: DEFAULT_BASE_URL,
     },
     videoTracks: [createVideoTrack("Video 1")],

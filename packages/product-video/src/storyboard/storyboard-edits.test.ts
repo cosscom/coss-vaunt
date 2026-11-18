@@ -33,6 +33,7 @@ import {
   removeTransition,
   removeVideoTrack,
   resetCamera,
+  resetPropertyGroup,
   setClipDuration,
   setCompoundPropertyAt,
   setKeyframeEase,
@@ -341,11 +342,13 @@ describe("keyframe group edits", () => {
 });
 
 describe("removeLanes", () => {
-  it("drops the lanes' keyframes, keeping the value at the playhead", () => {
+  it("resets the lanes' properties to their defaults, keyframes and value, and leaves the rest", () => {
     const keyed = setPropertyAt(setPropertyAt(toggleKeyframeAt(clip, "zoom", 0), "zoom", 0, 1), "zoom", 2, 2);
-    const next = removeLanes(keyed, ["zoom", "fov"], 1);
-    expect(next.properties.zoom).toEqual({ value: 1.5, keyframes: [] });
+    const posed = { ...keyed, properties: { ...keyed.properties, scale: { value: 0.5, keyframes: [] } } };
+    const next = removeLanes(posed, ["zoom", "fov"]);
+    expect(next.properties.zoom).toBeUndefined();
     expect(next.properties.fov).toBeUndefined();
+    expect(next.properties.scale).toEqual({ value: 0.5, keyframes: [] });
   });
 });
 
@@ -529,5 +532,20 @@ describe("keyPoseBefore", () => {
       [0, -25],
       [3, 20],
     ]);
+  });
+});
+
+describe("resetPropertyGroup", () => {
+  it("resets one group's properties and leaves the others", () => {
+    const keyed: Clip = {
+      ...clip,
+      properties: {
+        rotateY: { value: 30, keyframes: [] },
+        scale: { value: 0.5, keyframes: [{ id: "k", at: 1, value: 0.5, ease: "linear" }] },
+        opacity: { value: 0.4, keyframes: [] },
+      },
+    };
+    expect(Object.keys(resetPropertyGroup(keyed, "clip").properties)).toEqual(["rotateY"]);
+    expect(Object.keys(resetPropertyGroup(keyed, "device").properties)).toEqual(["scale", "opacity"]);
   });
 });

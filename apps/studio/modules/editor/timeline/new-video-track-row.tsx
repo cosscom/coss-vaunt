@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useState } from "react";
@@ -31,7 +32,12 @@ export function NewVideoTrackRow({
       data-new-video-track=""
       data-testid="video-add-track-drop"
       data-track-index={trackIndex}
-      header={<span className="truncate text-muted-foreground text-xs">{STUDIO_COPY.timeline.addTrack}</span>}
+      header={
+        <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
+          <PlusIcon aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="truncate">{STUDIO_COPY.timeline.newTrack}</span>
+        </span>
+      }
       height={NEW_TRACK_ROW_HEIGHT_PX}
       onDragLeave={() => setOver(false)}
       onDragOver={(event) => {

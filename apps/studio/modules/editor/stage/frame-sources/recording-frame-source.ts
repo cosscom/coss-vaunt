@@ -70,7 +70,7 @@ export function createRecordingFrameSource({
     requestedFrame = frame;
     const image = new Image();
     image.src = `${directoryUrl}/frames/${frameFileName(frame, "png")}`;
-    void image
+    return image
       .decode()
       .then(() => {
         if (requestedFrame !== frame) return;
@@ -105,7 +105,14 @@ export function createRecordingFrameSource({
       shownFrame = -1;
       cancelStill();
       requestedFrame = frame;
-      timer = setTimeout(() => loadStill(frame), STILL_DELAY_MS);
+      timer = setTimeout(() => void loadStill(frame), STILL_DELAY_MS);
+    },
+    prepare(time) {
+      if (fallback.source) return fallback.source.prepare(time);
+      const frame = recordingFrameAt(time, manifest.fps, manifest.frameCount);
+      if (frame === shownFrame && frame === stillFrame) return Promise.resolve();
+      cancelStill();
+      return loadStill(frame);
     },
     idle() {
       cancelStill();
@@ -200,6 +207,25 @@ function createImageSequenceSource({
           shown = url;
           shownFrame = proxy ? frame : -1;
           if (!playing) onFrame();
+        })
+        .catch(() => undefined);
+    },
+    prepare(time) {
+      playing = false;
+      const frame = Math.min(manifest.frameCount - 1, Math.max(0, Math.round(time * manifest.fps)));
+      const url = frameUrl(frame, false);
+      if (url === shown) return Promise.resolve();
+      wanted = url;
+      wantedFrame = frame;
+      return load(url)
+        .then((image) => {
+          if (wanted !== url) return;
+          if (texture.image instanceof HTMLImageElement && texture.image.naturalWidth !== image.naturalWidth)
+            texture.dispose();
+          texture.image = image;
+          texture.needsUpdate = true;
+          shown = url;
+          shownFrame = -1;
         })
         .catch(() => undefined);
     },

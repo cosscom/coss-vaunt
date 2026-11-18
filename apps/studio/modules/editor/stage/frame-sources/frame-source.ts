@@ -10,6 +10,8 @@ export type FrameSource = {
   size: { width: number; height: number };
   /** Brings the texture to `time` seconds into the source; `playing` picks smooth over exact. */
   show: (time: number, playing: boolean) => void;
+  /** Export: holds exactly the frame for `time` at full quality, resolving once the texture has it. */
+  prepare: (time: number) => Promise<void>;
   /** The clip is off screen: stop decoding. */
   idle: () => void;
   dispose: () => void;

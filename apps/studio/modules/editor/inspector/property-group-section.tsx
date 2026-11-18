@@ -1,5 +1,6 @@
 "use client";
 
+import { aspectRatioSize } from "@calcom/product-video/stage/frame-letterbox";
 import { evaluateProperty } from "@calcom/product-video/storyboard/property-evaluation";
 import {
   PROPERTY_KEYS,
@@ -28,9 +29,11 @@ import { InspectorSection } from "./inspector-section";
 import { keyframeState } from "./keyframe-state";
 import { propertyFormat, propertySliderRange } from "./property-controls";
 import { RotationSphere } from "./rotation-sphere";
+import { TransformPad } from "./transform-pad";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const ROTATION_KEYS = ["rotateX", "rotateY", "rotateZ"] as const;
+const TRANSFORM_KEYS = ["x", "y", "scale"] as const;
 const menuCopy = STUDIO_COPY.timeline.menu;
 
 type PropertyGroupSectionProps = {
@@ -61,13 +64,16 @@ export function PropertyGroupSection({
   const localTime = editLocalTime(clip, time, editor.project.settings.fps);
   const tolerance = frameTolerance(editor.project.settings.fps);
   const withSphere = group === "device";
+  const withPad = group === "clip";
   const keys =
     shownKeys ??
     PROPERTY_KEYS.filter(
       (key) =>
         PROPERTY_SPECS[key].group === group &&
-        !(withSphere && ROTATION_KEYS.some((rotation) => rotation === key))
+        !(withSphere && ROTATION_KEYS.some((rotation) => rotation === key)) &&
+        !(withPad && TRANSFORM_KEYS.some((transform) => transform === key))
     );
+  const output = aspectRatioSize(editor.project.settings.aspectRatio);
   const count = keyframeCount(clip, group);
   const currentValue = (key: PropertyKey) => {
     const property = clip.properties[key];
@@ -124,6 +130,34 @@ export function PropertyGroupSection({
               />
             </div>
           ) : null}
+          {withPad ? (
+            <div data-property-key={lastTransformKey(editor.lastProperty)}>
+              <TransformPad
+                aspect={output.width / output.height}
+                keyframes={{
+                  x: keyframeState(clip.properties.x, localTime, tolerance),
+                  y: keyframeState(clip.properties.y, localTime, tolerance),
+                  scale: keyframeState(clip.properties.scale, localTime, tolerance),
+                }}
+                onChange={(key, value) =>
+                  editor.setCompoundAtPlayhead(clip.id, key, value, `transform:${clip.id}`)
+                }
+                onReset={() => {
+                  for (const key of TRANSFORM_KEYS)
+                    editor.setCompoundAtPlayhead(
+                      clip.id,
+                      key,
+                      PROPERTY_SPECS[key].defaultValue,
+                      `transform:${clip.id}`
+                    );
+                }}
+                onToggleKeyframe={(key) => editor.toggleKeyframe(clip.id, key)}
+                scale={currentValue("scale")}
+                x={currentValue("x")}
+                y={currentValue("y")}
+              />
+            </div>
+          ) : null}
           {keys.map((key) => {
             const spec = PROPERTY_SPECS[key];
             return (
@@ -169,6 +203,11 @@ export function PropertyGroupSection({
       </ContextMenu>
     </InspectorSection>
   );
+}
+
+/** Right-clicking the pad acts on the transform value last edited, scale by default. */
+function lastTransformKey(key: PropertyKey | null): PropertyKey {
+  return TRANSFORM_KEYS.find((transform) => transform === key) ?? "scale";
 }
 
 /** Right-clicking the sphere acts on the rotation axis last edited, Y by default. */

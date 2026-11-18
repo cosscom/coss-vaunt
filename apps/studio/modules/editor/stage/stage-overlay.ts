@@ -1,7 +1,8 @@
-import { blurGuideShapes } from "@calcom/product-video/stage/blur-guides";
+import { type BlurGuideShapes, blurGuideShapes } from "@calcom/product-video/stage/blur-guides";
 import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
 import { type CanvasMode, dragTarget } from "@calcom/product-video/stage/canvas-drag";
 import { deviceOutline } from "@calcom/product-video/stage/clip-picking";
+import { type CursorSource, withBlurOnCursor } from "@calcom/product-video/stage/cursor-focus";
 import { depthOfFieldParams } from "@calcom/product-video/stage/depth-of-field";
 import {
   type RotationGizmo,
@@ -13,7 +14,7 @@ import {
   evaluateClipProperties,
   type PropertyValues,
 } from "@calcom/product-video/storyboard/property-evaluation";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { BlurSettings, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
 import { drawBlurGuides } from "./blur-guides-drawing";
 import { drawRotationGizmo } from "./rotation-gizmo-drawing";
@@ -39,6 +40,8 @@ export type StageOverlayState = {
   outlineSelection: boolean;
   /** Where a text layer is drawn; text is HTML, so the stage panel measures it. */
   textRect: (clipId: string) => FrameRect | null;
+  /** A clip's recorded cursor, so blur guides that follow it draw where the blur is. */
+  cursorFor: (clipId: string) => CursorSource | null;
 };
 
 type LayerAt = (clipId: string) => LayerGeometry | null;
@@ -66,24 +69,45 @@ export function rotationGizmoTarget(
   return { clipId: entry.clip.id, values, geometry, gizmo: rotationGizmo(geometry, values) };
 }
 
+export type BlurGuideTarget = {
+  clipId: string;
+  values: PropertyValues;
+  geometry: LayerGeometry;
+  settings: BlurSettings;
+  shapes: BlurGuideShapes;
+};
+
+/** The blur guides on the clip a canvas drag would edit, while blur is edited or in Focus mode. */
+export function blurGuideTarget(
+  state: StageOverlayState,
+  time: number,
+  layerAt: LayerAt
+): BlurGuideTarget | null {
+  if (!state.blurEditing && state.mode !== "focus") return null;
+  const entry = dragTarget(activeClipsAt(state.project, time), state.selectedClipId);
+  const geometry = entry ? layerAt(entry.clip.id) : null;
+  const settings = entry ? resolveBlurSettings(entry.clip) : null;
+  if (!entry || !geometry || !settings?.enabled) return null;
+  const values = withBlurOnCursor(
+    entry.clip,
+    evaluateClipProperties(entry.clip, entry.localTime),
+    entry.localTime,
+    state.cursorFor(entry.clip.id)
+  );
+  const params = depthOfFieldParams(settings, values, geometry);
+  const shapes = blurGuideShapes(settings, params, geometry, [values.focusX, values.focusY]);
+  return { clipId: entry.clip.id, values, geometry, settings, shapes };
+}
+
 function drawBlur(
   context: CanvasRenderingContext2D,
   state: StageOverlayState,
   time: number,
   layerAt: LayerAt
 ) {
-  if (!state.blurEditing && state.mode !== "focus") return false;
-  const entry = dragTarget(activeClipsAt(state.project, time), state.selectedClipId);
-  const geometry = entry ? layerAt(entry.clip.id) : null;
-  const settings = entry ? resolveBlurSettings(entry.clip) : null;
-  if (!entry || !geometry || !settings?.enabled) return false;
-  const values = evaluateClipProperties(entry.clip, entry.localTime);
-  const params = depthOfFieldParams(settings, values, geometry);
-  drawBlurGuides(
-    context,
-    blurGuideShapes(settings, params, geometry, [values.focusX, values.focusY]),
-    state.frame
-  );
+  const target = blurGuideTarget(state, time, layerAt);
+  if (!target) return false;
+  drawBlurGuides(context, target.shapes);
   return true;
 }
 

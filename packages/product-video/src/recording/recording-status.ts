@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Clip, Project } from "../storyboard/storyboard-schema";
 import { captureHashForClip } from "./capture-hash";
+import { ensureRecordingTake } from "./link-recording-take";
 import type { RecordingStatusEvent } from "./recording-events";
 import { RECORDING_MANIFEST_FILE, type RecordingManifest, recordingDirectory } from "./recording-manifest";
 
@@ -36,6 +37,7 @@ export async function recordingStatus({
   projectDir: string;
 }): Promise<RecordingStatusEvent> {
   const captureHash = captureHashForClip({ project, clip, theme });
+  await ensureRecordingTake({ projectDir, clipId: clip.id, captureHash });
   const manifest = await readRecordingManifest(
     path.join(projectDir, recordingDirectory(clip.id, captureHash))
   );

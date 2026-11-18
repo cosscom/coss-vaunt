@@ -15,7 +15,7 @@ describe("createProject", () => {
   it("starts with the default device", () => {
     expect(project.settings.device).toEqual({
       cornerRadius: 16,
-      contactShadow: true,
+      contactShadow: false,
       plinth: false,
       reflection: 0,
     });

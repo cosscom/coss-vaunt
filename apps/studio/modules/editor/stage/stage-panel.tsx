@@ -5,14 +5,21 @@ import { aspectRatioSize, letterbox } from "@calcom/product-video/stage/frame-le
 import type { PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
-import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RotateCwIcon } from "@coss/ui/icons";
+import { Button } from "@coss/ui/components/button";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
+import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RefreshCwIcon, RotateCwIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";
 import { STAGE_COPY as copy } from "./stage-copy";
-import { drawStageOverlay, rotationGizmoTarget, type StageOverlayState } from "./stage-overlay";
+import {
+  blurGuideTarget,
+  drawStageOverlay,
+  rotationGizmoTarget,
+  type StageOverlayState,
+} from "./stage-overlay";
 import { clipAtPoint, textRectFor } from "./stage-picking";
 import { createStageRenderer, type StageRenderer } from "./stage-renderer";
 import { textColorForBackground } from "./text/text-contrast";
@@ -26,7 +33,7 @@ export type StagePanelProps = {
   selectedClipId: string | null;
   /** Exactly one clip is selected, so Rotate mode shows the rotation gizmo on it. */
   singleClipSelected: boolean;
-  /** The inspector's Blur section is being edited, so the stage shows blur guides. */
+  /** The inspector's Blur section is being edited or a Blur lane is selected, so the stage shows blur guides. */
   blurEditing: boolean;
   /** Called by canvas drags (every canvas mode); the editor applies `setPropertyAt` at the playhead. */
   onSetProperty: (clipId: string, key: PropertyKey, value: number) => void;
@@ -98,6 +105,7 @@ export function StagePanel({
     hoveredClipId: null,
     outlineSelection: tool === "select",
     textRect: () => null,
+    cursorFor: () => null,
   });
   const layerAt = (clipId: string) => stage.current?.renderer.layerGeometry(clipId) ?? null;
   const hasText = project.videoTracks.some((track) =>
@@ -145,7 +153,8 @@ export function StagePanel({
       stage.current = null;
       renderer.dispose();
     };
-  }, [clock]);
+    // `createStageRenderer` changes identity when hot reload swaps its module, so an open editor gets the new code.
+  }, [clock, createStageRenderer]);
 
   useEffect(() => {
     stage.current?.renderer.setProject(project);
@@ -166,7 +175,7 @@ export function StagePanel({
     frameElement ? clipAtPoint({ frameElement, project, time: clock.getState().time, layerAt, x, y }) : null;
   const textRect = (clipId: string) => (frameElement ? textRectFor(frameElement, clipId) : null);
 
-  const { dragging, activeRing, handlers } = useCanvasDrag({
+  const { dragging, activeRing, blurHandle, handlers } = useCanvasDrag({
     element: frameElement,
     mode,
     project,
@@ -179,6 +188,7 @@ export function StagePanel({
     selecting: tool === "select",
     pickAt,
     onPick: onSelectClip,
+    blurGuidesAt: () => blurGuideTarget(latest.current, clock.getState().time, layerAt),
   });
   const hover = useStageHover({
     pick: (event) => {
@@ -186,7 +196,7 @@ export function StagePanel({
       return pickAt(event.clientX - bounds.left, event.clientY - bounds.top);
     },
     selectedClipId,
-    canSelect: (event) => event.buttons === 0 && !clock.getState().playing && !activeRing,
+    canSelect: (event) => event.buttons === 0 && !clock.getState().playing && !activeRing && !blurHandle,
     onSelect: (clipId) => onSelectClip(clipId, false),
   });
   const hoveredClipId = hover.hoveredClipId;
@@ -202,6 +212,7 @@ export function StagePanel({
       hoveredClipId,
       outlineSelection: tool === "select",
       textRect,
+      cursorFor: (clipId) => stage.current?.renderer.cursorFor(clipId) ?? null,
     };
   });
 
@@ -212,7 +223,7 @@ export function StagePanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
-      <div className="flex h-11 shrink-0 items-center px-3">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-2 px-3">
         <SegmentedRadioGroup
           aria-label={copy.canvasMode}
           onValueChange={(next) => {
@@ -242,20 +253,39 @@ export function StagePanel({
             {copy.focus}
           </SegmentedRadio>
         </SegmentedRadioGroup>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                aria-label={copy.refreshMedia}
+                onClick={() => {
+                  stage.current?.renderer.refreshMedia();
+                  stage.current?.invalidate();
+                }}
+                size="icon-sm"
+                variant="ghost"
+              />
+            }>
+            <RefreshCwIcon aria-hidden="true" />
+          </TooltipTrigger>
+          <TooltipPopup>{copy.refreshMediaHint}</TooltipPopup>
+        </Tooltip>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden" ref={setArea}>
         <div
           className={cn(
             "absolute touch-none select-none overflow-hidden shadow-lg/5",
-            mode === "focus"
-              ? "cursor-crosshair"
-              : activeRing
-                ? "cursor-pointer"
-                : dragging
-                  ? "cursor-grabbing"
-                  : tool === "select"
-                    ? "cursor-default"
-                    : "cursor-grab"
+            blurHandle === "angle" || blurHandle === "range"
+              ? "cursor-pointer"
+              : mode === "focus" || blurHandle === "focus"
+                ? "cursor-crosshair"
+                : activeRing
+                  ? "cursor-pointer"
+                  : dragging
+                    ? "cursor-grabbing"
+                    : tool === "select"
+                      ? "cursor-default"
+                      : "cursor-grab"
           )}
           ref={setFrameElement}
           style={{ left: frame.x, top: frame.y, width: frame.width, height: frame.height }}

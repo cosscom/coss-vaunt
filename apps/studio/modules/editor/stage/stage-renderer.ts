@@ -1,6 +1,7 @@
 import { type LayerGeometry, layerGeometry } from "@calcom/product-video/stage/camera-projection";
 import { deviceWorldSize } from "@calcom/product-video/stage/camera-rig";
 import { type ClipLayer, resolveClipLayers } from "@calcom/product-video/stage/clip-layers";
+import type { CursorSource } from "@calcom/product-video/stage/cursor-focus";
 import { cursorPlaneLayout } from "@calcom/product-video/stage/cursor-plane-layout";
 import { cursorFrameAt } from "@calcom/product-video/stage/cursor-track";
 import { depthOfFieldParams } from "@calcom/product-video/stage/depth-of-field";
@@ -18,9 +19,15 @@ import { STAGE_COPY } from "./stage-copy";
 
 export type StageRenderer = {
   setProject: (project: Project) => void;
+  /** Reloads every clip's media: recordings, imports, images and cursor paths. */
+  refreshMedia: () => void;
   setSize: (width: number, height: number, pixelRatio: number) => void;
+  /** Export: loads every visible clip's media for `time` at full quality; draw with `render(time, false)` once it resolves. */
+  prepare: (time: number) => Promise<void>;
   /** Draws the composition at `time`; `playing` lets video sources run instead of seeking. */
   render: (time: number, playing: boolean) => void;
+  /** A recording clip's cursor path, once loaded, for guides that follow it. */
+  cursorFor: (clipId: string) => CursorSource | null;
   /** Where a clip drawn by the last render sits, for overlays and canvas tools; null when it wasn't drawn. */
   layerGeometry: (clipId: string) => LayerGeometry | null;
   dispose: () => void;
@@ -38,12 +45,20 @@ function sourceTime(clip: Clip, localTime: number): number {
 export function createStageRenderer({
   canvas,
   onInvalidate,
+  forExport = false,
 }: {
   canvas: HTMLCanvasElement;
   /** A frame source has a new frame to show while paused. */
   onInvalidate: () => void;
+  /** Rendering an export: keeps each drawn frame for the screenshot and never swaps sources mid-render. */
+  forExport?: boolean;
 }): StageRenderer {
-  const renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  const renderer = new WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: "high-performance",
+    preserveDrawingBuffer: forExport,
+  });
   renderer.autoClear = false;
   const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
 
@@ -59,6 +74,7 @@ export function createStageRenderer({
     maxAnisotropy,
     placeholderLabel: STAGE_COPY.notRecorded,
     onFrame: onInvalidate,
+    upgrade: !forExport,
   });
   const cursorTracks = createCursorTracks({ onLoad: onInvalidate });
   let depthOfField: DepthOfField | null = null;
@@ -102,6 +118,22 @@ export function createStageRenderer({
       }
       background.update(next.settings.background, frame);
     },
+    cursorFor: (clipId) => cursorTracks.get(clipId),
+    async prepare(time) {
+      if (!project) return;
+      const videos = activeClipsAt(project, time).filter((entry) => entry.clip.source.kind !== "text");
+      await Promise.all(
+        videos.flatMap(({ clip, localTime }) => [
+          sources.prepare(clip.id, sourceTime(clip, localTime)),
+          cursorTracks.prepare(clip.id),
+        ])
+      );
+    },
+    refreshMedia() {
+      if (!project) return;
+      sources.refresh(project);
+      cursorTracks.refresh(project);
+    },
     setSize(width, height, ratio) {
       frame = { width: Math.max(1, width), height: Math.max(1, height) };
       pixelRatio = ratio;
@@ -118,6 +150,7 @@ export function createStageRenderer({
           const size = sources.get(clipId)?.size;
           return size ? deviceWorldSize(size) : null;
         },
+        cursorFor: (clipId) => cursorTracks.get(clipId),
       });
       sources.idleExcept(new Set(layers.map((layer) => layer.active.clip.id)));
       geometries.clear();

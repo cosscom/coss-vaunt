@@ -1,3 +1,4 @@
+import { angleAt, type BlurHandle, blurHandleAt, rangeAt } from "@calcom/product-video/stage/blur-handles";
 import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
 import {
   type CanvasMode,
@@ -25,7 +26,7 @@ import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackClock } from "../player/playback-clock";
-import type { GizmoTarget } from "./stage-overlay";
+import type { BlurGuideTarget, GizmoTarget } from "./stage-overlay";
 
 /** Wheel events closer together than this build on each other before the project catches up. */
 const WHEEL_BURST_MS = 250;
@@ -39,6 +40,8 @@ type Drag = {
   x: number;
   y: number;
   ring: RingDrag | null;
+  /** Which blur guide the press grabbed, when the guides show. */
+  blur: { handle: BlurHandle; target: BlurGuideTarget } | null;
 };
 type SetProperty = (clipId: string, key: PropertyKey, value: number) => void;
 
@@ -82,6 +85,7 @@ export function useCanvasDrag({
   selecting,
   pickAt,
   onPick,
+  blurGuidesAt,
 }: {
   element: HTMLElement | null;
   mode: CanvasMode;
@@ -99,8 +103,17 @@ export function useCanvasDrag({
   /** The clip drawn under a frame point (CSS px). */
   pickAt: (x: number, y: number) => string | null;
   onPick: (clipId: string | null, additive: boolean) => void;
-}): { dragging: boolean; activeRing: RotationKey | null; handlers: React.HTMLAttributes<HTMLElement> } {
+  /** The blur guides on the stage, when they show: the crosshair moves the focus, the dashed edge sets the range, the dot the angle. */
+  blurGuidesAt: () => BlurGuideTarget | null;
+}): {
+  dragging: boolean;
+  activeRing: RotationKey | null;
+  /** The blur guide under the pointer, when the guides show. */
+  blurHandle: BlurHandle | null;
+  handlers: React.HTMLAttributes<HTMLElement>;
+} {
   const [dragging, setDragging] = useState(false);
+  const [blurHandle, setBlurHandle] = useState<BlurHandle | null>(null);
   const [activeRing, setActiveRing] = useState<RotationKey | null>(null);
   const drag = useRef<Drag | null>(null);
   const latest = useRef({ project, selectedClipId, frame, onSetProperty });
@@ -125,6 +138,16 @@ export function useCanvasDrag({
     const gizmo = gizmoAt();
     const key = gizmo ? hitRing(gizmo.gizmo, framePoint(event)) : null;
     return gizmo && key ? { key, target: gizmo } : null;
+  };
+
+  /** The blur guide under the pointer; in Focus mode a press anywhere else moves the focus too. */
+  const blurUnder = (event: React.PointerEvent<HTMLElement>) => {
+    const target = blurGuidesAt();
+    if (!target) return null;
+    const handle = blurHandleAt(target.shapes, framePoint(event)) ?? (mode === "focus" ? "focus" : null);
+    // A blur that follows the cursor has no focus point of its own to move.
+    if (handle === "focus" && target.settings.followCursor) return null;
+    return handle ? { handle, target } : null;
   };
 
   const focusUnder = (current: Drag, event: React.PointerEvent<HTMLElement>) => {
@@ -159,8 +182,13 @@ export function useCanvasDrag({
     onPointerDown(event) {
       if (event.button !== 0) return;
       const ring = ringUnder(event);
-      let found = ring ? { clipId: ring.target.clipId, values: ring.target.values } : target();
-      if (selecting && !ring) {
+      const blur = ring ? null : blurUnder(event);
+      let found = ring
+        ? { clipId: ring.target.clipId, values: ring.target.values }
+        : blur
+          ? { clipId: blur.target.clipId, values: blur.target.values }
+          : target();
+      if (selecting && !ring && !blur) {
         const additive = event.shiftKey || event.metaKey || event.ctrlKey;
         const picked = pickAt(...framePoint(event));
         onPick(picked, additive);
@@ -178,14 +206,29 @@ export function useCanvasDrag({
         x: event.clientX,
         y: event.clientY,
         ring: ring ? { ...ring, last: framePoint(event), turned: 0 } : null,
+        blur,
       };
       setDragging(true);
-      if (mode === "focus") focusUnder(drag.current, event);
+      if (blur?.handle === "focus") focusUnder(drag.current, event);
     },
     onPointerMove(event) {
       const current = drag.current;
       if (!current || current.pointerId !== event.pointerId) {
-        if (!current) setActiveRing(ringUnder(event)?.key ?? null);
+        if (!current) {
+          setActiveRing(ringUnder(event)?.key ?? null);
+          setBlurHandle(blurUnder(event)?.handle ?? null);
+        }
+        return;
+      }
+      if (current.blur && current.blur.handle !== "focus") {
+        const { handle, target: blurTarget } = current.blur;
+        const geometry = layerGeometry(current.clipId) ?? blurTarget.geometry;
+        const [x, y] = framePoint(event);
+        const changes =
+          handle === "angle"
+            ? angleAt(geometry, current.start, x, y)
+            : rangeAt(geometry, current.start, blurTarget.settings.mode, x, y);
+        if (changes) apply(current.clipId, changes, current.start);
         return;
       }
       if (current.ring) {
@@ -196,7 +239,7 @@ export function useCanvasDrag({
         apply(current.clipId, ringRotation(key, current.start[key], current.ring.turned), current.start);
         return;
       }
-      if (mode === "focus") {
+      if (current.blur?.handle === "focus" || mode === "focus") {
         focusUnder(current, event);
         return;
       }
@@ -223,7 +266,9 @@ export function useCanvasDrag({
       setDragging(false);
     },
     onPointerLeave() {
-      if (!drag.current) setActiveRing(null);
+      if (drag.current) return;
+      setActiveRing(null);
+      setBlurHandle(null);
     },
     onDoubleClick() {
       if (selecting) return;
@@ -232,5 +277,5 @@ export function useCanvasDrag({
     },
   };
 
-  return { dragging, activeRing, handlers };
+  return { dragging, activeRing, blurHandle, handlers };
 }

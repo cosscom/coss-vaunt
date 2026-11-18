@@ -61,3 +61,22 @@ describe("screen-space depth of field", () => {
     expect(blurAt(tiltShift, { focusRange: 0.2, blurAngle: 90 }, 0, 1)).toBe(0);
   });
 });
+
+describe("depth of field measured on the device", () => {
+  const radial: BlurSettings = { ...lens, mode: "radial" };
+
+  it("keeps the same patch of the recording sharp however the device turns", () => {
+    for (const change of [{}, { rotateY: 60 }, { rotateX: -45, rotateZ: 30 }, { cameraY: 40, zoom: 2 }]) {
+      const focus = { ...change, focusX: -0.4, focusY: 0.3, focusRange: 0.2 };
+      expect(blurAt(radial, focus, -0.35, 0.3)).toBe(0);
+      expect(blurAt(radial, focus, 0.6, -0.6)).toBe(1);
+    }
+  });
+
+  it("keeps a tilt-shift band along the device's own width as it rolls", () => {
+    const tiltShift: BlurSettings = { ...lens, mode: "tilt-shift" };
+    const rolled = { rotateZ: 40, focusRange: 0.1 };
+    expect(blurAt(tiltShift, rolled, 0.9, 0)).toBe(0);
+    expect(blurAt(tiltShift, rolled, 0, 0.9)).toBe(1);
+  });
+});

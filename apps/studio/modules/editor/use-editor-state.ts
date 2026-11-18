@@ -11,6 +11,7 @@ import { type Board, EMPTY_BOARD } from "@calcom/product-video/storyboard/board-
 import {
   PROPERTY_KEYS,
   PROPERTY_SPECS,
+  type PropertyGroup,
   type PropertyKey,
 } from "@calcom/product-video/storyboard/property-specs";
 import {
@@ -46,6 +47,7 @@ import {
   removeVideoTrack,
   resetCamera,
   resetProperty,
+  resetPropertyGroup,
   setCompoundPropertyAt,
   setKeyframeEase,
   setPropertyAt,
@@ -282,7 +284,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       }
       if (lanes.selected.length > 0 && primaryClip) {
         const removed = lanes.selected;
-        commit(updateClip(project, primaryClip.id, (clip) => removeLanes(clip, removed, atPlayhead(clip))));
+        commit(updateClip(project, primaryClip.id, (clip) => removeLanes(clip, removed)));
         setLanes((current) => ({
           selected: [],
           shown: current.shown.filter((key) => !removed.includes(key)),
@@ -489,6 +491,8 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
         );
     },
     resetCamera: (clipId: string) => editClip(clipId, resetCamera),
+    resetPropertyGroup: (clipId: string, group: PropertyGroup) =>
+      editClip(clipId, (clip) => resetPropertyGroup(clip, group)),
     resetProperty: (clipId: string, key: PropertyKey) => editClip(clipId, (clip) => resetProperty(clip, key)),
     setKeyframesEase: (clipId: string, refs: SelectedKeyframe[], ease: Ease, group?: string) =>
       editClip(

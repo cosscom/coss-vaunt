@@ -1,6 +1,6 @@
 import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
 import type { Action, Clip, Project } from "../storyboard/storyboard-schema";
-import { captureDpr } from "./capture-dpr";
+import { captureDpr, MAX_CAPTURE_DPR, MIN_CAPTURE_DPR } from "./capture-dpr";
 import { type ReplayStep, replayChain } from "./replay-chain";
 
 /** Bump when the recorder changes what it captures, so old recordings stop matching. */
@@ -89,4 +89,20 @@ export function captureHash(spec: CaptureSpec): string {
 
 export function captureHashForClip(args: Parameters<typeof captureSpecFor>[0]): string {
   return captureHash(captureSpecFor(args));
+}
+
+/**
+ * The clip's capture hash at every DPR: the one its peak zoom needs, then sharper, then softer. Zooming a
+ * clip in raises the DPR it needs, so a take that differs only in DPR stands in until it is re-recorded.
+ */
+export function captureHashesForClip(args: Parameters<typeof captureSpecFor>[0]): string[] {
+  const spec = captureSpecFor(args);
+  const sharper = Array.from({ length: MAX_CAPTURE_DPR - spec.dpr }, (_, index) => spec.dpr + index + 1);
+  const softer = Array.from({ length: spec.dpr - MIN_CAPTURE_DPR }, (_, index) => spec.dpr - index - 1);
+  return [spec.dpr, ...sharper, ...softer].map((dpr) => captureHash({ ...spec, dpr }));
+}
+
+/** What the clip captures apart from its DPR: stays put while zoom edits change the DPR it needs. */
+export function captureContentKey(args: Parameters<typeof captureSpecFor>[0]): string {
+  return captureHash({ ...captureSpecFor(args), dpr: 0 });
 }

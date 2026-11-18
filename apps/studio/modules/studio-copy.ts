@@ -1,7 +1,6 @@
 export const STUDIO_COPY = {
   appName: "Studio",
   appDescription: "Product videos of the Cal.com UI, recorded from the real app.",
-  comingSoon: "Coming soon",
   toggleAppTheme: "Toggle app theme",
   projects: {
     title: "Projects",
@@ -151,6 +150,50 @@ export const STUDIO_COPY = {
       missingFile: (title: string) => `Pick a file for “${title}”`,
     },
   },
+  exportDialog: {
+    title: "Export",
+    description: "Every frame is rendered at full quality, so this takes a few minutes.",
+    presets: {
+      web: { name: "Web", detail: "MP4 · small, starts playing straight away" },
+      social: { name: "Social", detail: "MP4 · high bitrate for X, LinkedIn and YouTube" },
+      lossless: { name: "Lossless", detail: "ProRes 4444 .mov master for editing" },
+    },
+    custom: "Custom",
+    resolution: "Resolution",
+    frameRate: "Frame rate",
+    fps: (fps: number) => `${fps} fps`,
+    bitrate: "Bitrate",
+    bitrateUnit: "Mbps",
+    bitrateLossless: "Lossless",
+    audio: "Audio",
+    noAudio: "No audio on the timeline",
+    summary: (format: string, width: number, height: number, fps: number, size: string) =>
+      `${format} · ${width} × ${height} · ${fps} fps · about ${size}`,
+    start: "Export",
+    waitForSave: "Saving changes…",
+    phases: {
+      load: "Opening the project…",
+      audio: "Mixing audio…",
+      frames: "Rendering frames",
+      encode: "Finishing the file…",
+    },
+    frameProgress: (frame: number, frameCount: number) => `Frame ${frame} of ${frameCount}`,
+    timeLeft: (seconds: number) =>
+      seconds >= 90
+        ? `about ${Math.round(seconds / 60)} min left`
+        : `about ${Math.max(1, Math.round(seconds))} s left`,
+    cancel: "Cancel export",
+    keepsRunning: "You can close this; the export keeps going.",
+    done: "Export ready",
+    download: "Download",
+    another: "Export another",
+    failed: "Export failed",
+    tryAgain: "Try again",
+    close: "Close",
+    exporting: (percent: number) => `Exporting ${percent}%`,
+    fileSize: (bytes: number) =>
+      bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${(bytes / 1e6).toFixed(bytes >= 1e7 ? 0 : 1)} MB`,
+  },
   drift: {
     title: "Close-up",
     description: "Frame part of the media up close and let it drift slowly across the clip.",
@@ -158,6 +201,8 @@ export const STUDIO_COPY = {
     turnOff: "Remove the close-up",
     focus: "Focus point",
     focusValue: (x: number, y: number) => `${x}% across, ${y}% down from the centre`,
+    followCursor: "Follow cursor",
+    followCursorHint: "Glides after the recorded cursor; the focus point is used while it’s hidden.",
     zoom: "Zoom",
     motion: "Motion",
     motions: { none: "Still", slide: "Slide", tilt: "Tilt", "slide-tilt": "Both" },
@@ -198,6 +243,15 @@ export const STUDIO_COPY = {
     matchesScript: "Matches the script",
   },
   inspector: {
+    transformPad: {
+      label: "Clip position and scale",
+      roleDescription: "transform pad",
+      axes: { x: "X", y: "Y", scale: "Scale" },
+      valueText: (x: number, y: number, scale: number) =>
+        `X ${x.toFixed(2).replace("-", "−")}, Y ${y.toFixed(2).replace("-", "−")}, scale ${scale.toFixed(2)}×`,
+      instructions:
+        "Drag the clip to move it, hold Shift to move along one axis, drag a corner to scale it. Arrow keys move, [ and ] scale. Double-click to reset.",
+    },
     title: "Inspector",
     projectTitle: "Project",
     selectedCount: (count: number) => `${count} selected`,
@@ -222,9 +276,9 @@ export const STUDIO_COPY = {
     align: "Align",
     enter: "Enter",
     exit: "Exit",
-    focus: "Focus",
-    focusPlaceholder: "CSS selector, optional",
     deviceGroup: "Device",
+    resetDevice: "Reset device",
+    resetTransform: "Reset transform",
     rotation: "Rotation",
     camera: "Camera",
     clipGroup: "Transform",
@@ -235,6 +289,7 @@ export const STUDIO_COPY = {
       modes: { lens: "Lens", radial: "Radial", directional: "Directional", "tilt-shift": "Tilt shift" },
       focus: "Focus",
       focusModes: { auto: "Auto", manual: "Manual" },
+      followCursor: "Follow cursor",
       reset: "Reset blur",
     },
     cursor: {
@@ -307,7 +362,8 @@ export const STUDIO_COPY = {
     noKeyframes: "No keyframes",
     laneLabel: (group: string, label: string) => `${group} · ${label}`,
     noClips: "Add a clip to start",
-    newTrackDrop: "Drop here to add a video track",
+    newTrack: "New track",
+    newTrackDrop: "Drop media or drag a clip here for a new track",
     noAudio: "No audio yet",
     ruler: "Timeline ruler",
     ease: "Ease",

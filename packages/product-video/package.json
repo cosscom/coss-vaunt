@@ -66,7 +66,12 @@
     "./ai/generation-jobs": "./src/ai/generation-jobs.ts",
     "./recording/recording-video": "./src/recording/recording-video.ts",
     "./project-store/project-still": "./src/project-store/project-still.ts",
-    "./stage/clip-picking": "./src/stage/clip-picking.ts"
+    "./stage/clip-picking": "./src/stage/clip-picking.ts",
+    "./stage/blur-handles": "./src/stage/blur-handles.ts",
+    "./stage/cursor-focus": "./src/stage/cursor-focus.ts",
+    "./export/export-settings": "./src/export/export-settings.ts",
+    "./export/export-events": "./src/export/export-events.ts",
+    "./export/export-jobs": "./src/export/export-jobs.ts"
   },
   "typesVersions": {
     "*": {
@@ -255,6 +260,21 @@
       ],
       "stage/clip-picking": [
         "./src/stage/clip-picking.ts"
+      ],
+      "stage/blur-handles": [
+        "./src/stage/blur-handles.ts"
+      ],
+      "stage/cursor-focus": [
+        "./src/stage/cursor-focus.ts"
+      ],
+      "export/export-settings": [
+        "./src/export/export-settings.ts"
+      ],
+      "export/export-events": [
+        "./src/export/export-events.ts"
+      ],
+      "export/export-jobs": [
+        "./src/export/export-jobs.ts"
       ]
     }
   },
@@ -264,7 +284,8 @@
     "type-check": "tsc --pretty --noEmit",
     "type-check:ci": "node \"$PROJECT_CWD/scripts/type-check-ci.js\" --pretty --noEmit",
     "record": "tsx src/recording/record-clip-cli.ts",
-    "backfill-videos": "tsx src/recording/backfill-recording-videos-cli.ts"
+    "backfill-videos": "tsx src/recording/backfill-recording-videos-cli.ts",
+    "export": "tsx src/export/export-video-cli.ts"
   },
   "dependencies": {
     "@calcom/ai": "workspace:*",

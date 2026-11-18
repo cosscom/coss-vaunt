@@ -99,6 +99,7 @@ describe("board draft prompts", () => {
       totalSeconds: 20,
     });
     expect(system).toContain("about 20 seconds");
+    expect(system).toContain("Never add recordings to fill time");
     expect(system).toContain("at most 8 seconds");
     expect(system).toContain("- /home (Home · Main Agent)");
     expect(system).toContain("composer: The chat composer");

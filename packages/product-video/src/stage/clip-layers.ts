@@ -3,6 +3,7 @@ import { PROPERTY_KEYS, PROPERTY_SPECS } from "../storyboard/property-specs";
 import type { ActiveClip } from "../storyboard/track-resolution";
 import type { Size } from "./camera-rig";
 import { aimPan, driftView } from "./clip-drift";
+import { CLOSE_UP_FOLLOW_SECONDS, type CursorSource, cursorFocusAt, withBlurOnCursor } from "./cursor-focus";
 
 /** One clip to draw, bottom first, with its transition folded into plain render parameters. */
 export type ClipLayer = {
@@ -36,14 +37,28 @@ function blendView(
 }
 
 /** Sizes a drift's focus point needs to become camera pan; without them the drift aims at the centre. */
-export type LayerSizes = { frame: Size; deviceFor: (clipId: string) => Size | null };
+export type LayerSizes = {
+  frame: Size;
+  deviceFor: (clipId: string) => Size | null;
+  /** The clip's recorded cursor, for a close-up or blur that follows it. */
+  cursorFor?: (clipId: string) => CursorSource | null;
+};
 
 function ownView(entry: ActiveClip, sizes: LayerSizes | undefined): PropertyValues {
-  const own = evaluateClipProperties(entry.clip, entry.localTime);
+  const cursor = sizes?.cursorFor?.(entry.clip.id);
+  const own = withBlurOnCursor(
+    entry.clip,
+    evaluateClipProperties(entry.clip, entry.localTime),
+    entry.localTime,
+    cursor
+  );
   const drift = entry.clip.drift;
   if (!drift) return own;
+  const followed =
+    drift.followCursor && cursor ? cursorFocusAt(cursor, entry.localTime, CLOSE_UP_FOLLOW_SECONDS) : null;
+  const focus = followed ?? drift.focus;
   const device = sizes?.deviceFor(entry.clip.id);
-  const aim = device && sizes ? aimPan(drift.focus, device, sizes.frame, own.fov) : { panX: 0, panY: 0 };
+  const aim = device && sizes ? aimPan(focus, device, sizes.frame, own.fov) : { panX: 0, panY: 0 };
   return driftView(own, drift, entry.localTime / entry.clip.duration, aim);
 }
 

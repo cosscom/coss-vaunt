@@ -6,6 +6,7 @@ import {
   DRIFT_MOTIONS,
   type Drift,
 } from "@calcom/product-video/storyboard/storyboard-schema";
+import { Label } from "@coss/ui/components/label";
 import { Slider } from "@coss/ui/components/slider";
 import { Switch } from "@coss/ui/components/switch";
 import { ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon } from "@coss/ui/icons";
@@ -260,7 +261,26 @@ export function DriftSection({ clip, editor }: { clip: Clip; editor: EditorState
         title={copy.title}>
         {drift ? (
           <>
-            <FocusPicker clip={clip} drift={drift} editor={editor} onChange={(focus) => change({ focus })} />
+            <div className="flex flex-col gap-2">
+              <Label className="flex cursor-pointer items-center justify-between gap-2 font-normal">
+                <span className="text-muted-foreground text-xs">{copy.followCursor}</span>
+                <Switch
+                  checked={drift.followCursor ?? false}
+                  onCheckedChange={(followCursor) => change({ followCursor })}
+                />
+              </Label>
+              {drift.followCursor ? (
+                <p className="text-muted-foreground text-xs">{copy.followCursorHint}</p>
+              ) : null}
+            </div>
+            <div className={cn(drift.followCursor && "opacity-64")}>
+              <FocusPicker
+                clip={clip}
+                drift={drift}
+                editor={editor}
+                onChange={(focus) => change({ focus })}
+              />
+            </div>
             <LabelledSlider
               label={copy.zoom}
               max={4}

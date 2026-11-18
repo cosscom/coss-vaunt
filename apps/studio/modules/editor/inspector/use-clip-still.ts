@@ -3,7 +3,7 @@
 import { frameFileName } from "@calcom/product-video/recording/recording-manifest";
 import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { useEffect, useState } from "react";
-import { loadRecording, recordingHashFor } from "../stage/frame-sources/recording-lookup";
+import { loadRecording, recordingTakesFor } from "../stage/frame-sources/recording-lookup";
 
 export type ClipStill = { kind: "image" | "video"; url: string; aspect: number | null };
 
@@ -13,14 +13,15 @@ const fileUrl = (filesUrl: string, file: string) =>
 /** A still of the clip's media to pick a point on: a recording's middle frame, an image, or an imported video. */
 export function useClipStill(project: Project, clip: Clip): ClipStill | null {
   const filesUrl = `/api/projects/${encodeURIComponent(project.id)}/files`;
-  const hash = clip.source.kind === "recording" ? recordingHashFor(project, clip) : null;
+  const takes = recordingTakesFor(project, clip);
+  const hashes = takes?.hashes.join(",") ?? "";
   const [recorded, setRecorded] = useState<{ key: string; still: ClipStill } | null>(null);
-  const key = `${clip.id}:${hash}`;
+  const key = `${clip.id}:${takes?.key ?? null}`;
 
   useEffect(() => {
-    if (!hash) return;
+    if (!hashes) return;
     let cancelled = false;
-    void loadRecording(filesUrl, clip.id, hash)
+    void loadRecording(filesUrl, clip.id, hashes.split(","))
       .then((recording) => {
         if (cancelled || !recording) return;
         const { manifest, directoryUrl } = recording;
@@ -29,7 +30,7 @@ export function useClipStill(project: Project, clip: Clip): ClipStill | null {
           ? `${directoryUrl}/proxy/${frameFileName(middle, "webp")}`
           : `${directoryUrl}/frames/${frameFileName(middle, "png")}`;
         setRecorded({
-          key: `${clip.id}:${hash}`,
+          key,
           still: { kind: "image", url, aspect: manifest.viewport.width / manifest.viewport.height },
         });
       })
@@ -37,7 +38,7 @@ export function useClipStill(project: Project, clip: Clip): ClipStill | null {
     return () => {
       cancelled = true;
     };
-  }, [filesUrl, clip.id, hash]);
+  }, [filesUrl, clip.id, key, hashes]);
 
   const { source } = clip;
   if (source.kind === "image") return { kind: "image", url: fileUrl(filesUrl, source.file), aspect: null };

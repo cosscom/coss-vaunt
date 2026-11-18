@@ -12,9 +12,6 @@ import {
   type BlurSettings,
   type Clip,
 } from "@calcom/product-video/storyboard/storyboard-schema";
-import { Button } from "@coss/ui/components/button";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
-import { RotateCcwIcon } from "@coss/ui/icons";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
 import { useRef } from "react";
@@ -23,6 +20,7 @@ import type { EditorState } from "../use-editor-state";
 import { InspectorRow } from "./inspector-row";
 import { InspectorSwitchRow } from "./inspector-switch-row";
 import { PropertyGroupSection } from "./property-group-section";
+import { SectionResetButton } from "./section-reset-button";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.inspector.blur;
@@ -57,27 +55,18 @@ export function BlurSection({
       onPointerEnter={() => engage({ pointer: true })}
       onPointerLeave={() => engage({ pointer: false })}>
       <PropertyGroupSection
-        action={
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  aria-label={copy.reset}
-                  onClick={() => editor.editClip(clip.id, resetBlur)}
-                  size="icon-xs"
-                  variant="ghost"
-                />
-              }>
-              <RotateCcwIcon aria-hidden="true" />
-            </TooltipTrigger>
-            <TooltipPopup>{copy.reset}</TooltipPopup>
-          </Tooltip>
-        }
+        action={<SectionResetButton label={copy.reset} onReset={() => editor.editClip(clip.id, resetBlur)} />}
         clip={clip}
         clock={clock}
         editor={editor}
         group="blur"
-        keys={settings.enabled ? blurPropertyKeys(settings) : []}
+        keys={
+          settings.enabled
+            ? blurPropertyKeys(settings).filter(
+                (key) => !(settings.followCursor && (key === "focusX" || key === "focusY"))
+              )
+            : []
+        }
         title={copy.title}>
         <InspectorSwitchRow
           checked={settings.enabled}
@@ -120,6 +109,13 @@ export function BlurSection({
                 </SegmentedRadioGroup>
               </InspectorRow>
             ) : null}
+            {settings.mode === "lens" && settings.focus === "manual" ? null : (
+              <InspectorSwitchRow
+                checked={settings.followCursor ?? false}
+                label={copy.followCursor}
+                onCheckedChange={(followCursor) => change({ followCursor })}
+              />
+            )}
           </>
         ) : null}
       </PropertyGroupSection>

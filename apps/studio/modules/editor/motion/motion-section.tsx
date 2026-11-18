@@ -122,7 +122,7 @@ export function MotionSection({ editor }: { editor: EditorState }): React.ReactE
   };
 
   return (
-    <Collapsible className="mt-auto shrink-0 border-t" defaultOpen>
+    <Collapsible className="shrink-0 border-t">
       <CollapsibleTrigger className="group flex h-10 w-full cursor-pointer items-center gap-2 px-4 text-start outline-none hover:bg-accent/40 focus-visible:bg-accent/60">
         <span className="flex-1 font-medium text-foreground text-sm">{copy.title}</span>
         <ChevronDownIcon

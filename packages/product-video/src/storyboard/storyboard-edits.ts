@@ -1,5 +1,5 @@
 import { evaluateProperty } from "./property-evaluation";
-import { PROPERTY_SPECS, type PropertyKey } from "./property-specs";
+import { PROPERTY_SPECS, type PropertyGroup, type PropertyKey } from "./property-specs";
 import { createVideoTrack } from "./storyboard-factories";
 import {
   type AnimatedProperty,
@@ -602,14 +602,9 @@ export function shiftKeyframes(clip: Clip, refs: readonly KeyframeRef[], delta: 
   }, clip);
 }
 
-/** Drops each property's keyframes, keeping the value it has at clip time `time`. */
-export function removeLanes(clip: Clip, keys: readonly PropertyKey[], time: number): Clip {
-  const properties = { ...clip.properties };
-  for (const key of keys) {
-    const property = properties[key];
-    if (property) properties[key] = { value: evaluateProperty(property, time), keyframes: [] };
-  }
-  return { ...clip, properties };
+/** Deleting lanes resets their properties: keyframes and value go, back to each property's default. */
+export function removeLanes(clip: Clip, keys: readonly PropertyKey[]): Clip {
+  return keys.reduce(resetProperty, clip);
 }
 
 export function resetProperty(clip: Clip, key: PropertyKey): Clip {
@@ -617,10 +612,15 @@ export function resetProperty(clip: Clip, key: PropertyKey): Clip {
   return { ...clip, properties };
 }
 
-export function resetCamera(clip: Clip): Clip {
+/** Every property of one inspector group back to its default, keyframes and all. */
+export function resetPropertyGroup(clip: Clip, group: PropertyGroup): Clip {
   return (Object.keys(clip.properties) as PropertyKey[])
-    .filter((key) => PROPERTY_SPECS[key].group === "camera")
+    .filter((key) => PROPERTY_SPECS[key].group === group)
     .reduce(resetProperty, clip);
+}
+
+export function resetCamera(clip: Clip): Clip {
+  return resetPropertyGroup(clip, "camera");
 }
 
 /** Sorted, de-duplicated keyframe times of a clip, limited to `refs` when given. */

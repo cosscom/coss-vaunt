@@ -18,8 +18,8 @@ import { STUDIO_COPY } from "@/modules/studio-copy";
 type SidebarTab = "storyboard" | "assets";
 
 /**
- * Storyboard and assets share the top of the left sidebar; motion presets and the easing editor stay pinned below. The storyboard
- * canvas takes whatever height the other sections leave.
+ * Storyboard and assets share the top of the left sidebar, with motion presets and the easing editor below. Open, the storyboard
+ * canvas takes whatever height the other sections leave; it starts collapsed once the timeline has clips.
  */
 export function LeftSidebar({
   editor,
@@ -29,7 +29,10 @@ export function LeftSidebar({
   clock: PlaybackClock;
 }): React.ReactElement {
   const [tab, setTab] = useState<SidebarTab>("storyboard");
-  const [open, setOpen] = useState(true);
+  // Open while there's nothing on the timeline to make; once there is, the storyboard steps aside for the stage.
+  const [open, setOpen] = useState(() =>
+    editor.project.videoTracks.every((track) => track.clips.length === 0)
+  );
   // The storyboard's media picker needs the imported files too, so the listing stays live on both tabs.
   const { assets, failed, refresh } = useProjectAssets(editor.project, true);
   const files = (assets?.files ?? []).filter((file) => file.kind !== "audio");
@@ -43,7 +46,7 @@ export function LeftSidebar({
           setOpen(true);
         }}
         value={tab}>
-        <div className="flex h-10 shrink-0 items-center gap-1 border-b ps-2 pe-1">
+        <div className={cn("flex h-10 shrink-0 items-center gap-1 ps-2 pe-1", open && "border-b")}>
           <TabsList className="flex-1" size="sm">
             <TabsTab value="storyboard">{STUDIO_COPY.storyboard.tab}</TabsTab>
             <TabsTab value="assets">{STUDIO_COPY.assets.tab}</TabsTab>
@@ -70,6 +73,8 @@ export function LeftSidebar({
       </Tabs>
       <MotionSection editor={editor} />
       <EasingSection clock={clock} editor={editor} />
+      {/* Collapsed, the section headers stack at the top instead of leaving a gap above them. */}
+      {open ? null : <div aria-hidden="true" className="flex-1 border-t" />}
     </>
   );
 }

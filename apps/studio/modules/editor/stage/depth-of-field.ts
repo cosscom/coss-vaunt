@@ -3,6 +3,7 @@ import type { BlurMode } from "@calcom/product-video/storyboard/storyboard-schem
 import {
   type Camera,
   DepthTexture,
+  Matrix3,
   MeshBasicMaterial,
   type Scene,
   ShaderMaterial,
@@ -36,9 +37,11 @@ uniform float maxRadius;
 uniform float focusDepth;
 uniform float inFocus;
 uniform float ramp;
-uniform vec2 focusPoint;
 uniform vec2 direction;
-uniform float aspect;
+uniform bool hasSurface;
+uniform mat3 toSurface;
+uniform vec2 surfaceFocus;
+uniform vec2 surfaceDirection;
 varying vec2 vUv;
 
 const int TAPS = 64;
@@ -50,8 +53,11 @@ float sceneDepth(vec2 uv) {
 
 float focusOffset(vec2 uv, float depth) {
   if (mode == 0) return abs(depth - focusDepth) / focusDepth;
-  vec2 p = (vec2(uv.x, 1.0 - uv.y) - focusPoint) * vec2(aspect, 1.0);
-  if (mode == 3) return abs(-p.x * direction.y + p.y * direction.x);
+  if (!hasSurface) return 1e3;
+  vec3 q = toSurface * vec3(uv.x, 1.0 - uv.y, 1.0);
+  if (q.z <= 0.0) return 1e3;
+  vec2 p = q.xy / q.z - surfaceFocus;
+  if (mode == 3) return abs(-p.x * surfaceDirection.y + p.y * surfaceDirection.x);
   return length(p);
 }
 
@@ -139,9 +145,11 @@ class BlurPass extends Pass {
       focusDepth: { value: 1 },
       inFocus: { value: 0 },
       ramp: { value: 1 },
-      focusPoint: { value: new Vector2(0.5, 0.5) },
       direction: { value: new Vector2(1, 0) },
-      aspect: { value: 1 },
+      hasSurface: { value: false },
+      toSurface: { value: new Matrix3() },
+      surfaceFocus: { value: new Vector2(0, 0) },
+      surfaceDirection: { value: new Vector2(1, 0) },
     },
     vertexShader,
     fragmentShader,
@@ -218,9 +226,11 @@ export function createDepthOfField(renderer: WebGLRenderer, drawComposite: () =>
       uniforms.focusDepth.value = Math.max(1e-4, params.focusDepth);
       uniforms.inFocus.value = params.inFocus;
       uniforms.ramp.value = params.ramp;
-      uniforms.focusPoint.value.set(...params.focusPoint);
       uniforms.direction.value.set(...params.direction);
-      uniforms.aspect.value = params.aspect;
+      uniforms.hasSurface.value = params.toSurface !== null;
+      if (params.toSurface) uniforms.toSurface.value.set(...params.toSurface);
+      uniforms.surfaceFocus.value.set(...params.surfaceFocus);
+      uniforms.surfaceDirection.value.set(...params.surfaceDirection);
       composer.render();
     },
     setSize(width, height, pixelRatio) {

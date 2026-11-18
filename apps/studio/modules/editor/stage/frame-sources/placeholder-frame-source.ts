@@ -31,6 +31,7 @@ export function createPlaceholderFrameSource({
     texture,
     size: PLACEHOLDER_SIZE,
     show: () => undefined,
+    prepare: () => Promise.resolve(),
     idle: () => undefined,
     dispose: () => texture.dispose(),
   };

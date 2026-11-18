@@ -1,4 +1,4 @@
-import { copyFile, link, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, copyFile, link, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { RECORDING_MANIFEST_FILE, type RecordingManifest, recordingDirectory } from "./recording-manifest";
 
@@ -47,4 +47,43 @@ export async function linkRecordingTake({
     `${JSON.stringify({ ...manifest, clipId: toClipId }, null, 2)}\n`
   );
   return true;
+}
+
+const linking = new Map<string, Promise<boolean>>();
+
+async function hasManifest(directory: string): Promise<boolean> {
+  return access(path.join(directory, RECORDING_MANIFEST_FILE)).then(
+    () => true,
+    () => false
+  );
+}
+
+/**
+ * Makes sure `clipId` has its take for `captureHash`, linking it from another clip that recorded the same
+ * hash: a duplicated or pasted recording clip captures the same pixels under a new id. False when no clip has it.
+ */
+export function ensureRecordingTake({
+  projectDir,
+  clipId,
+  captureHash,
+}: {
+  projectDir: string;
+  clipId: string;
+  captureHash: string;
+}): Promise<boolean> {
+  const directory = path.join(projectDir, recordingDirectory(clipId, captureHash));
+  const pending = linking.get(directory);
+  if (pending) return pending;
+  const run = (async () => {
+    if (await hasManifest(directory)) return true;
+    const clips = await readdir(path.join(projectDir, "recordings"), { withFileTypes: true }).catch(() => []);
+    for (const other of clips) {
+      if (!other.isDirectory() || other.name === clipId) continue;
+      if (!(await hasManifest(path.join(projectDir, recordingDirectory(other.name, captureHash))))) continue;
+      return linkRecordingTake({ projectDir, fromClipId: other.name, toClipId: clipId, captureHash });
+    }
+    return false;
+  })().finally(() => linking.delete(directory));
+  linking.set(directory, run);
+  return run;
 }

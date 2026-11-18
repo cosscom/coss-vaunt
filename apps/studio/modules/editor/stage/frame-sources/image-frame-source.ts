@@ -24,7 +24,7 @@ export function createImageFrameSource({
   const image = new Image();
   image.decoding = "async";
   image.src = url;
-  void image
+  const decoded = image
     .decode()
     .then(() => {
       if (disposed) return;
@@ -38,6 +38,7 @@ export function createImageFrameSource({
     texture,
     size,
     show: () => undefined,
+    prepare: () => decoded,
     idle: () => undefined,
     dispose() {
       disposed = true;

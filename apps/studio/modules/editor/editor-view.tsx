@@ -1,5 +1,6 @@
 "use client";
 
+import { PROPERTY_SPECS } from "@calcom/product-video/storyboard/property-specs";
 import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { projectDuration } from "@calcom/product-video/storyboard/track-resolution";
 import type * as React from "react";
@@ -75,7 +76,9 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
               onSetProperty={(clipId, key, value) =>
                 editor.setCompoundAtPlayhead(clipId, key, value, `canvas:${clipId}`)
               }
-              blurEditing={blurEditing}
+              blurEditing={
+                blurEditing || editor.selectedLanes.some((key) => PROPERTY_SPECS[key].group === "blur")
+              }
               onSelectClip={(clipId, additive) =>
                 clipId ? editor.selectClip(clipId, { additive }) : editor.clearSelection()
               }

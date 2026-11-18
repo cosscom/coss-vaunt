@@ -6,7 +6,7 @@ import { createRecordingFrameSource } from "./recording-frame-source";
 import {
   type LoadedRecording,
   loadRecording,
-  recordingHashFor,
+  recordingTakesFor,
   requestRecordingVideo,
 } from "./recording-lookup";
 import { createVideoFrameSource } from "./video-frame-source";
@@ -17,25 +17,32 @@ const RECORDING_RECHECK_MS = 3000;
 type Entry = {
   key: string;
   source: FrameSource;
-  /** The capture hash a recording clip shows; null for other clips and uncatalogued routes. */
-  recordingHash: string | null;
-  found: boolean;
+  /** The takes a recording clip can show, best first; empty for other clips and uncatalogued routes. */
+  recordingHashes: string[];
+  /** The take it shows; until the best one is recorded it keeps looking for it. */
+  foundHash: string | null;
   checking: boolean;
+  /** The lookup in flight, so an export can wait for the recording before drawing. */
+  pending: Promise<void>;
 };
 
 export type FrameSourcePool = {
   /** Makes a source for each new video clip and disposes those of removed clips. */
   sync: (project: Project) => void;
   get: (clipId: string) => FrameSource | undefined;
+  /** Export: waits for the clip's media, then holds exactly the frame for `time`. */
+  prepare: (clipId: string, time: number) => Promise<void>;
   /** Stops every source not in `visible` from decoding. */
   idleExcept: (visible: Set<string>) => void;
+  /** Drops every source and loads them again for `project`, e.g. after a recording was replaced on disk. */
+  refresh: (project: Project) => void;
   dispose: () => void;
 };
 
-function sourceKey(clip: Clip, recordingHash: string | null, theme: Project["settings"]["theme"]): string {
+function sourceKey(clip: Clip, takesKey: string | null, theme: Project["settings"]["theme"]): string {
   if (clip.source.kind === "import" || clip.source.kind === "image")
     return `${clip.source.kind}:${clip.source.file}`;
-  return `recording:${recordingHash ?? theme}`;
+  return `recording:${takesKey ?? theme}`;
 }
 
 /**
@@ -46,10 +53,13 @@ export function createFrameSourcePool({
   maxAnisotropy,
   placeholderLabel,
   onFrame,
+  upgrade = true,
 }: {
   maxAnisotropy: number;
   placeholderLabel: string;
   onFrame: () => void;
+  /** Off for export: swapping a recording to its playback video mid-render would drop the prepared frame. */
+  upgrade?: boolean;
 }): FrameSourcePool {
   const entries = new Map<string, Entry>();
   let projectUrl = "";
@@ -57,18 +67,21 @@ export function createFrameSourcePool({
   let disposed = false;
 
   const lookUpRecording = (clipId: string, entry: Entry) => {
-    const hash = entry.recordingHash;
-    if (!hash || entry.found || entry.checking) return;
+    const [best] = entry.recordingHashes;
+    if (!best || entry.foundHash === best || entry.checking) return;
     entry.checking = true;
-    void loadRecording(filesUrl, clipId, hash)
+    // Showing a stand-in take already: only the best one is worth swapping to.
+    const wanted = entry.foundHash ? [best] : entry.recordingHashes;
+    entry.pending = loadRecording(filesUrl, clipId, wanted)
       .then((recording) => {
         entry.checking = false;
-        if (disposed || !recording || entries.get(clipId) !== entry) return;
+        if (disposed || !recording || entries.get(clipId) !== entry || recording.hash === entry.foundHash)
+          return;
         entry.source.dispose();
         entry.source = createRecordingFrameSource({ recording, maxAnisotropy, onFrame });
-        entry.found = true;
+        entry.foundHash = recording.hash;
         onFrame();
-        if (!recording.manifest.video) upgradeToVideo(clipId, entry, recording, hash);
+        if (!recording.manifest.video && upgrade) upgradeToVideo(clipId, entry, recording, recording.hash);
       })
       .catch(() => {
         entry.checking = false;
@@ -115,7 +128,7 @@ export function createFrameSourcePool({
     return createPlaceholderFrameSource({ theme: settings.theme, label: placeholderLabel });
   };
 
-  return {
+  const pool: FrameSourcePool = {
     sync(project) {
       projectUrl = `/api/projects/${encodeURIComponent(project.id)}`;
       filesUrl = `${projectUrl}/files`;
@@ -129,25 +142,42 @@ export function createFrameSourcePool({
         entries.delete(clipId);
       }
       for (const clip of clips) {
-        const recordingHash = recordingHashFor(project, clip);
-        const key = sourceKey(clip, recordingHash, project.settings.theme);
+        const takes = recordingTakesFor(project, clip);
+        const key = sourceKey(clip, takes?.key ?? null, project.settings.theme);
         const current = entries.get(clip.id);
-        if (current?.key === key) continue;
+        if (current?.key === key) {
+          // A zoom edit can change which DPR the clip needs; keep showing the take until a better one turns up.
+          current.recordingHashes = takes?.hashes ?? [];
+          lookUpRecording(clip.id, current);
+          continue;
+        }
         current?.source.dispose();
-        const entry = {
+        const entry: Entry = {
           key,
           source: createSource(clip, project.settings),
-          recordingHash,
-          found: false,
+          recordingHashes: takes?.hashes ?? [],
+          foundHash: null,
           checking: false,
+          pending: Promise.resolve(),
         };
         entries.set(clip.id, entry);
         lookUpRecording(clip.id, entry);
       }
     },
     get: (clipId) => entries.get(clipId)?.source,
+    async prepare(clipId, time) {
+      const entry = entries.get(clipId);
+      if (!entry) return;
+      await entry.pending;
+      await entry.source.prepare(time);
+    },
     idleExcept(visible) {
       for (const [clipId, entry] of entries) if (!visible.has(clipId)) entry.source.idle();
+    },
+    refresh(project) {
+      for (const entry of entries.values()) entry.source.dispose();
+      entries.clear();
+      pool.sync(project);
     },
     dispose() {
       disposed = true;
@@ -156,4 +186,5 @@ export function createFrameSourcePool({
       entries.clear();
     },
   };
+  return pool;
 }

@@ -1,5 +1,5 @@
 import { mediaTypeOf } from "../imports/media-types";
-import { captureHashForClip } from "../recording/capture-hash";
+import { captureContentKey, captureHashesForClip, captureHashForClip } from "../recording/capture-hash";
 import { frameFileName, type RecordingManifest, recordingDirectory } from "../recording/recording-manifest";
 import type { AudioClip, Clip, Project } from "../storyboard/storyboard-schema";
 
@@ -65,6 +65,23 @@ export function activeTakeHash(
   if (clip.source.take) return clip.source.take;
   try {
     return captureHashForClip({ project, clip });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The takes a recording clip can show, best first, and a key that ignores DPR: its pinned take, else its
+ * script's capture hash at the DPR it needs and then at other DPRs. Null for clips that can't be recorded.
+ */
+export function takeCandidates(
+  project: Parameters<typeof captureHashForClip>[0]["project"],
+  clip: Clip
+): { key: string; hashes: string[] } | null {
+  if (clip.source.kind !== "recording") return null;
+  if (clip.source.take) return { key: `take:${clip.source.take}`, hashes: [clip.source.take] };
+  try {
+    return { key: captureContentKey({ project, clip }), hashes: captureHashesForClip({ project, clip }) };
   } catch {
     return null;
   }
