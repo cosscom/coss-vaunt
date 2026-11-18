@@ -11,8 +11,12 @@ export type NodeGenerationEvent = {
   clips?: Clip[];
 };
 export type GenerationEvent = NodeGenerationEvent | { done: true };
-/** What a node card shows while its board generates. */
-export type NodeGeneration = Pick<NodeGenerationEvent, "status" | "message" | "progress">;
+/** What a node card shows while its board generates; `steps` are the agent's messages so far, oldest first. */
+export type NodeGeneration = Pick<NodeGenerationEvent, "status" | "message" | "progress"> & {
+  steps?: string[];
+};
+
+const SHOWN_STEPS = 3;
 
 function isStatus(value: unknown): value is GenerationStatus {
   return GENERATION_STATUSES.some((status) => status === value);
@@ -72,7 +76,17 @@ export function applyGenerationEvent(
   event: NodeGenerationEvent
 ): Record<string, NodeGeneration> {
   const { nodeId, status, message, progress } = event;
-  return { ...statuses, [nodeId]: { status, message, progress } };
+  const earlier = status === "queued" ? [] : (statuses[nodeId]?.steps ?? []);
+  const steps = message && earlier.at(-1) !== message ? [...earlier, message] : earlier;
+  return { ...statuses, [nodeId]: { status, message, progress, ...(steps.length > 0 ? { steps } : {}) } };
+}
+
+/** The node card's task list while it works: the last few finished steps, and the one in progress. */
+export function shownSteps(generation: NodeGeneration): { finished: string[]; current: string | null } {
+  const steps = generation.steps ?? [];
+  if (generation.status !== "exploring" && generation.status !== "recording")
+    return { finished: [], current: null };
+  return { finished: steps.slice(-SHOWN_STEPS, -1), current: steps.at(-1) ?? null };
 }
 
 /** Every node still waiting or working when the stream ends without finishing it. */

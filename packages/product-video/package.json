@@ -41,6 +41,7 @@
     "./recording/capture-hash": "./src/recording/capture-hash.ts",
     "./recording/capture-dpr": "./src/recording/capture-dpr.ts",
     "./catalogues/routes/route-catalogue": "./src/catalogues/routes/route-catalogue.ts",
+    "./catalogues/routes/app-map": "./src/catalogues/routes/app-map.ts",
     "./imports/media-upload": "./src/imports/media-upload.ts",
     "./imports/media-types": "./src/imports/media-types.ts",
     "./audio/waveform-peaks": "./src/audio/waveform-peaks.ts",
@@ -170,6 +171,9 @@
       ],
       "catalogues/routes/route-catalogue": [
         "./src/catalogues/routes/route-catalogue.ts"
+      ],
+      "catalogues/routes/app-map": [
+        "./src/catalogues/routes/app-map.ts"
       ],
       "imports/media-upload": [
         "./src/imports/media-upload.ts"

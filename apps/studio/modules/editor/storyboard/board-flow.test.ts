@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   applySelectChanges,
   EMPTY_BOARD_SELECTION,
+  growthOffsets,
   toFlowEdges,
   toFlowNodes,
   widthFitViewport,
@@ -81,5 +82,35 @@ describe("widthFitViewport", () => {
     expect(viewport.zoom).toBe(0.5);
     expect(viewport.y).toBe(48 - 20 * 0.5);
     expect(widthFitViewport([], size, 300, options)).toEqual({ x: 16, y: 48, zoom: 0.9 });
+  });
+});
+
+describe("growthOffsets", () => {
+  const scene = (id: string, x: number, y: number) => ({
+    id,
+    kind: "text" as const,
+    title: id,
+    notes: "",
+    duration: 2,
+    words: "",
+    position: { x, y },
+  });
+  const board = {
+    brief: "",
+    edges: [],
+    nodes: [scene("a", 0, 0), scene("b", 0, 100), scene("c", 0, 200), scene("side", 400, 300)],
+  };
+
+  it("pushes every card below a grown one down by how much it grew, but not cards beside it", () => {
+    expect(growthOffsets(board, { a: { width: 208, height: 124 }, b: { width: 208, height: 84 } })).toEqual({
+      a: 0,
+      b: 60,
+      c: 80,
+      side: 0,
+    });
+  });
+
+  it("leaves the board alone when no card has grown", () => {
+    expect(growthOffsets(board, { a: { width: 208, height: 64 } })).toEqual({ a: 0, b: 0, c: 0, side: 0 });
   });
 });

@@ -16,15 +16,12 @@ import {
   CircleAlertIcon,
   DownloadIcon,
   LoaderIcon,
-  MoonIcon,
   PanelRightIcon,
   PanelRightOpenIcon,
   RotateCcwIcon,
   RotateCwIcon,
-  SunIcon,
 } from "@coss/ui/icons";
 import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
-import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";
@@ -190,22 +187,6 @@ export function ProjectBar({
             ))}
           </SelectPopup>
         </Select>
-        <SegmentedRadioGroup
-          aria-label={copy.videoTheme}
-          onValueChange={(theme) => {
-            if (theme === "light" || theme === "dark") onSettingsChange({ theme });
-          }}
-          size="sm"
-          value={project.settings.theme}>
-          <SegmentedRadio value="light">
-            <SunIcon aria-hidden="true" />
-            {copy.light}
-          </SegmentedRadio>
-          <SegmentedRadio value="dark">
-            <MoonIcon aria-hidden="true" />
-            {copy.dark}
-          </SegmentedRadio>
-        </SegmentedRadioGroup>
       </div>
 
       <div className="flex items-center justify-end gap-1">

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 type DraftRouteContext = { params: Promise<{ id: string }> };
 
-/** Drafts a storyboard from a prompt. Body: `{ prompt, routes, totalSeconds, board? }`; returns `{ board }`. */
+/** Drafts a storyboard from a prompt. Body: `{ prompt, routes?, totalSeconds, board? }`; returns `{ board }`. */
 export async function POST(request: Request, { params }: DraftRouteContext): Promise<Response> {
   const { id } = await params;
   const project = await studioProjectStore.get(id);

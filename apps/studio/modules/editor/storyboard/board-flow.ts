@@ -1,4 +1,4 @@
-import type { BoardIssue } from "@calcom/product-video/storyboard/board-edits";
+import { BOARD_NODE_SIZE, type BoardIssue } from "@calcom/product-video/storyboard/board-edits";
 import type { Board, BoardEdge, BoardNode } from "@calcom/product-video/storyboard/board-schema";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeGeneration } from "./generation-stream";
@@ -15,6 +15,29 @@ export type SceneFlowNode = Node<SceneNodeData, "scene">;
 export type TransitionFlowEdge = Edge<{ edge: BoardEdge }, "transition">;
 
 type Measured = Record<string, { width?: number; height?: number } | undefined>;
+
+/**
+ * How far each node is drawn below its saved position: a card that grows past its usual height (while the agent
+ * lists its steps) pushes down every card beneath it that it would otherwise cover. Saved positions never change.
+ */
+export function growthOffsets(board: Board, measured: Measured): Record<string, number> {
+  const growth = board.nodes.flatMap((node) => {
+    const extra = (measured[node.id]?.height ?? BOARD_NODE_SIZE.height) - BOARD_NODE_SIZE.height;
+    return extra > 0.5 ? [{ node, extra }] : [];
+  });
+  return Object.fromEntries(
+    board.nodes.map((node) => [
+      node.id,
+      growth
+        .filter(
+          ({ node: above }) =>
+            above.position.y < node.position.y &&
+            Math.abs(above.position.x - node.position.x) < BOARD_NODE_SIZE.width
+        )
+        .reduce((sum, { extra }) => sum + extra, 0),
+    ])
+  );
+}
 
 /** React Flow's controlled nodes for the board; sizes it measured are carried over so nodes stay visible. */
 export function toFlowNodes(
@@ -34,12 +57,13 @@ export function toFlowNodes(
   const issueFor = new Map(
     issues.flatMap((issue) => ("nodeId" in issue ? [[issue.nodeId, issue.code] as const] : []))
   );
+  const offsets = growthOffsets(board, measured);
   return board.nodes.map((scene) => ({
     id: scene.id,
     type: "scene",
     // The card shows React Flow's keyboard focus on the node wrapper.
     className: "group/node",
-    position: scene.position,
+    position: { x: scene.position.x, y: scene.position.y + (offsets[scene.id] ?? 0) },
     selected: selection.nodeIds.includes(scene.id),
     measured: measured[scene.id],
     data: { scene, generation: generation[scene.id] ?? null, issue: issueFor.get(scene.id) ?? null },

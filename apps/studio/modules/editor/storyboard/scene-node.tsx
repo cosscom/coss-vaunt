@@ -1,15 +1,23 @@
 "use client";
 
+import { AgentStatusIndicator } from "@calcom/ai/react/ui/agent-status-indicator";
 import { findRouteEntry, isAppPath } from "@calcom/product-video/catalogues/routes/route-catalogue";
 import { BOARD_NODE_SIZE } from "@calcom/product-video/storyboard/board-edits";
 import type { BoardNode, BoardNodeKind } from "@calcom/product-video/storyboard/board-schema";
 import { Badge } from "@coss/ui/components/badge";
-import { CaptionsIcon, CircleAlertIcon, CornerDownRightIcon, MonitorIcon, VideoIcon } from "@coss/ui/icons";
+import {
+  CaptionsIcon,
+  CircleAlertIcon,
+  CircleCheckIcon,
+  CornerDownRightIcon,
+  MonitorIcon,
+  VideoIcon,
+} from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import type * as React from "react";
 import type { SceneFlowNode } from "./board-flow";
-import type { GenerationStatus } from "./generation-stream";
+import { type GenerationStatus, type NodeGeneration, shownSteps } from "./generation-stream";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.storyboard;
@@ -52,13 +60,37 @@ function summaryOf(scene: BoardNode): { text: string; missing: boolean; error: b
     : { text: copy.noFile, missing: true, error: false };
 }
 
+/** The agent's work on this scene, as in the agent chat: finished steps ticked, the current one shimmering. */
+function SceneSteps({ generation }: { generation: NodeGeneration }): React.ReactElement | null {
+  const { finished, current } = shownSteps(generation);
+  if (!current) return null;
+  const progress =
+    generation.status === "recording" && generation.progress !== undefined
+      ? ` · ${Math.round(generation.progress * 100)}%`
+      : "";
+  return (
+    <ol className="flex min-w-0 flex-col gap-1 border-t pt-2">
+      {finished.map((step) => (
+        <li className="flex min-w-0 items-center gap-1.5 text-muted-foreground/72 text-xs" key={step}>
+          <CircleCheckIcon aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="min-w-0 truncate">{step}</span>
+        </li>
+      ))}
+      <li className="flex min-w-0">
+        <AgentStatusIndicator announce={false} label={`${current}${progress}`} status="working" />
+      </li>
+    </ol>
+  );
+}
+
 export function SceneNode({ data, selected }: NodeProps<SceneFlowNode>): React.ReactElement {
   const { scene, generation, issue } = data;
   const Icon = SCENE_ICONS[scene.kind];
   const summary = summaryOf(scene);
 
-  // While generating, the line shows the agent's latest step, or why the scene failed.
-  const progress = generation?.message && generation.status !== "done" ? generation.message : null;
+  const working = generation?.status === "exploring" || generation?.status === "recording";
+  // The line shows why the scene failed; while it works, the steps below say what the agent is doing.
+  const progress = generation?.status === "failed" && generation.message ? generation.message : null;
   const line = progress ?? summary.text;
   const error = generation?.status === "failed" || (!progress && summary.error);
 
@@ -67,11 +99,17 @@ export function SceneNode({ data, selected }: NodeProps<SceneFlowNode>): React.R
       className={cn(
         "relative flex flex-col justify-center gap-1 rounded-xl border bg-card px-3 text-card-foreground shadow-xs/5 transition-[box-shadow,border-color] not-dark:bg-clip-padding",
         "group-focus-visible/node:ring-2 group-focus-visible/node:ring-ring group-focus-visible/node:ring-offset-1 group-focus-visible/node:ring-offset-background",
+        working && "gap-1.5 py-3",
         selected && "border-ring shadow-sm/5 ring-2 ring-ring/24",
         issue && !selected && "border-destructive/48"
       )}
+      aria-busy={working || undefined}
       data-board-node=""
-      style={{ width: BOARD_NODE_SIZE.width, height: BOARD_NODE_SIZE.height }}>
+      style={
+        working
+          ? { width: BOARD_NODE_SIZE.width, minHeight: BOARD_NODE_SIZE.height }
+          : { width: BOARD_NODE_SIZE.width, height: BOARD_NODE_SIZE.height }
+      }>
       <Handle className={HANDLE} position={Position.Top} type="target" />
       <div className="flex min-w-0 items-center gap-2">
         <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -97,12 +135,13 @@ export function SceneNode({ data, selected }: NodeProps<SceneFlowNode>): React.R
           title={line}>
           {line}
         </span>
-        {generation ? (
+        {generation && !working ? (
           <Badge className="shrink-0" size="sm" variant={STATUS_BADGES[generation.status]}>
             {copy.status[generation.status]}
           </Badge>
         ) : null}
       </div>
+      {generation ? <SceneSteps generation={generation} /> : null}
       <Handle className={HANDLE} position={Position.Bottom} type="source" />
     </div>
   );

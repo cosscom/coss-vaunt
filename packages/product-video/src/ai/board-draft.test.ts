@@ -129,6 +129,25 @@ describe("board draft prompts", () => {
     expect(prompt).toContain('"id": "a"');
     expect(prompt).not.toContain("position");
   });
+
+  it("scopes a revision to the focused scene", () => {
+    const node = {
+      id: "a",
+      kind: "text" as const,
+      title: "Opening",
+      notes: "",
+      duration: 2,
+      words: "Hi",
+      position: { x: 0, y: 0 },
+    };
+    const board = { brief: "b", edges: [], nodes: [node] };
+    expect(boardDraftUserPrompt({ prompt: "Punchier", board, focusNodeId: "a" })).toContain(
+      'one scene only: "a" (Opening)'
+    );
+    expect(boardDraftUserPrompt({ prompt: "Punchier", board, focusNodeId: "gone" })).not.toContain(
+      "one scene only"
+    );
+  });
 });
 
 describe("draftBoard", () => {

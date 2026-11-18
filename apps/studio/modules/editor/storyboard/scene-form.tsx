@@ -1,25 +1,21 @@
 "use client";
 
-import {
-  findRouteEntry,
-  isAppPath,
-  ROUTE_CATALOGUE,
-} from "@calcom/product-video/catalogues/routes/route-catalogue";
+import { isAppPath } from "@calcom/product-video/catalogues/routes/route-catalogue";
 import { listTextEffects } from "@calcom/product-video/catalogues/text-effects/text-effect-catalogue";
 import { ACCEPTED_MEDIA } from "@calcom/product-video/imports/media-types";
 import type { FileAsset } from "@calcom/product-video/project-store/project-assets";
-import { type BoardNode, RECORDING_START_MODES } from "@calcom/product-video/storyboard/board-schema";
+import type { BoardNode } from "@calcom/product-video/storyboard/board-schema";
 import { MAX_CLIP_SECONDS, MAX_RECORDING_SECONDS } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Alert, AlertDescription, AlertTitle } from "@coss/ui/components/alert";
+import {
+  Autocomplete,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteList,
+  AutocompletePopup,
+} from "@coss/ui/components/autocomplete";
 import { Button } from "@coss/ui/components/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@coss/ui/components/field";
-import {
-  NumberField,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from "@coss/ui/components/number-field";
 import {
   Select,
   SelectGroup,
@@ -30,19 +26,19 @@ import {
   SelectValue,
 } from "@coss/ui/components/select";
 import { CircleAlertIcon, UploadIcon } from "@coss/ui/icons";
-import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
 import { useRef, useState } from "react";
 import { DraftInput, DraftTextarea } from "../inspector/draft-text-field";
 import { groupTextEffects } from "../text-effects/text-effect-groups";
+import { DurationRuler } from "./duration-ruler";
 import type { NodeGeneration } from "./generation-stream";
+import { PAGE_OPTIONS, pageMatches } from "./page-options";
 import { fileLabel } from "./scene-node";
 import type { StoryboardActions } from "./use-storyboard-actions";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.storyboard.form;
 const AGENT_PICKS = "agent";
-const OTHER_PAGE = "other";
 const MAX_TITLE_LENGTH = 80;
 const MAX_NOTES_LENGTH = 2000;
 const MAX_WORDS_LENGTH = 280;
@@ -109,28 +105,11 @@ export function SceneForm({
       </Field>
 
       {node.kind === "recording" ? (
-        <>
-          <RouteField
-            id={id("route")}
-            onChange={(route) => update("recording", (current) => ({ ...current, route }))}
-            route={node.route}
-          />
-          <Field>
-            <FieldLabel>{copy.startFrom}</FieldLabel>
-            <SegmentedRadioGroup
-              aria-label={copy.startFrom}
-              className="w-full *:flex-1"
-              onValueChange={(value) => {
-                const startFrom = RECORDING_START_MODES.find((mode) => mode === value);
-                if (startFrom) update("recording", (current) => ({ ...current, startFrom }));
-              }}
-              size="sm"
-              value={node.startFrom}>
-              <SegmentedRadio value="fresh">{copy.fresh}</SegmentedRadio>
-              <SegmentedRadio value="previous">{copy.previous}</SegmentedRadio>
-            </SegmentedRadioGroup>
-          </Field>
-        </>
+        <RouteField
+          id={id("route")}
+          onChange={(route) => update("recording", (current) => ({ ...current, route }))}
+          route={node.route}
+        />
       ) : null}
 
       {node.kind === "text" ? (
@@ -214,25 +193,21 @@ export function SceneForm({
       </Field>
 
       <Field>
-        <FieldLabel>{copy.duration}</FieldLabel>
-        <NumberField
-          format={{ style: "unit", unit: "second", unitDisplay: "narrow", maximumFractionDigits: 2 }}
+        <div className="flex w-full items-center justify-between">
+          <FieldLabel>{copy.duration}</FieldLabel>
+          <span className="text-muted-foreground text-sm tabular-nums">
+            {STUDIO_COPY.storyboard.seconds(node.duration)}
+          </span>
+        </div>
+        <DurationRuler
+          label={copy.duration}
           max={maxDuration}
           min={0.5}
           onValueChange={(duration) =>
-            duration !== null &&
-            duration > 0 &&
             updateAny((current) => ({ ...current, duration }), `scene-duration:${node.id}`)
           }
-          size="sm"
-          step={0.5}
-          value={node.duration}>
-          <NumberFieldGroup>
-            <NumberFieldDecrement />
-            <NumberFieldInput />
-            <NumberFieldIncrement />
-          </NumberFieldGroup>
-        </NumberField>
+          value={Math.min(node.duration, maxDuration)}
+        />
         {node.kind === "recording" ? (
           <FieldDescription>{copy.durationCap(maxDuration)}</FieldDescription>
         ) : null}
@@ -241,7 +216,7 @@ export function SceneForm({
   );
 }
 
-/** A tuned page from the catalogue, or any other path in the app. */
+/** Any path in the app, with the app's known pages suggested as you type. */
 function RouteField({
   id,
   route,
@@ -251,45 +226,46 @@ function RouteField({
   route: string;
   onChange: (route: string) => void;
 }): React.ReactElement {
-  const [other, setOther] = useState(findRouteEntry(route) === null);
-  const valid = isAppPath(route);
-  const items = [
-    ...ROUTE_CATALOGUE.map((entry) => ({ value: entry.route, label: entry.label })),
-    { value: OTHER_PAGE, label: copy.otherPage },
-  ];
+  const [draft, setDraft] = useState(route);
+  // Until the author types, the suggestions list every page rather than only those matching the current path.
+  const [typing, setTyping] = useState(false);
+  const valid = isAppPath(draft.trim());
   return (
     <Field invalid={!valid}>
-      <FieldLabel htmlFor={other ? id : undefined}>{copy.route}</FieldLabel>
-      <Select
-        items={items}
-        onValueChange={(next: string | null) => {
-          if (next === OTHER_PAGE) setOther(true);
-          else if (next) {
-            setOther(false);
-            onChange(next);
-          }
+      <FieldLabel htmlFor={id}>{copy.route}</FieldLabel>
+      <Autocomplete
+        autoHighlight
+        filter={(option: (typeof PAGE_OPTIONS)[number], query) => pageMatches(option, typing ? query : "")}
+        items={PAGE_OPTIONS}
+        itemToStringValue={(option: (typeof PAGE_OPTIONS)[number]) => option.path}
+        onValueChange={(next, details) => {
+          setDraft(next);
+          setTyping(details.reason !== "item-press");
+          const path = next.trim();
+          if (isAppPath(path)) onChange(path);
         }}
-        value={other ? OTHER_PAGE : route}>
-        <SelectTrigger size="sm">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectPopup>
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectPopup>
-      </Select>
-      {other ? (
-        <DraftInput
+        openOnInputClick
+        value={draft}>
+        <AutocompleteInput
           id={id}
           maxLength={MAX_PATH_LENGTH}
-          onCommit={(next) => onChange(next.trim())}
+          onBlur={() => {
+            setTyping(false);
+            setDraft(route);
+          }}
           placeholder={copy.pathPlaceholder}
-          value={route}
+          size="sm"
         />
-      ) : null}
+        <AutocompletePopup className="w-(--anchor-width)">
+          <AutocompleteList>
+            {(option: (typeof PAGE_OPTIONS)[number]) => (
+              <AutocompleteItem key={option.path} value={option}>
+                <span className="truncate">{option.path}</span>
+              </AutocompleteItem>
+            )}
+          </AutocompleteList>
+        </AutocompletePopup>
+      </Autocomplete>
       {valid ? null : <FieldError match>{copy.notAPath}</FieldError>}
     </Field>
   );

@@ -8,6 +8,7 @@ import { Button } from "@coss/ui/components/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@coss/ui/components/collapsible";
 import { ChevronDownIcon, PlayIcon } from "@coss/ui/icons";
 import type * as React from "react";
+import { useState } from "react";
 import { audioSelectionFor, pruneAudioSelection, useAudioSelection } from "../audio/audio-selection";
 import type { PlaybackClock } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";
@@ -108,11 +109,19 @@ export function EasingSection({
     );
   };
 
+  // Open only while keyframes are selected; a manual toggle holds until the selection changes.
+  const targetKey = easingTargetKey(target);
+  const [override, setOverride] = useState<{ key: string; open: boolean } | null>(null);
+  const open = override?.key === targetKey ? override.open : target !== null;
+
   const previewPoint =
     preview.time === null || disabled ? null : { x: preview.time, y: applyEase(ease, preview.time) };
 
   return (
-    <Collapsible className="mt-auto shrink-0 border-t" defaultOpen>
+    <Collapsible
+      className="mt-auto shrink-0 border-t"
+      onOpenChange={(next) => setOverride({ key: targetKey, open: next })}
+      open={open}>
       <CollapsibleTrigger className="group flex h-10 w-full cursor-pointer items-center gap-2 px-4 text-start outline-none hover:bg-accent/40 focus-visible:bg-accent/60">
         <span className="flex-1 font-medium text-foreground text-sm">{copy.title}</span>
         {summary ? (
@@ -153,7 +162,7 @@ export function EasingSection({
           <EasePresetGrid
             disabled={disabled}
             ease={ease}
-            key={easingTargetKey(target)}
+            key={targetKey}
             mixed={summary?.mixed ?? false}
             onPick={apply}
           />

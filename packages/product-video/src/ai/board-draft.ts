@@ -39,9 +39,11 @@ export type BoardDraft = z.infer<typeof boardDraftSchema>;
 /** The body of a draft request: the author's prompt, pages to feature (any app paths), the target length. */
 export const draftBoardRequestSchema = z.object({
   prompt: z.string().trim().min(1).max(4000),
-  routes: z.array(z.string().startsWith("/")).max(20),
+  routes: z.array(z.string().startsWith("/")).max(20).default([]),
   totalSeconds: z.number().min(5).max(180),
   board: boardSchema.optional(),
+  /** Revise just this scene of `board`. */
+  focusNodeId: z.string().optional(),
 });
 
 /** Asks the model for a draft; `check` lists what's wrong with one, for the model to fix. */
@@ -134,12 +136,14 @@ export async function draftBoard({
   routes,
   totalSeconds,
   board,
+  focusNodeId,
   planner = modelPlanner,
 }: {
   prompt: string;
   routes: readonly string[];
   totalSeconds: number;
   board?: Board;
+  focusNodeId?: string;
   planner?: BoardPlanner;
 }): Promise<Board> {
   const notPaths = routes.filter((route) => !isAppPath(route));
@@ -153,7 +157,7 @@ export async function draftBoard({
     .map((effect) => ({ id: effect.id, description: effect.description }));
   const draft = await planner({
     system: boardDraftSystemPrompt({ routes: known, effects, totalSeconds }),
-    prompt: boardDraftUserPrompt({ prompt, board }),
+    prompt: boardDraftUserPrompt({ prompt, board, focusNodeId }),
     check: (candidate) => repairBoardDraft(candidate, { existing: board }).errors,
   }).catch((error: unknown) => {
     if (error instanceof NoSubmissionError) {

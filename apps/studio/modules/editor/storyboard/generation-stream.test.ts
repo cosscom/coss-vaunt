@@ -1,6 +1,6 @@
 import { createTextClip } from "@calcom/product-video/storyboard/storyboard-factories";
 import { describe, expect, it } from "vitest";
-import { applyGenerationEvent, failUnfinished, parseGenerationStream } from "./generation-stream";
+import { applyGenerationEvent, failUnfinished, parseGenerationStream, shownSteps } from "./generation-stream";
 
 describe("parseGenerationStream", () => {
   it("returns complete events and keeps the unfinished tail", () => {
@@ -44,5 +44,32 @@ describe("node statuses", () => {
       a: { status: "done", message: undefined, progress: undefined },
       b: { status: "failed", message: "Lost connection" },
     });
+  });
+});
+
+describe("shownSteps", () => {
+  it("keeps the agent's messages in order, without repeats, and shows the last three", () => {
+    let statuses = applyGenerationEvent({}, { nodeId: "a", status: "queued" });
+    for (const message of [
+      "Signing in",
+      "Opening /home",
+      "Reading the page",
+      "Reading the page",
+      "Found the target",
+    ])
+      statuses = applyGenerationEvent(statuses, { nodeId: "a", status: "exploring", message });
+    statuses = applyGenerationEvent(statuses, { nodeId: "a", status: "recording", progress: 0.5 });
+    expect(shownSteps(statuses.a!)).toEqual({
+      finished: ["Opening /home", "Reading the page"],
+      current: "Found the target",
+    });
+  });
+
+  it("starts over when the scene is queued again, and shows nothing once it's finished", () => {
+    let statuses = applyGenerationEvent({}, { nodeId: "a", status: "exploring", message: "Signing in" });
+    statuses = applyGenerationEvent(statuses, { nodeId: "a", status: "queued" });
+    expect(statuses.a?.steps).toBeUndefined();
+    statuses = applyGenerationEvent(statuses, { nodeId: "a", status: "done" });
+    expect(shownSteps(statuses.a!)).toEqual({ finished: [], current: null });
   });
 });

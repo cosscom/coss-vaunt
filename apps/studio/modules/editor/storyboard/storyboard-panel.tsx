@@ -4,6 +4,7 @@ import type { FileAsset } from "@calcom/product-video/project-store/project-asse
 import { boardIssues } from "@calcom/product-video/storyboard/board-edits";
 import { Badge } from "@coss/ui/components/badge";
 import { Dialog, DialogPopup, DialogTitle } from "@coss/ui/components/dialog";
+import { toastManager } from "@coss/ui/components/toast";
 import type * as React from "react";
 import { useState } from "react";
 import { InspectorSection } from "../inspector/inspector-section";
@@ -12,7 +13,7 @@ import type { EditorState } from "../use-editor-state";
 import type { NodeGeneration } from "./generation-stream";
 import { SceneForm } from "./scene-form";
 import { StoryboardCanvas } from "./storyboard-canvas";
-import { StoryboardPrompt } from "./storyboard-prompt";
+import { StoryboardComposer } from "./storyboard-composer";
 import { useBoardDraft } from "./use-board-draft";
 import { useBoardGeneration } from "./use-board-generation";
 import { type StoryboardActions, useStoryboardActions } from "./use-storyboard-actions";
@@ -56,7 +57,7 @@ function SceneDetails({
 }
 
 /**
- * The left sidebar's storyboard: the canvas, the selected scene's fields and the brief. Full screen shows the
+ * The left sidebar's storyboard: the canvas, the selected scene's fields and the agent composer. Full screen shows the
  * same board over the editor with the fields docked beside it.
  */
 export function StoryboardPanel({
@@ -103,13 +104,13 @@ export function StoryboardPanel({
     <div className="flex flex-1 flex-col">
       <StoryboardCanvas
         {...canvasProps}
-        className="min-h-[220px] flex-1 border-b"
+        className="min-h-[220px] flex-1"
         fit="width"
         fullScreen={false}
         onToggleFullScreen={() => setFullScreen(true)}
       />
       <SceneDetails {...details} />
-      <StoryboardPrompt
+      <StoryboardComposer
         board={actions.board}
         drafting={drafting.drafting}
         generating={generation.running}
@@ -122,6 +123,32 @@ export function StoryboardPanel({
           setFitSignal((value) => value + 1);
         }}
         onGenerate={() => void generation.generate(actions.board)}
+        onReviseScene={async (nodeId, instruction) => {
+          const board = actions.board;
+          const revised = await drafting.draft({
+            prompt: instruction,
+            totalSeconds: board.nodes.reduce((sum, node) => sum + node.duration, 0),
+            board,
+            focusNodeId: nodeId,
+          });
+          if (!revised) return false;
+          const scene = revised.nodes.find((node) => node.id === nodeId);
+          if (!scene) {
+            toastManager.add({
+              type: "error",
+              title: copy.prompt.reviseFailed,
+              description: copy.prompt.sceneDropped,
+            });
+            return false;
+          }
+          // Only the scene in context changes, whatever else the agent touched.
+          actions.updateNode(nodeId, (current) => ({ ...scene, position: current.position }));
+          return true;
+        }}
+        onStop={drafting.stop}
+        onThemeChange={(theme) => editor.updateSettings({ theme })}
+        selectedNode={actions.selectedNode}
+        theme={project.settings.theme}
       />
       <Dialog onOpenChange={setFullScreen} open={fullScreen}>
         <DialogPopup

@@ -30,6 +30,7 @@ import { useEffect, useRef, useState } from "react";
 import { matchShortcut } from "../editor-keymap";
 import {
   applySelectChanges,
+  growthOffsets,
   type SceneFlowNode,
   type TransitionFlowEdge,
   toFlowEdges,
@@ -135,6 +136,7 @@ function CanvasInner({
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
   const { board, selection } = actions;
   const nodes = toFlowNodes(board, { selection, generation: statuses, issues, measured });
+  const offsets = growthOffsets(board, measured);
   const edges = toFlowEdges(board, selection);
   const paneWidth = useStore((state) => state.width);
   const fit = (duration = 200) => {
@@ -174,7 +176,9 @@ function CanvasInner({
     const positions: Record<string, Position> = {};
     const sizes: Record<string, { width: number; height: number }> = {};
     for (const change of changes) {
-      if (change.type === "position" && change.position) positions[change.id] = change.position;
+      // A node pushed down by a growing card above it is saved at the position it would have without that push.
+      if (change.type === "position" && change.position)
+        positions[change.id] = { ...change.position, y: change.position.y - (offsets[change.id] ?? 0) };
       if (change.type === "dimensions" && change.dimensions) sizes[change.id] = change.dimensions;
     }
     if (Object.keys(sizes).length > 0) setMeasured((current) => ({ ...current, ...sizes }));
