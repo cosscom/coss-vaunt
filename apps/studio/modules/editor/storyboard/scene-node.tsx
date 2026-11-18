@@ -16,8 +16,12 @@ import {
 import { cn } from "@coss/ui/lib/utils";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import type * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SceneFlowNode } from "./board-flow";
 import { type GenerationStatus, type NodeGeneration, shownSteps } from "./generation-stream";
+import { SUCCESS_GLOW_MS, sceneBeamState } from "./scene-beam-state";
+import { BorderBeam } from "@/modules/border-beam/border-beam";
+import { CARD_BEAM } from "@/modules/border-beam/border-beam-engine";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.storyboard;
@@ -83,6 +87,21 @@ function SceneSteps({ generation }: { generation: NodeGeneration }): React.React
   );
 }
 
+/** True for a moment after `status` turns done while mounted; a scene that loads already done never flashes. */
+function useJustFinished(status: GenerationStatus | undefined): boolean {
+  const previous = useRef(status);
+  const [finishing, setFinishing] = useState(false);
+  useEffect(() => {
+    const was = previous.current;
+    previous.current = status;
+    if (status !== "done" || was === "done") return;
+    setFinishing(true);
+    const timer = setTimeout(() => setFinishing(false), SUCCESS_GLOW_MS);
+    return () => clearTimeout(timer);
+  }, [status]);
+  return finishing && status === "done";
+}
+
 export function SceneNode({ data, selected }: NodeProps<SceneFlowNode>): React.ReactElement {
   const { scene, generation, issue } = data;
   const Icon = SCENE_ICONS[scene.kind];
@@ -93,56 +112,59 @@ export function SceneNode({ data, selected }: NodeProps<SceneFlowNode>): React.R
   const progress = generation?.status === "failed" && generation.message ? generation.message : null;
   const line = progress ?? summary.text;
   const error = generation?.status === "failed" || (!progress && summary.error);
+  const beam = sceneBeamState(generation?.status, useJustFinished(generation?.status));
 
   return (
-    <div
-      className={cn(
-        "relative flex flex-col justify-center gap-1 rounded-xl border bg-card px-3 text-card-foreground shadow-xs/5 transition-[box-shadow,border-color] not-dark:bg-clip-padding",
-        "group-focus-visible/node:ring-2 group-focus-visible/node:ring-ring group-focus-visible/node:ring-offset-1 group-focus-visible/node:ring-offset-background",
-        working && "gap-1.5 py-3",
-        selected && "border-ring shadow-sm/5 ring-2 ring-ring/24",
-        issue && !selected && "border-destructive/48"
-      )}
-      aria-busy={working || undefined}
-      data-board-node=""
-      style={
-        working
-          ? { width: BOARD_NODE_SIZE.width, minHeight: BOARD_NODE_SIZE.height }
-          : { width: BOARD_NODE_SIZE.width, height: BOARD_NODE_SIZE.height }
-      }>
-      <Handle className={HANDLE} position={Position.Top} type="target" />
-      <div className="flex min-w-0 items-center gap-2">
-        <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-medium text-sm">{scene.title}</span>
-        <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-          {copy.seconds(scene.duration)}
-        </span>
+    <BorderBeam options={CARD_BEAM} state={beam}>
+      <div
+        className={cn(
+          "relative flex flex-col justify-center gap-1 rounded-xl border bg-card px-3 text-card-foreground shadow-xs/5 transition-[box-shadow,border-color] not-dark:bg-clip-padding",
+          "group-focus-visible/node:ring-2 group-focus-visible/node:ring-ring group-focus-visible/node:ring-offset-1 group-focus-visible/node:ring-offset-background",
+          working && "gap-1.5 py-3",
+          selected && "border-ring shadow-sm/5 ring-2 ring-ring/24",
+          issue && !selected && "border-destructive/48"
+        )}
+        aria-busy={working || undefined}
+        data-board-node=""
+        style={
+          working
+            ? { width: BOARD_NODE_SIZE.width, minHeight: BOARD_NODE_SIZE.height }
+            : { width: BOARD_NODE_SIZE.width, height: BOARD_NODE_SIZE.height }
+        }>
+        <Handle className={HANDLE} position={Position.Top} type="target" />
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate font-medium text-sm">{scene.title}</span>
+          <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+            {copy.seconds(scene.duration)}
+          </span>
+        </div>
+        <div className="flex min-w-0 items-center gap-1.5 ps-6">
+          {scene.kind === "recording" && scene.startFrom === "previous" ? (
+            <CornerDownRightIcon
+              aria-label={copy.form.previous}
+              className="size-3 shrink-0 text-muted-foreground"
+            />
+          ) : null}
+          {error ? <CircleAlertIcon aria-hidden="true" className="size-3 shrink-0 text-destructive" /> : null}
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-xs",
+              error ? "text-destructive-foreground" : "text-muted-foreground",
+              !progress && summary.missing && "text-muted-foreground/72"
+            )}
+            title={line}>
+            {line}
+          </span>
+          {generation && !working ? (
+            <Badge className="shrink-0" size="sm" variant={STATUS_BADGES[generation.status]}>
+              {copy.status[generation.status]}
+            </Badge>
+          ) : null}
+        </div>
+        {generation ? <SceneSteps generation={generation} /> : null}
+        <Handle className={HANDLE} position={Position.Bottom} type="source" />
       </div>
-      <div className="flex min-w-0 items-center gap-1.5 ps-6">
-        {scene.kind === "recording" && scene.startFrom === "previous" ? (
-          <CornerDownRightIcon
-            aria-label={copy.form.previous}
-            className="size-3 shrink-0 text-muted-foreground"
-          />
-        ) : null}
-        {error ? <CircleAlertIcon aria-hidden="true" className="size-3 shrink-0 text-destructive" /> : null}
-        <span
-          className={cn(
-            "min-w-0 flex-1 truncate text-xs",
-            error ? "text-destructive-foreground" : "text-muted-foreground",
-            !progress && summary.missing && "text-muted-foreground/72"
-          )}
-          title={line}>
-          {line}
-        </span>
-        {generation && !working ? (
-          <Badge className="shrink-0" size="sm" variant={STATUS_BADGES[generation.status]}>
-            {copy.status[generation.status]}
-          </Badge>
-        ) : null}
-      </div>
-      {generation ? <SceneSteps generation={generation} /> : null}
-      <Handle className={HANDLE} position={Position.Bottom} type="source" />
-    </div>
+    </BorderBeam>
   );
 }

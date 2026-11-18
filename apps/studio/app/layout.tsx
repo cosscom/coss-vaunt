@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { INTRO_GATE_SCRIPT, INTRO_GATE_STYLE } from "@/modules/intro/intro-gate";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 import { AppThemeProvider } from "@/modules/theme/app-theme-provider";
 import "./globals.css";
@@ -29,6 +30,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>): React.ReactElement {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a constant script that must run before the first paint */}
+        <script dangerouslySetInnerHTML={{ __html: INTRO_GATE_SCRIPT }} />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant rules the gate script relies on */}
+        <style dangerouslySetInnerHTML={{ __html: INTRO_GATE_STYLE }} />
+      </head>
       <body
         className={`${fontSans.variable} ${fontHeading.variable} bg-background font-sans text-foreground antialiased`}>
         <AppThemeProvider>{children}</AppThemeProvider>

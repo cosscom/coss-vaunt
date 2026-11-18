@@ -1,6 +1,7 @@
 import path from "node:path";
 import { findProjectStill } from "@calcom/product-video/project-store/project-still";
 import type { Metadata } from "next";
+import { StudioIntro } from "@/modules/intro/studio-intro";
 import { ProjectsView } from "@/modules/projects/projects-view";
 import {
   STUDIO_ROOT,
@@ -24,5 +25,10 @@ export default async function ProjectsPage(): Promise<React.ReactElement> {
       })
     )
   );
-  return <ProjectsView defaultAppUrl={studioDefaultAppUrl()} projects={projects} stills={stills} />;
+  return (
+    <>
+      <StudioIntro />
+      <ProjectsView defaultAppUrl={studioDefaultAppUrl()} projects={projects} stills={stills} />
+    </>
+  );
 }

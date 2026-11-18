@@ -22,6 +22,7 @@ import type * as React from "react";
 import { useState } from "react";
 import { SCENE_ICONS } from "./scene-node";
 import type { DraftRequest } from "./use-board-draft";
+import { BorderBeam } from "@/modules/border-beam/border-beam";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.storyboard.prompt;
@@ -165,66 +166,68 @@ export function StoryboardComposer({
 
   return (
     <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t bg-background p-3">
-      <AgentComposer
-        autoFocus={false}
-        disabled={generating}
-        header={header}
-        headerOpen={scene !== null}
-        inputLabel={scene ? copy.revise : copy.label}
-        isBusy={drafting}
-        leadingActions={
-          <>
-            {reattach}
-            {scene ? null : (
-              <Select
-                items={LENGTHS}
-                onValueChange={(value) => value && setLengthSeconds(value)}
-                value={lengthSeconds}>
-                <SelectTrigger
-                  aria-label={copy.length}
-                  className="w-auto min-w-0 border-transparent tabular-nums shadow-none"
-                  size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectPopup>
-                  {LENGTHS.map((item) => (
-                    <SelectItem className="tabular-nums" key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            )}
-            {scene ? null : (
-              <SegmentedRadioGroup
-                aria-label={STUDIO_COPY.editor.videoTheme}
-                onValueChange={(value) => {
-                  if (value === "light" || value === "dark") onThemeChange(value);
-                }}
-                size="sm"
-                value={theme}>
-                <SegmentedRadio aria-label={STUDIO_COPY.editor.light} value="light">
-                  <SunIcon aria-hidden="true" />
-                </SegmentedRadio>
-                <SegmentedRadio aria-label={STUDIO_COPY.editor.dark} value="dark">
-                  <MoonIcon aria-hidden="true" />
-                </SegmentedRadio>
-              </SegmentedRadioGroup>
-            )}
-          </>
-        }
-        onStop={onStop}
-        onSubmit={() => void submit()}
-        onValueChange={(text) => {
-          if (scene) setInstruction({ nodeId: scene.id, text });
-          else onBriefChange(text);
-        }}
-        placeholder={scene ? copy.scenePlaceholder : copy.placeholder}
-        rows={2}
-        sendLabel={sendLabel}
-        stopLabel={copy.stop}
-        value={scene ? sceneInstruction : board.brief}
-      />
+      <BorderBeam state={drafting || generating ? "active" : "idle"}>
+        <AgentComposer
+          autoFocus={false}
+          disabled={generating}
+          header={header}
+          headerOpen={scene !== null}
+          inputLabel={scene ? copy.revise : copy.label}
+          isBusy={drafting}
+          leadingActions={
+            <>
+              {reattach}
+              {scene ? null : (
+                <Select
+                  items={LENGTHS}
+                  onValueChange={(value) => value && setLengthSeconds(value)}
+                  value={lengthSeconds}>
+                  <SelectTrigger
+                    aria-label={copy.length}
+                    className="w-auto min-w-0 border-transparent tabular-nums shadow-none"
+                    size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {LENGTHS.map((item) => (
+                      <SelectItem className="tabular-nums" key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              )}
+              {scene ? null : (
+                <SegmentedRadioGroup
+                  aria-label={STUDIO_COPY.editor.videoTheme}
+                  onValueChange={(value) => {
+                    if (value === "light" || value === "dark") onThemeChange(value);
+                  }}
+                  size="sm"
+                  value={theme}>
+                  <SegmentedRadio aria-label={STUDIO_COPY.editor.light} value="light">
+                    <SunIcon aria-hidden="true" />
+                  </SegmentedRadio>
+                  <SegmentedRadio aria-label={STUDIO_COPY.editor.dark} value="dark">
+                    <MoonIcon aria-hidden="true" />
+                  </SegmentedRadio>
+                </SegmentedRadioGroup>
+              )}
+            </>
+          }
+          onStop={onStop}
+          onSubmit={() => void submit()}
+          onValueChange={(text) => {
+            if (scene) setInstruction({ nodeId: scene.id, text });
+            else onBriefChange(text);
+          }}
+          placeholder={scene ? copy.scenePlaceholder : copy.placeholder}
+          rows={2}
+          sendLabel={sendLabel}
+          stopLabel={copy.stop}
+          value={scene ? sceneInstruction : board.brief}
+        />
+      </BorderBeam>
       {scenes > 0 ? (
         <Button
           className="w-full"

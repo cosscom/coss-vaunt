@@ -34,6 +34,7 @@ import {
   pruneProjectSelection,
   selectProject,
 } from "./project-selection";
+import { Wordmark } from "@/modules/brand/wordmark";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
 
@@ -143,6 +144,7 @@ export function ProjectsView({
           style={{ left: box.left, top: box.top, width: box.right - box.left, height: box.bottom - box.top }}
         />
       ) : null}
+      <Wordmark className="h-6 self-start" data-studio-wordmark="" />
       <header className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="font-semibold text-2xl text-foreground leading-tight">{copy.title}</h1>

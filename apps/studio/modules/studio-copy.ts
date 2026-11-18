@@ -1,6 +1,7 @@
 export const STUDIO_COPY = {
-  appName: "Studio",
-  appDescription: "Product videos of the Cal.com UI, recorded from the real app.",
+  appName: "coss motion",
+  appDescription: "Product videos recorded from your real app.",
+  intro: { label: "coss motion", skip: "Click or press any key to skip" },
   toggleAppTheme: "Toggle app theme",
   projects: {
     title: "Projects",
