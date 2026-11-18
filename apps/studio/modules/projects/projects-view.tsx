@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import { DeleteProjectDialog } from "./delete-project-dialog";
+import { NewProjectDialog } from "./new-project-dialog";
 import {
   createProjectAction,
   deleteProjectAction,
@@ -45,7 +46,10 @@ function toastError(error: unknown): void {
 export function ProjectsView({
   projects,
   stills,
+  defaultAppUrl,
 }: {
+  /** The app address a new project starts with. */
+  defaultAppUrl: string;
   projects: ProjectSummary[];
   stills: Record<string, ProjectStill | null>;
 }): React.ReactElement {
@@ -211,21 +215,18 @@ export function ProjectsView({
         </ul>
       )}
 
-      <ProjectNameDialog
-        description={copy.newProjectDescription}
-        initialName=""
-        onOpenChange={setCreateOpen}
-        onSubmit={async (name) => {
+      <NewProjectDialog
+        defaultAppUrl={defaultAppUrl}
+        onCreate={async (input) => {
           try {
-            const { id } = await createProjectAction(name);
+            const { id } = await createProjectAction(input);
             router.push(`/projects/${id}`);
           } catch (error) {
             toastError(error);
           }
         }}
+        onOpenChange={setCreateOpen}
         open={createOpen}
-        submitLabel={copy.create}
-        title={copy.newProject}
       />
       <ProjectNameDialog
         initialName={target?.name ?? ""}

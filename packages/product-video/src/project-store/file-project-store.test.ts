@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -35,6 +35,28 @@ describe("createFileProjectStore", () => {
     const raw = JSON.parse(await readFile(path.join(rootDir, project.id, "project.json"), "utf8"));
     expect(raw).toEqual(project);
     expect(await store.get(project.id)).toEqual(project);
+  });
+
+  it("creates with the dialog's setup and keeps the app's login out of project.json", async () => {
+    const store = createFileProjectStore(rootDir, { now });
+    const project = await store.create("Demo", {
+      aspectRatio: "9:16",
+      app: { kind: "custom", instructions: "The dashboard is at /app" },
+      baseUrl: "http://localhost:3000",
+      login: { username: "demo@example.com", password: "demo-password" },
+    });
+    expect(project.settings).toMatchObject({
+      aspectRatio: "9:16",
+      app: { kind: "custom", instructions: "The dashboard is at /app" },
+      baseUrl: "http://localhost:3000",
+    });
+    const dir = path.join(rootDir, project.id);
+    expect(await readFile(path.join(dir, "project.json"), "utf8")).not.toContain("demo-password");
+    expect(JSON.parse(await readFile(path.join(dir, "app-login.json"), "utf8"))).toEqual({
+      username: "demo@example.com",
+      password: "demo-password",
+    });
+    expect((await stat(path.join(dir, "app-login.json"))).mode & 0o777).toBe(0o600);
   });
 
   it("saves edits, bumps updatedAt and leaves no temp files", async () => {

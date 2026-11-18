@@ -17,6 +17,8 @@
     "./storyboard/track-resolution": "./src/storyboard/track-resolution.ts",
     "./recording/recording-manifest": "./src/recording/recording-manifest.ts",
     "./recording/link-recording-take": "./src/recording/link-recording-take.ts",
+    "./project-store/new-project-input": "./src/project-store/new-project-input.ts",
+    "./recording/host-allowlist": "./src/recording/host-allowlist.ts",
     "./stage/camera-rig": "./src/stage/camera-rig.ts",
     "./stage/device-pose": "./src/stage/device-pose.ts",
     "./stage/clip-layers": "./src/stage/clip-layers.ts",
@@ -254,6 +256,12 @@
       ],
       "recording/link-recording-take": [
         "./src/recording/link-recording-take.ts"
+      ],
+      "project-store/new-project-input": [
+        "./src/project-store/new-project-input.ts"
+      ],
+      "recording/host-allowlist": [
+        "./src/recording/host-allowlist.ts"
       ],
       "project-store/project-still": [
         "./src/project-store/project-still.ts"

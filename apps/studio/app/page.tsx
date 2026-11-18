@@ -2,7 +2,11 @@ import path from "node:path";
 import { findProjectStill } from "@calcom/product-video/project-store/project-still";
 import type { Metadata } from "next";
 import { ProjectsView } from "@/modules/projects/projects-view";
-import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
+import {
+  STUDIO_ROOT,
+  studioDefaultAppUrl,
+  studioProjectStore,
+} from "@/modules/projects/studio-project-store";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 export const dynamic = "force-dynamic";
@@ -20,5 +24,5 @@ export default async function ProjectsPage(): Promise<React.ReactElement> {
       })
     )
   );
-  return <ProjectsView projects={projects} stills={stills} />;
+  return <ProjectsView defaultAppUrl={studioDefaultAppUrl()} projects={projects} stills={stills} />;
 }

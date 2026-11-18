@@ -119,6 +119,11 @@ async function generateRecording({
   emit: (event: GenerationEvent) => void;
   deps: GenerateBoardDeps;
 }): Promise<Clip> {
+  const app = working.settings.app?.kind ?? "cal";
+  if (app === "none")
+    throw new NodeGenerationError("This project uses your own files, so it has no app to record");
+  if (app === "custom")
+    throw new NodeGenerationError("Recording apps other than Cal.com isn’t supported yet");
   const entry = routeEntryFor(node.route);
   if (!entry) throw new NodeGenerationError(`${node.route} isn't a path in the app`);
 

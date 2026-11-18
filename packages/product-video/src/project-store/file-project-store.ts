@@ -3,10 +3,15 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promise
 import path from "node:path";
 import { createProject } from "../storyboard/storyboard-factories";
 import { type Project, projectSchema } from "../storyboard/storyboard-schema";
-import type { ProjectStore, ProjectSummary } from "./project-store";
+import type { AppLogin, ProjectStore, ProjectSummary } from "./project-store";
 
 const PROJECT_FILE = "project.json";
+const APP_LOGIN_FILE = "app-login.json";
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/i;
+
+async function writeAppLogin(dir: string, login: AppLogin): Promise<void> {
+  await writeFile(path.join(dir, APP_LOGIN_FILE), `${JSON.stringify(login)}\n`, { mode: 0o600 });
+}
 
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
@@ -73,7 +78,17 @@ export function createFileProjectStore(
   return {
     list,
     get,
-    create: (name) => write(createProject({ name, now: now() })),
+    async create(name, setup) {
+      const project = await write(
+        createProject({
+          name,
+          now: now(),
+          setup: setup && { aspectRatio: setup.aspectRatio, app: setup.app, baseUrl: setup.baseUrl },
+        })
+      );
+      if (setup?.login) await writeAppLogin(projectDir(project.id), setup.login);
+      return project;
+    },
     save: (project) => write({ ...project, updatedAt: now().toISOString() }),
     async rename(id, name) {
       const project = await get(id);

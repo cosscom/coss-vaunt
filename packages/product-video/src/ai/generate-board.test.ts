@@ -166,6 +166,23 @@ describe("generateBoard", () => {
     });
   });
 
+  it("fails recording scenes for a project that doesn't record Cal.com", async () => {
+    const events: GenerationEvent[] = [];
+    const filesOnly: Project = { ...project, settings: { ...project.settings, app: { kind: "none" } } };
+    await generateBoard({
+      project: filesOnly,
+      board,
+      nodeIds: ["ask"],
+      emit: (event) => events.push(event),
+      deps: fakeDeps([]),
+    });
+    expect(events).toContainEqual({
+      nodeId: "ask",
+      status: "failed",
+      message: "This project uses your own files, so it has no app to record",
+    });
+  });
+
   it("fails a continuing recording whose predecessor has no clip", async () => {
     const events: GenerationEvent[] = [];
     await generateBoard({

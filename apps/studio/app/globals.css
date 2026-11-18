@@ -17,3 +17,10 @@
     font-synthesis: none;
   }
 }
+
+/* A dialog whose height changes while open keeps its top edge still and grows downward. */
+@media (min-width: 640px) {
+  [data-slot="dialog-viewport"]:has([data-anchored-top]) {
+    grid-template-rows: min(14vh, 8rem) auto 1fr;
+  }
+}

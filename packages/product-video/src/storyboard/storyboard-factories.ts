@@ -1,4 +1,4 @@
-import type { AudioTrack, Clip, Project, VideoTrack } from "./storyboard-schema";
+import type { AspectRatio, AudioTrack, Clip, Project, ProjectApp, VideoTrack } from "./storyboard-schema";
 
 export const DEFAULT_RECORDING_SECONDS = 4;
 export const DEFAULT_TEXT_SECONDS = 3;
@@ -56,7 +56,18 @@ export function createTextClip({
   };
 }
 
-export function createProject({ name, now }: { name: string; now: Date }): Project {
+/** What the new-project dialog decides; the rest of a project starts at its defaults. */
+export type ProjectSetup = { aspectRatio: AspectRatio; app: ProjectApp; baseUrl: string };
+
+export function createProject({
+  name,
+  now,
+  setup,
+}: {
+  name: string;
+  now: Date;
+  setup?: ProjectSetup;
+}): Project {
   const timestamp = now.toISOString();
   return {
     version: 2,
@@ -65,12 +76,13 @@ export function createProject({ name, now }: { name: string; now: Date }): Proje
     createdAt: timestamp,
     updatedAt: timestamp,
     settings: {
-      aspectRatio: "16:9",
+      aspectRatio: setup?.aspectRatio ?? "16:9",
       theme: "light",
       fps: 60,
       background: { kind: "color", value: "#0b0b0c" },
       device: { cornerRadius: 16, contactShadow: false, plinth: false, reflection: 0 },
-      baseUrl: DEFAULT_BASE_URL,
+      baseUrl: setup?.baseUrl ?? DEFAULT_BASE_URL,
+      ...(setup ? { app: setup.app } : {}),
     },
     videoTracks: [createVideoTrack("Video 1")],
     audioTracks: [createAudioTrack("Audio")],

@@ -294,6 +294,16 @@ export const audioTrackSchema = z.object({
   muted: z.boolean().optional(),
 });
 
+export const APP_INSTRUCTIONS_MAX = 4000;
+
+/** What the project records: the local Cal.com, another local web app, or nothing (only imported files). */
+export const projectAppSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("cal") }),
+  z.object({ kind: z.literal("custom"), instructions: z.string().max(APP_INSTRUCTIONS_MAX) }),
+  z.object({ kind: z.literal("none") }),
+]);
+export type ProjectApp = z.infer<typeof projectAppSchema>;
+
 export const projectSettingsSchema = z.object({
   aspectRatio: aspectRatioSchema,
   theme: z.enum(VIDEO_THEMES),
@@ -306,6 +316,8 @@ export const projectSettingsSchema = z.object({
     reflection: z.number().min(0).max(1),
   }),
   baseUrl: z.url(),
+  /** Absent on projects made before apps could be chosen; those record Cal.com. */
+  app: projectAppSchema.optional(),
 });
 
 export const projectSchema = z.object({

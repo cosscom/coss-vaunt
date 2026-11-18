@@ -1,13 +1,15 @@
 "use server";
 
+import { newProjectInputSchema } from "@calcom/product-video/project-store/new-project-input";
 import { projectSchema } from "@calcom/product-video/storyboard/storyboard-schema";
 import { studioProjectStore } from "./studio-project-store";
 
 const projectId = projectSchema.shape.id;
 const projectName = projectSchema.shape.name;
 
-export async function createProjectAction(name: unknown): Promise<{ id: string }> {
-  const project = await studioProjectStore.create(projectName.parse(name));
+export async function createProjectAction(input: unknown): Promise<{ id: string }> {
+  const { name, setup } = newProjectInputSchema.parse(input);
+  const project = await studioProjectStore.create(name, setup);
   return { id: project.id };
 }
 
