@@ -1,6 +1,15 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { routeEntryFor } from "../catalogues/routes/route-catalogue";
-import { agentConversation, conversationKey, paceReply } from "./agent-replies";
+import {
+  agentConversation,
+  conversationKey,
+  paceReply,
+  readAgentReplies,
+  writeAgentReplies,
+} from "./agent-replies";
 
 const home = routeEntryFor("/home");
 const composer = home?.targets.find((target) => target.name === "composer")?.selector ?? "";
@@ -54,5 +63,29 @@ describe("paceReply", () => {
     ]);
     expect(paced.map((entry) => entry.atMs)).toEqual([900, 1000, 1450, 1500]);
     expect(paced.map((entry) => entry.chunk.type)).toEqual(["start", "text-delta", "text-delta", "finish"]);
+  });
+});
+
+describe("readAgentReplies", () => {
+  it("replays a complete capture and ignores one with a turn missing or empty", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "agent-replies-"));
+    try {
+      const conversation = { route: "/home", messages: ["one", "two"] };
+      const turn = [{ atMs: 0, chunk: { type: "start" } }];
+      const replies = {
+        ...conversation,
+        title: null,
+        turns: [turn, turn],
+        capturedAt: "2026-11-18T00:00:00Z",
+      };
+      await writeAgentReplies(dir, replies);
+      expect(await readAgentReplies(dir, conversation)).toEqual(replies);
+      await writeAgentReplies(dir, { ...replies, turns: [turn, []] });
+      expect(await readAgentReplies(dir, conversation)).toBeNull();
+      await writeAgentReplies(dir, { ...replies, turns: [turn] });
+      expect(await readAgentReplies(dir, conversation)).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

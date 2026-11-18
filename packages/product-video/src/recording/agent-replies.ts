@@ -16,6 +16,11 @@ export type AgentReplies = {
 
 export type AgentConversation = { route: string; messages: string[] };
 
+/** The real agent couldn't answer: not a fault in the clip's script, so retrying the script won't help. */
+export class AgentReplyError extends Error {
+  override name = "AgentReplyError";
+}
+
 /** The agent's real wait before it starts answering, capped so it doesn't eat a short scene. */
 const MAX_LEAD_MS = 900;
 /** Longer pauses mid-reply (a slow tool) shrink to this; the rhythm of the stream is kept below it. */
@@ -71,11 +76,18 @@ export async function readAgentReplies(
   projectDir: string,
   conversation: AgentConversation
 ): Promise<AgentReplies | null> {
+  let stored: AgentReplies;
   try {
-    return JSON.parse(await readFile(repliesFile(projectDir, conversation), "utf8")) as AgentReplies;
+    stored = JSON.parse(await readFile(repliesFile(projectDir, conversation), "utf8")) as AgentReplies;
   } catch {
     return null;
   }
+  // A damaged file is captured again rather than replayed as a reply with missing turns.
+  const complete =
+    Array.isArray(stored?.turns) &&
+    stored.turns.length === conversation.messages.length &&
+    stored.turns.every((turn) => Array.isArray(turn) && turn.length > 0);
+  return complete ? stored : null;
 }
 
 export async function writeAgentReplies(projectDir: string, replies: AgentReplies): Promise<void> {

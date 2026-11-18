@@ -26,7 +26,8 @@ export type RecordingPageConfig = {
 
 /** What a capture run leaves on `window.__studioAgentCapture`. */
 export type AgentCaptureState = {
-  turns: Array<{ chunks: TimedChunk[]; done: boolean }>;
+  /** `failure` says why a turn ended without a reply: an HTTP status or a dropped stream. */
+  turns: Array<{ chunks: TimedChunk[]; done: boolean; failure: string | null }>;
   title: string | null;
 };
 
@@ -106,15 +107,17 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   };
-  Math.random = random(config.seed);
+  // A capture keeps real randomness: a seeded chat session id would resume the last capture's session.
+  if (!config.capture) Math.random = random(config.seed);
   const uuidRandom = random(config.seed ^ 0x5bd1e995);
-  crypto.randomUUID = () => {
-    const hex = Array.from({ length: 32 }, () => Math.floor(uuidRandom() * 16).toString(16));
-    hex[12] = "4";
-    hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
-    const s = hex.join("");
-    return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}` as `${string}-${string}-${string}-${string}-${string}`;
-  };
+  if (!config.capture)
+    crypto.randomUUID = () => {
+      const hex = Array.from({ length: 32 }, () => Math.floor(uuidRandom() * 16).toString(16));
+      hex[12] = "4";
+      hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+      const s = hex.join("");
+      return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}` as `${string}-${string}-${string}-${string}-${string}`;
+    };
 
   const ensureStyle = () => {
     if (!document.head || document.getElementById("__studio-style")) return;
@@ -160,50 +163,68 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
     const local = url.origin === location.origin;
     if (config.capture && local && url.pathname === config.chatPath && method === "POST") {
       const state = (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture;
-      const turnState = { chunks: [] as TimedChunk[], done: false };
+      const turnState = { chunks: [] as TimedChunk[], done: false, failure: null as string | null };
       state.turns.push(turnState);
       const started = performance.now();
-      return originalFetch(input, init).then((response) => {
-        if (!response.body) {
-          turnState.done = true;
-          return response;
-        }
-        const [mine, theirs] = response.body.tee();
-        void (async () => {
-          const reader = mine.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
-          for (;;) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            for (let end = buffer.indexOf("\n\n"); end >= 0; end = buffer.indexOf("\n\n")) {
-              const block = buffer.slice(0, end);
-              buffer = buffer.slice(end + 2);
-              const data = block
-                .split("\n")
-                .filter((line) => line.startsWith("data:"))
-                .map((line) => line.slice(5).trim())
-                .join("");
-              if (!data || data === "[DONE]") continue;
-              try {
-                turnState.chunks.push({
-                  atMs: Math.round(performance.now() - started),
-                  chunk: JSON.parse(data),
-                });
-              } catch {
-                // Not JSON: a keep-alive or comment line.
-              }
-            }
+      const fail = (failure: string) => {
+        turnState.failure = failure;
+        turnState.done = true;
+      };
+      return originalFetch(input, init).then(
+        (response) => {
+          if (!response.ok || !response.body) {
+            void response
+              .clone()
+              .text()
+              .catch(() => "")
+              .then((text) => fail(`HTTP ${response.status}${text ? ` ${text.slice(0, 300)}` : ""}`));
+            return response;
           }
-          turnState.done = true;
-        })();
-        return new Response(theirs, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        });
-      });
+          const [mine, theirs] = response.body.tee();
+          void (async () => {
+            const reader = mine.getReader();
+            try {
+              const decoder = new TextDecoder();
+              let buffer = "";
+              for (;;) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                for (let end = buffer.indexOf("\n\n"); end >= 0; end = buffer.indexOf("\n\n")) {
+                  const block = buffer.slice(0, end);
+                  buffer = buffer.slice(end + 2);
+                  const data = block
+                    .split("\n")
+                    .filter((line) => line.startsWith("data:"))
+                    .map((line) => line.slice(5).trim())
+                    .join("");
+                  if (!data || data === "[DONE]") continue;
+                  try {
+                    turnState.chunks.push({
+                      atMs: Math.round(performance.now() - started),
+                      chunk: JSON.parse(data),
+                    });
+                  } catch {
+                    // Not JSON: a keep-alive or comment line.
+                  }
+                }
+              }
+              turnState.done = true;
+            } catch (error) {
+              fail(`the reply stream broke: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          })();
+          return new Response(theirs, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+          });
+        },
+        (error: unknown) => {
+          fail(`the request failed: ${error instanceof Error ? error.message : String(error)}`);
+          throw error;
+        }
+      );
     }
     if (config.capture && local && url.pathname === config.titlePath && method === "GET") {
       const state = (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture;

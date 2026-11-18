@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AgentReplyError } from "../recording/agent-replies";
 import type { Board, BoardNode } from "../storyboard/board-schema";
 import { createProject } from "../storyboard/storyboard-factories";
 import type { Project } from "../storyboard/storyboard-schema";
@@ -136,6 +137,32 @@ describe("generateBoard", () => {
     const done = events.find((event) => "nodeId" in event && event.status === "done");
     expect(done && "clips" in done && done.clips?.[0].source).toMatchObject({
       text: "Show off the agent, fast",
+    });
+  });
+
+  it("fails the scene with the agent's error instead of handing it to the script as a mistake", async () => {
+    const events: GenerationEvent[] = [];
+    const deps = fakeDeps([]);
+    await generateBoard({
+      project,
+      board,
+      nodeIds: ["ask"],
+      emit: (event) => events.push(event),
+      deps: {
+        ...deps,
+        explore: async ({ rehearse }) => {
+          await rehearse([]);
+          throw new Error("explored past an agent failure");
+        },
+        rehearse: async () => {
+          throw new AgentReplyError("The Cal.com agent couldn't answer");
+        },
+      },
+    });
+    expect(events).toContainEqual({
+      nodeId: "ask",
+      status: "failed",
+      message: "The Cal.com agent couldn't answer",
     });
   });
 

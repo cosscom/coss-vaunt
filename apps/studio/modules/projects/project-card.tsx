@@ -81,7 +81,7 @@ export function ProjectCard({
         if (event.target instanceof Element && event.target.closest(INTERACTIVE)) return;
         if (!handleClick(event)) onOpen();
       }}>
-      <div className="relative flex aspect-[16/10] items-center justify-center border-b bg-muted/72">
+      <div className="relative aspect-[16/10] border-b bg-muted/72">
         <Checkbox
           aria-label={STUDIO_COPY.projects.selectProject(project.name)}
           checked={selected}
@@ -96,11 +96,13 @@ export function ProjectCard({
             onSelect({ range: event.shiftKey });
           }}
         />
-        <div
-          aria-hidden="true"
-          className="flex h-[64%] items-center justify-center overflow-hidden rounded-sm shadow-md/10 ring-1 ring-foreground/8"
-          style={{ aspectRatio: cssAspectRatio(project.aspectRatio), background: project.background }}>
-          {still ? <StillFrame projectId={project.id} still={still} /> : null}
+        {/* Absolute, so the frame's height is a share of the card's and never grows with a tall still. */}
+        <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
+          <div
+            className="flex h-[64%] items-center justify-center overflow-hidden rounded-sm shadow-md/10 ring-1 ring-foreground/8"
+            style={{ aspectRatio: cssAspectRatio(project.aspectRatio), background: project.background }}>
+            {still ? <StillFrame projectId={project.id} still={still} /> : null}
+          </div>
         </div>
       </div>
       <div className="flex items-start gap-2 p-4">

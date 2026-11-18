@@ -5,6 +5,7 @@ import { tool } from "@calcom/ai/agent-tool";
 import { chromium } from "playwright";
 import { z } from "zod";
 import type { RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
+import { AgentReplyError } from "../recording/agent-replies";
 import { routeRuntimeScript, signIn } from "../recording/record-clip";
 import type { BoardNode } from "../storyboard/board-schema";
 import type { Action } from "../storyboard/storyboard-schema";
@@ -238,7 +239,10 @@ export async function exploreRecording({
           const timing = scriptErrors(script, { duration: node.duration });
           if (timing.length > 0) return timing;
           onProgress("Rehearsing the script on the recorder's clock");
-          const errors = await rehearse(script.actions).catch((error) => [errorText(error)]);
+          const errors = await rehearse(script.actions).catch((error) => {
+            if (error instanceof AgentReplyError) throw error;
+            return [errorText(error)];
+          });
           if (errors.length > 0) onProgress(`The script needs another pass: ${errors[0]}`);
           return errors;
         },

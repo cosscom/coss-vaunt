@@ -16,6 +16,7 @@ import { type FrameInput, scheduleActions } from "./action-schedule";
 import {
   type AgentConversation,
   type AgentReplies,
+  AgentReplyError,
   agentConversation,
   paceReply,
   readAgentReplies,
@@ -216,7 +217,8 @@ async function captureAgentReplies({
 }): Promise<AgentReplies> {
   const composer = entry.targets.find((target) => target.name === "composer")?.selector;
   const send = entry.targets.find((target) => target.name === "send")?.selector;
-  if (!composer) throw new Error(`${conversation.route} has no agent composer to send messages from`);
+  if (!composer)
+    throw new AgentReplyError(`${conversation.route} has no agent composer to send messages from`);
   const browser = await chromium.launch();
   try {
     const storageState = await signIn({ baseUrl, entry, newContext: () => browser.newContext() });
@@ -243,8 +245,16 @@ async function captureAgentReplies({
           { timeout: AGENT_REPLY_TIMEOUT_MS }
         );
       } catch {
-        throw new Error(
-          `The Cal.com agent at ${baseUrl} didn't answer "${message}". Is its Trigger.dev agent worker running?`
+        const sent = await page.evaluate(
+          (turn) =>
+            (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture.turns
+              .length > turn,
+          index
+        );
+        throw new AgentReplyError(
+          sent
+            ? `The Cal.com agent at ${baseUrl} didn't finish answering "${message}" within ${AGENT_REPLY_TIMEOUT_MS / 1000} s. Is its Trigger.dev agent worker running?`
+            : `The page at ${baseUrl}${conversation.route} never sent "${message}" to the agent`
         );
       }
     }
@@ -262,14 +272,15 @@ async function captureAgentReplies({
       () => (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture
     );
     const turns = captured.turns.map((turn) => turn.chunks);
-    const failed = turns.find(
-      (chunks) => chunks.length === 0 || chunks.some((entry) => entry.chunk.type === "error")
-    );
-    if (failed) {
-      const error = failed.find((entry) => entry.chunk.type === "error")?.chunk;
-      throw new Error(
-        `The Cal.com agent replied with an error${error ? `: ${JSON.stringify(error).slice(0, 300)}` : ""}`
-      );
+    for (const [index, turn] of captured.turns.entries()) {
+      const error = turn.chunks.find((entry) => entry.chunk.type === "error")?.chunk;
+      const reason = error
+        ? JSON.stringify(error).slice(0, 300)
+        : (turn.failure ?? (turn.chunks.length === 0 ? "the reply was empty" : null));
+      if (reason)
+        throw new AgentReplyError(
+          `The Cal.com agent couldn't answer "${conversation.messages[index]}": ${reason}`
+        );
     }
     return {
       ...conversation,
@@ -277,6 +288,11 @@ async function captureAgentReplies({
       turns: turns.map(paceReply),
       capturedAt: new Date().toISOString(),
     };
+  } catch (error) {
+    if (error instanceof AgentReplyError) throw error;
+    throw new AgentReplyError(
+      `Capturing the Cal.com agent's reply failed: ${error instanceof Error ? error.message : String(error)}`
+    );
   } finally {
     await browser.close();
   }

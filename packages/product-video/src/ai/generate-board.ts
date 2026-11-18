@@ -1,4 +1,5 @@
 import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
+import { AgentReplyError } from "../recording/agent-replies";
 import type { RecordClipResult } from "../recording/record-clip";
 import type { RecordingProgress } from "../recording/recording-events";
 import { applyGeneratedClips } from "../storyboard/board-generation";
@@ -151,6 +152,7 @@ async function generateRecording({
         await deps.rehearse({ project: applyGeneratedClips(working, node.id, [clipFor(actions)]), clipId });
         return [];
       } catch (error) {
+        if (error instanceof AgentReplyError) throw error;
         return [error instanceof Error ? error.message : String(error)];
       }
     },

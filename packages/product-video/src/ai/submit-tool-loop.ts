@@ -7,7 +7,7 @@ export type SubmitTool<Schema extends z.ZodType> = {
   name: string;
   description: string;
   schema: Schema;
-  /** Problems with a submission, sent back to the model so it can fix them; empty accepts it. */
+  /** Problems with a submission, sent back to the model so it can fix them; empty accepts it. Throwing ends the loop. */
   check: (value: z.infer<Schema>) => Promise<string[]> | string[];
   /** Rejected submissions allowed before the loop gives up. */
   maxAttempts?: number;
@@ -48,17 +48,29 @@ export async function runUntilSubmitted<Schema extends z.ZodType>({
   effort?: "low" | "medium" | "high";
   onToolCall?: (name: string, input: unknown) => void;
 }): Promise<{ value: z.infer<Schema>; usage: SubmitLoopUsage }> {
-  const state: { accepted: { value: z.infer<Schema> } | null; rejected: number; lastErrors: string[] } = {
+  const state: {
+    accepted: { value: z.infer<Schema> } | null;
+    rejected: number;
+    lastErrors: string[];
+    thrown: { error: unknown } | null;
+  } = {
     accepted: null,
     rejected: 0,
     lastErrors: [],
+    thrown: null,
   };
   const maxAttempts = submit.maxAttempts ?? Number.POSITIVE_INFINITY;
   const submitTool = tool({
     description: submit.description,
     inputSchema: submit.schema,
     execute: async (value: z.infer<Schema>) => {
-      const errors = await submit.check(value);
+      let errors: string[];
+      try {
+        errors = await submit.check(value);
+      } catch (error) {
+        state.thrown = { error };
+        throw error;
+      }
       if (errors.length > 0) {
         state.rejected++;
         state.lastErrors = errors;
@@ -74,7 +86,10 @@ export async function runUntilSubmitted<Schema extends z.ZodType>({
     prompt,
     tools: { ...tools, [submit.name]: submitTool },
     toolChoice: "auto",
-    stopWhen: [stepCountIs(maxSteps), () => state.accepted !== null || state.rejected >= maxAttempts],
+    stopWhen: [
+      stepCountIs(maxSteps),
+      () => state.accepted !== null || state.rejected >= maxAttempts || state.thrown !== null,
+    ],
     providerOptions: { anthropic: { effort } },
     onStepFinish: (step) => {
       for (const call of step.toolCalls) onToolCall?.(call.toolName, call.input);
@@ -85,6 +100,7 @@ export async function runUntilSubmitted<Schema extends z.ZodType>({
     outputTokens: result.totalUsage.outputTokens ?? 0,
     steps: result.steps.length,
   };
+  if (state.thrown) throw state.thrown.error;
   if (!state.accepted) {
     const last = state.lastErrors.length > 0 ? `; last errors: ${state.lastErrors.join("; ")}` : "";
     throw new NoSubmissionError(
