@@ -103,6 +103,8 @@ export const clipSourceSchema = z.discriminatedUnion("kind", [
       .optional(),
     /** The recording clip this one continues: the recorder replays its actions, uncaptured, before capturing. */
     startFrom: z.object({ clipId: id }).optional(),
+    /** Seconds the recorder captures when the clip's end was trimmed shorter, so the take recorded at that length still plays. */
+    captureLength: z.number().positive().optional(),
     /** The cursor drawn over the recording; absent means visible, size 1, arrow. */
     cursor: cursorSettingsSchema.optional(),
   }),
@@ -190,8 +192,19 @@ export const clipSchema = z
       });
     }
     if (clip.source.kind !== "recording") return;
+    const { captureLength } = clip.source;
+    if (
+      captureLength !== undefined &&
+      (captureLength <= clip.duration || captureLength > MAX_RECORDING_SECONDS)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["source", "captureLength"],
+        message: `Capture length must be longer than the clip and at most ${MAX_RECORDING_SECONDS} seconds`,
+      });
+    }
     clip.source.actions.forEach((action, index) => {
-      if (action.at > clip.duration + 1e-6) {
+      if (action.at > (captureLength ?? clip.duration) + 1e-6) {
         ctx.addIssue({
           code: "custom",
           path: ["source", "actions", index, "at"],

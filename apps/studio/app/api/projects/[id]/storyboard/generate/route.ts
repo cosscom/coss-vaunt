@@ -1,11 +1,19 @@
 import path from "node:path";
 import { generateBoardRequestSchema } from "@calcom/product-video/ai/generation-events";
-import { startGenerationJob } from "@calcom/product-video/ai/generation-jobs";
+import { latestGenerationJob, startGenerationJob } from "@calcom/product-video/ai/generation-jobs";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";
 
 type GenerateRouteContext = { params: Promise<{ id: string }> };
+
+/** The project's latest generation, so an editor opened during or after it can still apply its clips. */
+export async function GET(_request: Request, { params }: GenerateRouteContext): Promise<Response> {
+  const { id } = await params;
+  const job = latestGenerationJob(id);
+  if (!job) return Response.json({ error: "No generation" }, { status: 404 });
+  return Response.json(job);
+}
 
 /** Starts generating clips for the board's nodes; follow it at `generate/<jobId>`. Body: `{ board, nodeIds? }`. */
 export async function POST(request: Request, { params }: GenerateRouteContext): Promise<Response> {

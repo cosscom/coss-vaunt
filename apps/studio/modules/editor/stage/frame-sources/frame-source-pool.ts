@@ -5,9 +5,11 @@ import { createPlaceholderFrameSource } from "./placeholder-frame-source";
 import { createRecordingFrameSource } from "./recording-frame-source";
 import {
   type LoadedRecording,
+  loadLatestRecording,
   loadRecording,
   recordingTakesFor,
   requestRecordingVideo,
+  wantedTakes,
 } from "./recording-lookup";
 import { createVideoFrameSource } from "./video-frame-source";
 
@@ -19,8 +21,10 @@ type Entry = {
   source: FrameSource;
   /** The takes a recording clip can show, best first; empty for other clips and uncatalogued routes. */
   recordingHashes: string[];
-  /** The take it shows; until the best one is recorded it keeps looking for it. */
-  foundHash: string | null;
+  /** The take it shows: one of `recordingHashes`, or an older take of the clip while it has none of them. */
+  shown: LoadedRecording | null;
+  /** Bumped by each lookup, so only the latest one's answer lands. */
+  lookup: number;
   checking: boolean;
   /** The lookup in flight, so an export can wait for the recording before drawing. */
   pending: Promise<void>;
@@ -30,11 +34,13 @@ export type FrameSourcePool = {
   /** Makes a source for each new video clip and disposes those of removed clips. */
   sync: (project: Project) => void;
   get: (clipId: string) => FrameSource | undefined;
+  /** The take a recording clip shows, for its cursor path. */
+  recordingFor: (clipId: string) => LoadedRecording | null;
   /** Export: waits for the clip's media, then holds exactly the frame for `time`. */
   prepare: (clipId: string, time: number) => Promise<void>;
   /** Stops every source not in `visible` from decoding. */
   idleExcept: (visible: Set<string>) => void;
-  /** Drops every source and loads them again for `project`, e.g. after a recording was replaced on disk. */
+  /** Loads every source again for `project`, e.g. after a recording was replaced on disk; recordings keep their frame until the new one is in. */
   refresh: (project: Project) => void;
   dispose: () => void;
 };
@@ -45,9 +51,15 @@ function sourceKey(clip: Clip, takesKey: string | null, theme: Project["settings
   return `recording:${takesKey ?? theme}`;
 }
 
+const isRecordingKey = (key: string) => key.startsWith("recording:");
+
+/** A new source shows nothing until its video decodes, so a refresh swaps only takes that changed on disk. */
+const recordedOver = (shown: LoadedRecording | null, loaded: LoadedRecording) =>
+  JSON.stringify(shown?.manifest) !== JSON.stringify(loaded.manifest);
+
 /**
- * One frame source per video clip: imports play from their file, images show it; recordings show a
- * placeholder until the recording for their current capture hash (theme included) is on disk.
+ * One frame source per video clip: imports play from their file, images show it; recordings show the take for
+ * their current capture hash (theme included), else their newest take, else a placeholder until they are recorded.
  */
 export function createFrameSourcePool({
   maxAnisotropy,
@@ -66,38 +78,47 @@ export function createFrameSourcePool({
   let filesUrl = "";
   let disposed = false;
 
-  const lookUpRecording = (clipId: string, entry: Entry) => {
-    const [best] = entry.recordingHashes;
-    if (!best || entry.foundHash === best || entry.checking) return;
-    entry.checking = true;
-    // Showing a stand-in take already: only the best one is worth swapping to.
-    const wanted = entry.foundHash ? [best] : entry.recordingHashes;
-    entry.pending = loadRecording(filesUrl, clipId, wanted)
-      .then((recording) => {
-        entry.checking = false;
-        if (disposed || !recording || entries.get(clipId) !== entry || recording.hash === entry.foundHash)
-          return;
-        entry.source.dispose();
-        entry.source = createRecordingFrameSource({ recording, maxAnisotropy, onFrame });
-        entry.foundHash = recording.hash;
-        onFrame();
-        if (!recording.manifest.video && upgrade) upgradeToVideo(clipId, entry, recording, recording.hash);
-      })
-      .catch(() => {
-        entry.checking = false;
-      });
-  };
-
-  // Older recordings have no playback video: they play their WebP frames until the studio has made one.
-  const upgradeToVideo = (clipId: string, entry: Entry, recording: LoadedRecording, hash: string) => {
-    void requestRecordingVideo(projectUrl, recording, clipId, hash)
+  const show = (clipId: string, entry: Entry, recording: LoadedRecording) => {
+    entry.source.dispose();
+    entry.source = createRecordingFrameSource({ recording, maxAnisotropy, onFrame });
+    entry.shown = recording;
+    onFrame();
+    // Older recordings have no playback video: they play their WebP frames until the studio has made one.
+    if (recording.manifest.video || !upgrade) return;
+    void requestRecordingVideo(projectUrl, recording, clipId, recording.hash)
       .then((withVideo) => {
-        if (disposed || !withVideo || entries.get(clipId) !== entry) return;
-        entry.source.dispose();
-        entry.source = createRecordingFrameSource({ recording: withVideo, maxAnisotropy, onFrame });
-        onFrame();
+        if (!disposed && withVideo && entries.get(clipId) === entry && entry.shown === recording)
+          show(clipId, entry, withVideo);
       })
       .catch(() => undefined);
+  };
+
+  /** `reload` also swaps in the shown take again when it was recorded over on disk. */
+  const lookUpRecording = (clipId: string, entry: Entry, reload = false) => {
+    if (!isRecordingKey(entry.key)) return;
+    const wanted = reload
+      ? entry.recordingHashes
+      : wantedTakes(entry.recordingHashes, entry.shown?.hash ?? null);
+    const latestOtherwise = reload || entry.shown === null;
+    if (entry.checking || (wanted.length === 0 && !latestOtherwise)) return;
+    const lookup = ++entry.lookup;
+    entry.checking = true;
+    entry.pending = loadRecording(filesUrl, clipId, wanted)
+      .then((recording) => recording ?? (latestOtherwise ? loadLatestRecording(filesUrl, clipId) : null))
+      .then(
+        (recording) => {
+          if (disposed || entries.get(clipId) !== entry || entry.lookup !== lookup) return;
+          entry.checking = false;
+          if (
+            recording &&
+            (recording.hash !== entry.shown?.hash || (reload && recordedOver(entry.shown, recording)))
+          )
+            show(clipId, entry, recording);
+        },
+        () => {
+          if (entry.lookup === lookup) entry.checking = false;
+        }
+      );
   };
 
   const recheck = setInterval(() => {
@@ -145,8 +166,12 @@ export function createFrameSourcePool({
         const takes = recordingTakesFor(project, clip);
         const key = sourceKey(clip, takes?.key ?? null, project.settings.theme);
         const current = entries.get(clip.id);
+        if (current && current.key !== key && isRecordingKey(current.key) && isRecordingKey(key)) {
+          // A new version of the clip keeps showing the take it has until the lookup for its own answers.
+          current.key = key;
+          current.checking = false;
+        }
         if (current?.key === key) {
-          // A zoom edit can change which DPR the clip needs; keep showing the take until a better one turns up.
           current.recordingHashes = takes?.hashes ?? [];
           lookUpRecording(clip.id, current);
           continue;
@@ -156,7 +181,8 @@ export function createFrameSourcePool({
           key,
           source: createSource(clip, project.settings),
           recordingHashes: takes?.hashes ?? [],
-          foundHash: null,
+          shown: null,
+          lookup: 0,
           checking: false,
           pending: Promise.resolve(),
         };
@@ -165,6 +191,7 @@ export function createFrameSourcePool({
       }
     },
     get: (clipId) => entries.get(clipId)?.source,
+    recordingFor: (clipId) => entries.get(clipId)?.shown ?? null,
     async prepare(clipId, time) {
       const entry = entries.get(clipId);
       if (!entry) return;
@@ -175,8 +202,15 @@ export function createFrameSourcePool({
       for (const [clipId, entry] of entries) if (!visible.has(clipId)) entry.source.idle();
     },
     refresh(project) {
-      for (const entry of entries.values()) entry.source.dispose();
-      entries.clear();
+      for (const [clipId, entry] of entries) {
+        if (isRecordingKey(entry.key)) {
+          entry.checking = false;
+          lookUpRecording(clipId, entry, true);
+          continue;
+        }
+        entry.source.dispose();
+        entries.delete(clipId);
+      }
       pool.sync(project);
     },
     dispose() {

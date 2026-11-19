@@ -77,6 +77,7 @@ export async function generateBoard({
   for (const node of targets) emit({ nodeId: node.id, status: "queued" });
 
   let working: Project = { ...project, storyboard: board };
+  const regenerated = new Set<string>();
   for (const node of targets) {
     const existingId = nodeClips(working, node.id)[0]?.id;
     try {
@@ -95,13 +96,68 @@ export async function generateBoard({
         clips = [await generateRecording({ node, order, working, existingId, emit, deps })];
       }
       working = applyGeneratedClips(working, node.id, clips, board);
+      for (const clip of clips) if (clip.source.kind === "recording") regenerated.add(clip.id);
       emit({ nodeId: node.id, status: "done", clips });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       emit({ nodeId: node.id, status: "failed", message });
     }
   }
+  await rerecordFollowers({ order, targets, working, regenerated, emit, deps });
   emit({ done: true });
+}
+
+const recordingProgress =
+  (nodeId: string, emit: (event: GenerationEvent) => void) => (progress: RecordingProgress) => {
+    if (progress.type === "phase") {
+      emit({ nodeId, status: "recording", message: PHASE_MESSAGES[progress.phase] ?? progress.phase });
+    } else {
+      emit({ nodeId, status: "recording", progress: progress.frame / progress.frameCount });
+    }
+  };
+
+/**
+ * Records again, with their own scripts, the board's recordings that continue a regenerated one: the replay
+ * they start from changed, so their takes no longer match.
+ */
+async function rerecordFollowers({
+  order,
+  targets,
+  working,
+  regenerated,
+  emit,
+  deps,
+}: {
+  order: BoardNode[];
+  targets: BoardNode[];
+  working: Project;
+  regenerated: Set<string>;
+  emit: (event: GenerationEvent) => void;
+  deps: GenerateBoardDeps;
+}): Promise<void> {
+  const changed = new Set(regenerated);
+  for (const node of order) {
+    if (node.kind !== "recording" || targets.includes(node)) continue;
+    const clip = nodeClips(working, node.id).find((candidate) => candidate.source.kind === "recording");
+    const continues = clip?.source.kind === "recording" ? clip.source.startFrom?.clipId : undefined;
+    if (!clip || !continues || !changed.has(continues)) continue;
+    changed.add(clip.id);
+    emit({
+      nodeId: node.id,
+      status: "recording",
+      message: "Recording again after the scene before it changed",
+    });
+    try {
+      await deps.record({ project: working, clipId: clip.id, onProgress: recordingProgress(node.id, emit) });
+      emit({ nodeId: node.id, status: "done" });
+    } catch (error) {
+      emit({
+        nodeId: node.id,
+        status: "failed",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 async function generateRecording({
@@ -174,17 +230,7 @@ async function generateRecording({
   await deps.record({
     project: applyGeneratedClips(working, node.id, [clip]),
     clipId: clip.id,
-    onProgress: (progress) => {
-      if (progress.type === "phase") {
-        emit({
-          nodeId: node.id,
-          status: "recording",
-          message: PHASE_MESSAGES[progress.phase] ?? progress.phase,
-        });
-      } else {
-        emit({ nodeId: node.id, status: "recording", progress: progress.frame / progress.frameCount });
-      }
-    },
+    onProgress: recordingProgress(node.id, emit),
   });
   return clip;
 }

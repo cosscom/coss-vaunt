@@ -2,6 +2,7 @@ import path from "node:path";
 import type { ExportEvent } from "@calcom/product-video/export/export-events";
 import { cancelExportJob, followExportJob, startExportJob } from "@calcom/product-video/export/export-jobs";
 import { exportFileName, exportSettingsSchema } from "@calcom/product-video/export/export-settings";
+import { unrecordedClips } from "@calcom/product-video/recording/recording-status";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ export async function POST(request: Request, { params }: ExportsRouteContext): P
   if (!project) return Response.json({ error: "Project not found" }, { status: 404 });
   const parsed = exportSettingsSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Invalid export settings" }, { status: 400 });
+  const unrecorded = await unrecordedClips(project, path.join(STUDIO_ROOT, project.id));
+  if (unrecorded.length > 0)
+    return Response.json({ error: `Record these clips first: ${unrecorded.join(", ")}` }, { status: 422 });
   const name = exportFileName(project, parsed.data, new Date());
   const { started } = startExportJob({
     repoRoot: path.dirname(STUDIO_ROOT),

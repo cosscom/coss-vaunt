@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ROUTE_CATALOGUE } from "../catalogues/routes/route-catalogue";
+import { findClip, splitClip, trimClip } from "../storyboard/storyboard-edits";
 import { createProject, createRecordingClip } from "../storyboard/storyboard-factories";
-import type { Clip, Project } from "../storyboard/storyboard-schema";
+import { type Clip, type Project, projectSchema } from "../storyboard/storyboard-schema";
 import { captureHashForClip } from "./capture-hash";
 import { replayChain } from "./replay-chain";
 
@@ -60,6 +61,40 @@ describe("captureHashForClip with a predecessor", () => {
       clip: next,
     });
     expect(after).not.toBe(before);
+  });
+});
+
+describe("captureHashForClip after timeline edits", () => {
+  const hashes = (project: Project) =>
+    ["a", "b"].map((id) => {
+      const clip = findClip(project, id);
+      return clip && captureHashForClip({ project, clip });
+    });
+  const pair = () => projectWith([recording("a"), { ...recording("b", "a"), start: 4 }]);
+
+  it("keeps the clip's take and its follower's when its end is trimmed shorter, even past an action", () => {
+    const trimmed = trimClip(pair(), "a", "end", 0.4);
+    expect(findClip(trimmed, "a")?.duration).toBeCloseTo(0.4);
+    expect(hashes(trimmed)).toEqual(hashes(pair()));
+  });
+
+  it("needs new takes once the clip outgrows the length it was captured at", () => {
+    const extended = trimClip(trimClip(pair(), "a", "end", 3.9), "a", "end", 4.1);
+    expect(findClip(extended, "a")?.duration).toBeCloseTo(4.1);
+    expect(hashes(extended)[0]).not.toBe(hashes(pair())[0]);
+    expect(hashes(extended)[1]).not.toBe(hashes(pair())[1]);
+  });
+
+  it("gives the tail only the actions it shows when a trimmed clip is split", () => {
+    const split = splitClip(trimClip(pair(), "a", "end", 0.4), "a", 0.2);
+    const tail = split && findClip(split.project, split.clipId);
+    expect(tail?.source).toMatchObject({ actions: [] });
+    expect(split && projectSchema.safeParse(split.project).success).toBe(true);
+  });
+
+  it("keeps the head's take when a clip is split, even before an action", () => {
+    const split = splitClip(pair(), "a", 0.3);
+    expect(split && hashes(split.project)).toEqual(hashes(pair()));
   });
 });
 

@@ -11,7 +11,7 @@ import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
 import { WebGLRenderer } from "three";
 import { type ClipView, type ClipViewInput, createClipView } from "./clip-view";
-import { createCursorTracks } from "./cursor-tracks";
+import { cursorTrackOf } from "./cursor-tracks";
 import { createDepthOfField, type DepthOfField } from "./depth-of-field";
 import { createFrameSourcePool } from "./frame-sources/frame-source-pool";
 import { createStageBackground } from "./stage-background";
@@ -76,13 +76,17 @@ export function createStageRenderer({
     onFrame: onInvalidate,
     upgrade: !forExport,
   });
-  const cursorTracks = createCursorTracks({ onLoad: onInvalidate });
   let depthOfField: DepthOfField | null = null;
   let disposed = false;
 
+  const cursorTrack = (clipId: string) => {
+    const recording = sources.recordingFor(clipId);
+    return recording ? cursorTrackOf(recording.manifest) : null;
+  };
+
   const cursorFor = (clip: Clip, localTime: number): ClipViewInput["cursor"] => {
     const settings = resolveCursorSettings(clip);
-    const loaded = settings?.visible ? cursorTracks.get(clip.id) : null;
+    const loaded = settings?.visible ? cursorTrack(clip.id) : null;
     const pointer = loaded && cursorFrameAt(loaded.track, localTime);
     if (!settings || !loaded || !pointer) return null;
     return { layout: cursorPlaneLayout(pointer, settings, loaded.viewport), style: settings.style };
@@ -109,7 +113,6 @@ export function createStageRenderer({
     setProject(next) {
       project = next;
       sources.sync(next);
-      cursorTracks.sync(next);
       const live = new Set(next.videoTracks.flatMap((track) => track.clips.map((clip) => clip.id)));
       for (const [clipId, view] of views) {
         if (live.has(clipId)) continue;
@@ -118,21 +121,17 @@ export function createStageRenderer({
       }
       background.update(next.settings.background, frame);
     },
-    cursorFor: (clipId) => cursorTracks.get(clipId),
+    cursorFor: cursorTrack,
     async prepare(time) {
       if (!project) return;
       const videos = activeClipsAt(project, time).filter((entry) => entry.clip.source.kind !== "text");
       await Promise.all(
-        videos.flatMap(({ clip, localTime }) => [
-          sources.prepare(clip.id, sourceTime(clip, localTime)),
-          cursorTracks.prepare(clip.id),
-        ])
+        videos.map(({ clip, localTime }) => sources.prepare(clip.id, sourceTime(clip, localTime)))
       );
     },
     refreshMedia() {
       if (!project) return;
       sources.refresh(project);
-      cursorTracks.refresh(project);
     },
     setSize(width, height, ratio) {
       frame = { width: Math.max(1, width), height: Math.max(1, height) };
@@ -150,7 +149,7 @@ export function createStageRenderer({
           const size = sources.get(clipId)?.size;
           return size ? deviceWorldSize(size) : null;
         },
-        cursorFor: (clipId) => cursorTracks.get(clipId),
+        cursorFor: cursorTrack,
       });
       sources.idleExcept(new Set(layers.map((layer) => layer.active.clip.id)));
       geometries.clear();
@@ -196,7 +195,6 @@ export function createStageRenderer({
     dispose() {
       disposed = true;
       sources.dispose();
-      cursorTracks.dispose();
       for (const view of views.values()) view.dispose();
       views.clear();
       depthOfField?.dispose();

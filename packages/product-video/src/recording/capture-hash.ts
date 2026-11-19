@@ -40,7 +40,7 @@ export function captureSpecFor({
     recorderVersion: RECORDER_VERSION,
     route: clip.source.route,
     actions: clip.source.actions,
-    duration: clip.duration,
+    duration: clip.source.captureLength ?? clip.duration,
     fps: project.settings.fps,
     theme,
     viewport: routeEntry.viewport,

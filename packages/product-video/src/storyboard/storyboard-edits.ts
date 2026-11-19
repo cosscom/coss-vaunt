@@ -226,6 +226,19 @@ function clampTimes(clip: Clip, shift: number, duration: number): Clip {
   return { ...clip, duration, properties, source };
 }
 
+function capturedLength(clip: Clip): number {
+  return clip.source.kind === "recording" ? (clip.source.captureLength ?? clip.duration) : clip.duration;
+}
+
+/** A recording trimmed shorter keeps capturing its old length, actions included, so its take still plays. */
+function trimEnd(clip: Clip, duration: number): Clip {
+  const trimmed = clampTimes(clip, 0, duration);
+  if (clip.source.kind !== "recording") return trimmed;
+  const captured = capturedLength(clip);
+  const captureLength = duration < captured - EPSILON ? captured : undefined;
+  return { ...trimmed, source: { ...clip.source, captureLength } };
+}
+
 /**
  * Drags an edge to `time`, clamped to the clip's length limits and the track's overlap rules. The start
  * edge keeps keyframes and actions where they are in project time; on imports it also moves the trim.
@@ -256,7 +269,7 @@ export function trimClip(project: Project, clipId: string, edge: "start" | "end"
           value <= maxDuration + EPSILON &&
           spansAreValid([...others, { start: clip.start, duration: value }])
       ) ?? clip.duration;
-    return updateClip(project, clipId, (current) => clampTimes(current, 0, duration));
+    return updateClip(project, clipId, (current) => trimEnd(current, duration));
   }
 
   const end = clipEnd(clip);
@@ -288,7 +301,9 @@ export function trimClip(project: Project, clipId: string, edge: "start" | "end"
   const source =
     trimmed.source.kind === "import"
       ? { ...trimmed.source, trimStart: Math.max(0, trimmed.source.trimStart + shift) }
-      : trimmed.source;
+      : trimmed.source.kind === "recording"
+        ? { ...trimmed.source, captureLength: undefined }
+        : trimmed.source;
   return updateClip(project, clipId, () => ({ ...trimmed, source }));
 }
 
@@ -430,11 +445,12 @@ export function splitClip(
     };
   }
   if (clip.source.kind === "recording") {
-    head.source = { ...clip.source, actions: clip.source.actions.filter((action) => action.at <= cut) };
+    head.source = { ...clip.source, captureLength: capturedLength(clip) };
     tail.source = {
       ...clip.source,
+      captureLength: undefined,
       actions: clip.source.actions
-        .filter((action) => action.at > cut)
+        .filter((action) => action.at > cut && action.at <= clip.duration)
         .map((action) => ({ ...action, at: action.at - cut })),
     };
   }

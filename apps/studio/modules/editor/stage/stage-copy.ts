@@ -12,7 +12,5 @@ export const STAGE_COPY = {
   focusHint:
     "Click or drag on the device to set where blur focuses, drag the dashed edge for its range and the dot for its angle, double-click to reset",
   notRecorded: "Not recorded yet",
-  refreshMedia: "Refresh media",
-  refreshMediaHint: "Reload recordings and media",
   noWebgl: "WebGL isn’t available in this browser",
 } as const;

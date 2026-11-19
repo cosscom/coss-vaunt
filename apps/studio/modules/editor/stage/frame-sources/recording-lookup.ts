@@ -8,6 +8,9 @@ import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-
 
 export type LoadedRecording = { directoryUrl: string; manifest: RecordingManifest; hash: string };
 
+/** A take's folder name; skips the `.partial-<pid>` folders of recordings still being written. */
+const CAPTURE_HASH = /^[0-9a-f]{16}$/;
+
 /** The takes a recording clip can show, best first, under a key that zoom edits don't change; null when it can't be recorded. */
 export type RecordingTakes = { key: string; hashes: string[] };
 
@@ -31,6 +34,29 @@ export async function loadRecording(
     if (response.ok) return { directoryUrl, manifest: (await response.json()) as RecordingManifest, hash };
   }
   return null;
+}
+
+/**
+ * The clip's newest take on disk, whatever version of the clip it was recorded for: what the stage shows while
+ * the current version has no take, instead of a blank frame. Null when the clip was never recorded.
+ */
+export async function loadLatestRecording(filesUrl: string, clipId: string): Promise<LoadedRecording | null> {
+  const response = await fetch(`${filesUrl}/recordings/${encodeURIComponent(clipId)}`, { cache: "no-store" });
+  if (!response.ok) return null;
+  const { entries } = (await response.json()) as { entries: Array<{ name: string; directory: boolean }> };
+  const takes = entries.filter((entry) => entry.directory && CAPTURE_HASH.test(entry.name));
+  return loadRecording(
+    filesUrl,
+    clipId,
+    takes.map((entry) => entry.name)
+  );
+}
+
+/** The takes worth asking for: every candidate until the clip shows one of them, then only the best. */
+export function wantedTakes(hashes: readonly string[], shown: string | null): string[] {
+  const [best] = hashes;
+  if (!best || shown === best) return [];
+  return shown !== null && hashes.includes(shown) ? [best] : [...hashes];
 }
 
 /** Asks the studio to make a recording's playback video; the updated recording once it has one, else null. */

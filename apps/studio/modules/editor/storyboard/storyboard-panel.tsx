@@ -72,7 +72,7 @@ export function StoryboardPanel({
 }): React.ReactElement {
   const { project } = editor;
   const actions = useStoryboardActions(editor);
-  const generation = useBoardGeneration(project.id, editor.applyGeneratedClips);
+  const generation = useBoardGeneration(project, editor.applyGeneratedClips);
   const drafting = useBoardDraft(project.id);
   const media = useMediaImport(project.id);
   const [fullScreen, setFullScreen] = useState(false);

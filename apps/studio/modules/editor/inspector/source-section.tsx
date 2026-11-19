@@ -66,7 +66,7 @@ export function SourceSection({ project, clip, onClipChange }: SourceSectionProp
             onChange={(route) => updateSource("recording", (current) => ({ ...current, route }))}
             value={source.route}
           />
-          <RecordClipButton clip={clip} projectId={project.id} />
+          <RecordClipButton clip={clip} project={project} />
           <CursorControls clip={clip} onClipChange={onClipChange} project={project} />
         </>
       ) : null}

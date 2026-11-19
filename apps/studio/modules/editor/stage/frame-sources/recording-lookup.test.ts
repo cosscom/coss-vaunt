@@ -1,7 +1,13 @@
 import { createProject, createRecordingClip } from "@calcom/product-video/storyboard/storyboard-factories";
 import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadRecording, recordingDirectoryUrl, recordingTakesFor } from "./recording-lookup";
+import {
+  loadLatestRecording,
+  loadRecording,
+  recordingDirectoryUrl,
+  recordingTakesFor,
+  wantedTakes,
+} from "./recording-lookup";
 
 const project = createProject({ name: "Demo", now: new Date(Date.UTC(2026, 10, 17)) });
 const withTheme = (theme: Project["settings"]["theme"]) => ({ settings: { ...project.settings, theme } });
@@ -86,5 +92,61 @@ describe("loadRecording", () => {
   it("is null when that recording doesn't exist yet", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Not found", { status: 404 })));
     expect(await loadRecording("/files", "c", ["abc"])).toBeNull();
+  });
+});
+
+describe("loadLatestRecording", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const newer = "1111111111111111";
+  const older = "2222222222222222";
+  const listing = [
+    { name: `${newer}.partial-42`, directory: true },
+    { name: newer, directory: true },
+    { name: older, directory: true },
+  ];
+
+  it("shows the newest take that finished, skipping recordings still being written", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/recordings/c")) return new Response(JSON.stringify({ entries: listing }));
+      return url.includes(`/${newer}/`)
+        ? new Response(JSON.stringify({ captureHash: newer }))
+        : new Response("Not found", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await loadLatestRecording("/files", "c"))?.hash).toBe(newer);
+    expect(fetchMock.mock.calls.some(([url]) => url.includes("partial"))).toBe(false);
+  });
+
+  it("moves on to an older take when the newest has no manifest", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("/recordings/c")) return new Response(JSON.stringify({ entries: listing }));
+        return url.includes(`/${older}/`)
+          ? new Response(JSON.stringify({}))
+          : new Response("Not found", { status: 404 });
+      })
+    );
+    expect((await loadLatestRecording("/files", "c"))?.hash).toBe(older);
+  });
+
+  it("is null for a clip that was never recorded", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Not found", { status: 404 })));
+    expect(await loadLatestRecording("/files", "c")).toBeNull();
+  });
+});
+
+describe("wantedTakes", () => {
+  it("asks for every candidate while the clip shows none of them", () => {
+    expect(wantedTakes(["best", "sharper"], null)).toEqual(["best", "sharper"]);
+    expect(wantedTakes(["best", "sharper"], "older-version")).toEqual(["best", "sharper"]);
+  });
+
+  it("asks only for the best take while a stand-in shows, and for nothing once it has it", () => {
+    expect(wantedTakes(["best", "sharper"], "sharper")).toEqual(["best"]);
+    expect(wantedTakes(["best", "sharper"], "best")).toEqual([]);
   });
 });

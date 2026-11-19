@@ -2,7 +2,7 @@
 
 import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { useEffect, useRef, useState } from "react";
-import { saveProjectAction } from "@/modules/projects/project-actions";
+import { saveProjectInOrder } from "./project-save-queue";
 
 export type SaveStatus = "saved" | "saving" | "error";
 
@@ -16,7 +16,7 @@ export function useProjectAutosave(project: Project, delayMs = 500): SaveStatus 
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        await saveProjectAction(project);
+        await saveProjectInOrder(project);
         lastSaved.current = project;
         if (!cancelled) setStatus("saved");
       } catch {

@@ -1,9 +1,11 @@
 "use client";
 
 import type { Board } from "@calcom/product-video/storyboard/board-schema";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { toastManager } from "@coss/ui/components/toast";
 import { useEffect, useRef, useState } from "react";
+import { saveProjectInOrder } from "../project-save-queue";
+import { appliedScenes, saveAppliedScenes } from "./generation-applied";
 import {
   applyGenerationEvent,
   failUnfinished,
@@ -23,10 +25,11 @@ async function errorMessage(response: Response): Promise<string> {
 
 /**
  * Sends the board to the agent and follows its job stream. Statuses are per node and live only here; each
- * node's clips are handed to `onClips` as they finish, so every node lands as its own undo step.
+ * node's clips are handed to `onClips` as they finish, so every node lands as its own undo step. Opening the
+ * editor picks up the project's latest job, so clips finished while it was closed still land.
  */
 export function useBoardGeneration(
-  projectId: string,
+  project: Project,
   onClips: (nodeId: string, clips: Clip[]) => void
 ): {
   statuses: Record<string, NodeGeneration>;
@@ -38,47 +41,48 @@ export function useBoardGeneration(
   const abort = useRef<AbortController | null>(null);
   const onClipsRef = useRef(onClips);
   onClipsRef.current = onClips;
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const projectId = project.id;
+  const base = `/api/projects/${encodeURIComponent(projectId)}/storyboard/generate`;
 
-  useEffect(() => () => abort.current?.abort(), []);
+  /** Applies the job's finished clips once each; `showStatus` is off when catching up on a finished job. */
+  const follow = async (jobId: string, signal: AbortSignal, showStatus: boolean) => {
+    const applied = appliedScenes(localStorage, projectId, jobId);
+    const stream = await fetch(`${base}/${encodeURIComponent(jobId)}`, {
+      headers: { Accept: "text/event-stream" },
+      signal,
+    });
+    if (!stream.ok || !stream.body) throw new Error(await errorMessage(stream));
+    const reader = stream.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) return;
+      const parsed = parseGenerationStream(buffer + value);
+      buffer = parsed.rest;
+      for (const event of parsed.events) {
+        if (isDoneEvent(event)) return;
+        if (showStatus) setStatuses((current) => applyGenerationEvent(current, event));
+        if (event.status !== "done" || !event.clips || applied.has(event.nodeId)) continue;
+        onClipsRef.current(event.nodeId, event.clips);
+        applied.add(event.nodeId);
+        saveAppliedScenes(localStorage, projectId, jobId, applied);
+      }
+    }
+  };
 
-  const generate = async (board: Board, nodeIds?: string[]) => {
+  const run = async (
+    start: (signal: AbortSignal) => Promise<{ jobId: string; showStatus: boolean } | null>
+  ) => {
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
-    const targets = nodeIds ?? board.nodes.map((node) => node.id);
-    setStatuses((current) => ({
-      ...current,
-      ...Object.fromEntries(targets.map((id): [string, NodeGeneration] => [id, { status: "queued" }])),
-    }));
-    setRunning(true);
-    const base = `/api/projects/${encodeURIComponent(projectId)}/storyboard/generate`;
     try {
-      const started = await fetch(base, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nodeIds ? { board, nodeIds } : { board }),
-        signal: controller.signal,
-      });
-      if (!started.ok) throw new Error(await errorMessage(started));
-      const { jobId } = (await started.json()) as { jobId: string };
-      const stream = await fetch(`${base}/${encodeURIComponent(jobId)}`, {
-        headers: { Accept: "text/event-stream" },
-        signal: controller.signal,
-      });
-      if (!stream.ok || !stream.body) throw new Error(await errorMessage(stream));
-      const reader = stream.body.pipeThrough(new TextDecoderStream()).getReader();
-      let buffer = "";
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const parsed = parseGenerationStream(buffer + value);
-        buffer = parsed.rest;
-        for (const event of parsed.events) {
-          if (isDoneEvent(event)) return;
-          setStatuses((current) => applyGenerationEvent(current, event));
-          if (event.status === "done" && event.clips) onClipsRef.current(event.nodeId, event.clips);
-        }
-      }
+      const job = await start(controller.signal);
+      if (!job) return;
+      if (job.showStatus) setRunning(true);
+      await follow(job.jobId, controller.signal, job.showStatus);
     } catch (error) {
       if (controller.signal.aborted) return;
       const message = error instanceof Error ? error.message : copy.generateFailed;
@@ -91,6 +95,37 @@ export function useBoardGeneration(
         setStatuses((current) => failUnfinished(current, copy.generateFailed));
       }
     }
+  };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: catches up once per project; `run` reads refs.
+  useEffect(() => {
+    void run(async (signal) => {
+      const response = await fetch(base, { signal });
+      if (!response.ok) return null;
+      const job = (await response.json()) as { jobId: string; finished: boolean };
+      return { jobId: job.jobId, showStatus: !job.finished };
+    });
+    return () => abort.current?.abort();
+  }, [base]);
+
+  const generate = (board: Board, nodeIds?: string[]) => {
+    const targets = nodeIds ?? board.nodes.map((node) => node.id);
+    setStatuses((current) => ({
+      ...current,
+      ...Object.fromEntries(targets.map((id): [string, NodeGeneration] => [id, { status: "queued" }])),
+    }));
+    return run(async (signal) => {
+      await saveProjectInOrder(projectRef.current);
+      const started = await fetch(base, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nodeIds ? { board, nodeIds } : { board }),
+        signal,
+      });
+      if (!started.ok) throw new Error(await errorMessage(started));
+      const { jobId } = (await started.json()) as { jobId: string };
+      return { jobId, showStatus: true };
+    });
   };
 
   return { statuses, running, generate };

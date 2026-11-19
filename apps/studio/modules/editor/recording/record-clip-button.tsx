@@ -1,7 +1,7 @@
 "use client";
 
 import type { RecordingStreamEvent } from "@calcom/product-video/recording/recording-events";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Progress } from "@coss/ui/components/progress";
 import { Spinner } from "@coss/ui/components/spinner";
@@ -9,7 +9,9 @@ import { toastManager } from "@coss/ui/components/toast";
 import { CircleAlertIcon, CircleCheckIcon, VideoIcon } from "@coss/ui/icons";
 import type * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { saveProjectInOrder } from "../project-save-queue";
 import { RECORDING_COPY as copy } from "./recording-copy";
+import { announceRecordingFinished } from "./recording-finished";
 import {
   nextRecordingViewState,
   type RecordingViewState,
@@ -17,7 +19,7 @@ import {
   recordingStarted,
 } from "./recording-view-state";
 
-export type RecordClipButtonProps = { projectId: string; clip: Clip };
+export type RecordClipButtonProps = { project: Project; clip: Clip };
 
 /** Waits for autosave before asking whether the edited clip is already recorded. */
 const STATUS_DELAY_MS = 800;
@@ -27,10 +29,10 @@ function recordUrl(projectId: string, clipId: string): string {
 }
 
 /** Records the clip from the inspector's Source section and shows whether its current version is recorded. */
-export function RecordClipButton({ projectId, clip }: RecordClipButtonProps): React.ReactElement | null {
+export function RecordClipButton({ project, clip }: RecordClipButtonProps): React.ReactElement | null {
   const [state, setState] = useState<RecordingViewState>({ kind: "checking" });
   const source = useRef<EventSource | null>(null);
-  const url = recordUrl(projectId, clip.id);
+  const url = recordUrl(project.id, clip.id);
 
   const follow = useCallback(
     (announce: boolean) => {
@@ -41,6 +43,7 @@ export function RecordClipButton({ projectId, clip }: RecordClipButtonProps): Re
         const event = JSON.parse(message.data) as RecordingStreamEvent;
         setState((previous) => nextRecordingViewState(previous, event));
         if (event.type === "done" || event.type === "error" || event.type === "status") events.close();
+        if (event.type === "done") announceRecordingFinished();
         if (!announce) return;
         if (event.type === "done")
           toastManager.add({ type: "success", title: copy.doneToast(event.frameCount) });
@@ -72,11 +75,15 @@ export function RecordClipButton({ projectId, clip }: RecordClipButtonProps): Re
 
   const record = async () => {
     setState(recordingStarted());
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ force: state.kind === "recorded" }),
-    }).catch(() => null);
+    const response = await saveProjectInOrder(project)
+      .then(() =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: state.kind === "recorded" }),
+        })
+      )
+      .catch(() => null);
     if (!response || (!response.ok && response.status !== 409)) {
       setState({ kind: "failed", message: copy.failed });
       toastManager.add({ type: "error", title: copy.failedToast });

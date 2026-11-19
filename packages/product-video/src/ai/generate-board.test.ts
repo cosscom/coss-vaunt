@@ -121,6 +121,24 @@ describe("generateBoard", () => {
     expect(again.filter((event) => "nodeId" in event && event.status === "queued")).toHaveLength(1);
   });
 
+  it("records the scenes that continue a regenerated one again, with their own scripts", async () => {
+    const firstRecorded: Project[] = [];
+    await generateBoard({ project, board, emit: () => undefined, deps: fakeDeps(firstRecorded) });
+    const again: GenerationEvent[] = [];
+    const recorded: Project[] = [];
+    await generateBoard({
+      project: firstRecorded[1],
+      board,
+      nodeIds: ["ask"],
+      emit: (event) => again.push(event),
+      deps: fakeDeps(recorded),
+    });
+    const approve = again.filter((event) => "nodeId" in event && event.nodeId === "approve");
+    expect(approve.map((event) => "status" in event && event.status)).toContain("recording");
+    expect(approve.at(-1)).toEqual({ nodeId: "approve", status: "done" });
+    expect(recorded).toHaveLength(2);
+  });
+
   it("writes the words for a title card left blank", async () => {
     const blank: Board = {
       brief: "Show off the agent",

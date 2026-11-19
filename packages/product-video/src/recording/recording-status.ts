@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { takeCandidates } from "../project-store/project-assets";
 import type { Clip, Project } from "../storyboard/storyboard-schema";
 import { captureHashForClip } from "./capture-hash";
 import { ensureRecordingTake } from "./link-recording-take";
@@ -42,4 +43,23 @@ export async function recordingStatus({
     path.join(projectDir, recordingDirectory(clip.id, captureHash))
   );
   return { type: "status", captureHash, recorded: manifest ? { frameCount: manifest.frameCount } : null };
+}
+
+/** Names of the visible recording clips with no take for their current version, which an export would draw blank or stale. */
+export async function unrecordedClips(project: Project, projectDir: string): Promise<string[]> {
+  const clips = project.videoTracks
+    .filter((track) => !track.hidden)
+    .flatMap((track) => track.clips)
+    .filter((clip) => clip.source.kind === "recording");
+  const missing = await Promise.all(
+    clips.map(async (clip) => {
+      for (const captureHash of takeCandidates(project, clip)?.hashes ?? []) {
+        await ensureRecordingTake({ projectDir, clipId: clip.id, captureHash });
+        if (await readRecordingManifest(path.join(projectDir, recordingDirectory(clip.id, captureHash))))
+          return null;
+      }
+      return clip.name;
+    })
+  );
+  return missing.filter((name) => name !== null);
 }

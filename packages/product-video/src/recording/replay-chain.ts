@@ -28,7 +28,7 @@ export function replayChain(videoTracks: Project["videoTracks"] | undefined, cli
     steps.unshift({
       route: previous.source.route,
       actions: previous.source.actions,
-      duration: previous.duration,
+      duration: previous.source.captureLength ?? previous.duration,
     });
     next = previous.source.startFrom?.clipId;
   }

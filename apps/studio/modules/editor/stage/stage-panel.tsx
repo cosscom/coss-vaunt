@@ -5,14 +5,13 @@ import { aspectRatioSize, letterbox } from "@calcom/product-video/stage/frame-le
 import type { PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
-import { Button } from "@coss/ui/components/button";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
-import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RefreshCwIcon, RotateCwIcon } from "@coss/ui/icons";
+import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RotateCwIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";
+import { onRecordingFinished } from "../recording/recording-finished";
 import { STAGE_COPY as copy } from "./stage-copy";
 import {
   blurGuideTarget,
@@ -216,6 +215,15 @@ export function StagePanel({
     };
   });
 
+  useEffect(
+    () =>
+      onRecordingFinished(() => {
+        stage.current?.renderer.refreshMedia();
+        stage.current?.invalidate();
+      }),
+    []
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: the overlay reads these through `latest`; changing one must redraw it.
   useEffect(() => {
     stage.current?.invalidate();
@@ -253,23 +261,6 @@ export function StagePanel({
             {copy.focus}
           </SegmentedRadio>
         </SegmentedRadioGroup>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label={copy.refreshMedia}
-                onClick={() => {
-                  stage.current?.renderer.refreshMedia();
-                  stage.current?.invalidate();
-                }}
-                size="icon-sm"
-                variant="ghost"
-              />
-            }>
-            <RefreshCwIcon aria-hidden="true" />
-          </TooltipTrigger>
-          <TooltipPopup>{copy.refreshMediaHint}</TooltipPopup>
-        </Tooltip>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden" ref={setArea}>
         <div

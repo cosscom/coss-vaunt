@@ -73,6 +73,12 @@ export function startGenerationJob({
   return { jobId };
 }
 
+/** The project's most recent generation since the studio started, running or finished. */
+export function latestGenerationJob(projectId: string): { jobId: string; finished: boolean } | null {
+  const latest = [...jobs.entries()].findLast(([, job]) => job.projectId === projectId);
+  return latest ? { jobId: latest[0], finished: latest[1].finished } : null;
+}
+
 /** Replays a job's events so far, then follows it; null when the project has no such job. */
 export function followGenerationJob(
   { projectId, jobId }: { projectId: string; jobId: string },
