@@ -38,7 +38,6 @@ SSO aren't supported. The login is saved beside the project in `app-login.json`,
 | `packages/product-video` | The engine (`@coss/vaunt-engine`): storyboard, recording, AI planning, export |
 | `packages/coss-ui` | The coss ui components the studio uses, copied from the Cal.com monorepo |
 | `.agents/skills/animate-text` | The animate-text skill for coding agents; the engine keeps its own copy of the catalogue |
-| `plans/` | Plans for what comes next |
 
 ## Commands
 
