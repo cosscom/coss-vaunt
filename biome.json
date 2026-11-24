@@ -39,7 +39,6 @@
       "!!**/.next",
       "!!**/.studio",
       "!!**/*.d.ts",
-      "!!.yarn",
       "!!*.lock",
       "!!.agents",
       "!!packages/coss-ui/src"

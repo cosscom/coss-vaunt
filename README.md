@@ -8,12 +8,12 @@ It records apps running on your own machine (`localhost`) only.
 
 ## Setup
 
-Needs Node 22, and ffmpeg on the path for export.
+Needs [Bun](https://bun.com) 1.3, Node 22 (Next.js and the recorder run on it), and ffmpeg on the path for export.
 
 ```bash
-yarn install
-npx playwright install chromium
-yarn dev
+bun install
+bunx playwright install chromium
+bun dev
 ```
 
 Open http://localhost:3102. Projects, recordings and exports are kept in `.studio/` at the repo root.
@@ -43,8 +43,21 @@ SSO aren't supported. The login is saved beside the project in `app-login.json`,
 ## Commands
 
 ```bash
-yarn dev          # the studio on :3102
-yarn type-check
-yarn test
-yarn lint         # Biome; yarn lint:fix to apply fixes
+bun dev           # the studio on :3102
+bun run build     # production build of the studio; bun start serves it
+bun type-check
+bun run test      # Vitest; plain `bun test` runs Bun's own test runner instead
+bun lint          # Biome; bun lint:fix to apply fixes
 ```
+
+If port 3102 is taken, run the studio on another one with
+`bun run --cwd apps/studio next dev --port 3103`.
+
+The engine can record and export without the studio's UI (the studio still has to be running for export):
+
+```bash
+bun run --cwd packages/product-video record <projectId> <clipId>
+bun run --cwd packages/product-video export <projectId> --studio http://localhost:3102
+```
+
+Run either with no arguments to see its options.
