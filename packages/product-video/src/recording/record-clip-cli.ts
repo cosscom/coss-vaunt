@@ -14,7 +14,7 @@ function errorMessage(error: unknown): string {
 
 const DEFAULT_STUDIO_ROOT = path.resolve(import.meta.dirname, "../../../../.studio");
 const USAGE =
-  "Usage: yarn workspace @coss/vaunt-engine record <projectId> <clipId> [--theme light|dark] [--force] [--json]";
+  "Usage: bun run --cwd packages/product-video record <projectId> <clipId> [--theme light|dark] [--force] [--json]";
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
