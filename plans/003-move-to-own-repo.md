@@ -16,6 +16,14 @@
 4. Next's `output: "standalone"` build, which 004 needs anyway.
 5. Leave a pointer in the Cal monorepo, then remove `apps/studio` and `packages/product-video` there.
 
+## Outcome
+
+1. Done, with history and the animate-text skill linked from `.claude/skills/animate-text`.
+2. Done with Yarn, then moved to Bun.
+3. Done. The key is set in the studio's settings or the environment rather than `.env`, and the Cal.com steps fell away with 001, which dropped the Cal profile.
+4. Dropped along with the desktop app.
+5. Nothing to do. The studio only ever lived on the unmerged `matthew/product-video-studio` branch of the monorepo, never on `main`, and everything on that branch is in this repo.
+
 ## Verify
 
 A fresh clone on a clean machine follows the README, opens the studio, records a Cal.com scene and exports an MP4.
