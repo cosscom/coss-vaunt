@@ -1,4 +1,4 @@
-import type { TEXT_SIZES } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { TEXT_SIZES } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 type TextSize = (typeof TEXT_SIZES)[number];
 

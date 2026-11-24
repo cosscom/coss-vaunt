@@ -1,5 +1,5 @@
-import { angleAt, type BlurHandle, blurHandleAt, rangeAt } from "@calcom/product-video/stage/blur-handles";
-import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
+import { angleAt, type BlurHandle, blurHandleAt, rangeAt } from "@coss/vaunt-engine/stage/blur-handles";
+import type { LayerGeometry } from "@coss/vaunt-engine/stage/camera-projection";
 import {
   type CanvasMode,
   dragProperties,
@@ -9,20 +9,20 @@ import {
   resetProperties,
   ringRotation,
   wheelZoom,
-} from "@calcom/product-video/stage/canvas-drag";
+} from "@coss/vaunt-engine/stage/canvas-drag";
 import {
   hitRing,
   type Point,
   type RotationKey,
   ringDragDegrees,
-} from "@calcom/product-video/stage/rotation-gizmo";
+} from "@coss/vaunt-engine/stage/rotation-gizmo";
 import {
   evaluateClipProperties,
   type PropertyValues,
-} from "@calcom/product-video/storyboard/property-evaluation";
-import type { PropertyKey } from "@calcom/product-video/storyboard/property-specs";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
+} from "@coss/vaunt-engine/storyboard/property-evaluation";
+import type { PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { activeClipsAt } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackClock } from "../player/playback-clock";

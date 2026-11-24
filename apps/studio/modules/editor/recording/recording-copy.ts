@@ -1,4 +1,4 @@
-import type { RecordingPhase } from "@calcom/product-video/recording/recording-events";
+import type { RecordingPhase } from "@coss/vaunt-engine/recording/recording-events";
 
 export const RECORDING_COPY = {
   record: "Record clip",

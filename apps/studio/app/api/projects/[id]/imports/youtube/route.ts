@@ -3,7 +3,7 @@ import {
   importYoutubeVideo,
   parseYoutubeVideoId,
   YoutubeImportError,
-} from "@calcom/product-video/imports/youtube-import";
+} from "@coss/vaunt-engine/imports/youtube-import";
 import type { YoutubeImportEvent } from "@/modules/editor/imports/youtube-import-events";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 

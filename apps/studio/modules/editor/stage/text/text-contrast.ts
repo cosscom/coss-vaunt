@@ -1,4 +1,4 @@
-import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 /** The darkest and lightest background swatches, so text matches the video's own palette, not the app's. */
 export const INK = "#0b0b0c";

@@ -1,8 +1,8 @@
 "use client";
 
-import { getTextEffect } from "@calcom/product-video/catalogues/text-effects/text-effect-catalogue";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
-import type { ActiveClip } from "@calcom/product-video/storyboard/track-resolution";
+import { getTextEffect } from "@coss/vaunt-engine/catalogues/text-effects/text-effect-catalogue";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import type { ActiveClip } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { TextClipLayer } from "./text/text-clip-layer";
 import { textClipPlacement } from "./text/text-clip-placement";

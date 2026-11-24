@@ -1,12 +1,5 @@
 "use client";
 
-import { PROPERTY_SPECS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
-import {
-  clipLocalTime,
-  findClipLocation,
-  incomingOverlap,
-} from "@calcom/product-video/storyboard/storyboard-edits";
-import { EASES, TRANSITION_KINDS } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   ContextMenuGroup,
   ContextMenuGroupLabel,
@@ -19,6 +12,13 @@ import {
   ContextMenuSubPopup,
   ContextMenuSubTrigger,
 } from "@coss/ui/components/context-menu";
+import { PROPERTY_SPECS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
+import {
+  clipLocalTime,
+  findClipLocation,
+  incomingOverlap,
+} from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import { EASES, TRANSITION_KINDS } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { UseTakeSubmenu } from "../assets/use-take-submenu";
 import { easeLabel } from "../easing/easing-copy";

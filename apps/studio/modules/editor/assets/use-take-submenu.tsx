@@ -1,18 +1,18 @@
 "use client";
 
 import {
-  type AssetTake,
-  type ProjectAssets,
-  pinnedTakeFor,
-} from "@calcom/product-video/project-store/project-assets";
-import { findClip } from "@calcom/product-video/storyboard/storyboard-edits";
-import {
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
   ContextMenuSub,
   ContextMenuSubPopup,
   ContextMenuSubTrigger,
 } from "@coss/ui/components/context-menu";
+import {
+  type AssetTake,
+  type ProjectAssets,
+  pinnedTakeFor,
+} from "@coss/vaunt-engine/project-store/project-assets";
+import { findClip } from "@coss/vaunt-engine/storyboard/storyboard-edits";
 import type * as React from "react";
 import { useEffect, useState } from "react";
 import { formatTimecode } from "../timeline/format-timecode";

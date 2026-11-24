@@ -1,5 +1,5 @@
-import { createProject, createRecordingClip } from "@calcom/product-video/storyboard/storyboard-factories";
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { createProject, createRecordingClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFrameSourcePool } from "./frame-source-pool";
 import { recordingTakesFor } from "./recording-lookup";

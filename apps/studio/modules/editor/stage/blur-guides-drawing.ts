@@ -1,4 +1,4 @@
-import type { BlurGuideShapes, Point } from "@calcom/product-video/stage/blur-guides";
+import type { BlurGuideShapes, Point } from "@coss/vaunt-engine/stage/blur-guides";
 
 /** The theme's info blue (blue-500), as the rotation gizmo's Z ring uses. */
 const GUIDE = "rgb(59 130 246)";

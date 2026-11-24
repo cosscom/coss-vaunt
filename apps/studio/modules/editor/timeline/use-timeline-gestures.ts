@@ -1,6 +1,6 @@
 "use client";
 
-import { PROPERTY_KEYS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
+import { PROPERTY_KEYS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
 import {
   ensureVideoTrack,
   moveClip,
@@ -9,9 +9,9 @@ import {
   snapToFrame,
   trimClip,
   updateClip,
-} from "@calcom/product-video/storyboard/storyboard-edits";
-import type { Clip, Keyframe, Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { clipEnd } from "@calcom/product-video/storyboard/track-resolution";
+} from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import type { Clip, Keyframe, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { clipEnd } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useRef, useState } from "react";
 import type { SelectedKeyframe } from "../editor-selection";

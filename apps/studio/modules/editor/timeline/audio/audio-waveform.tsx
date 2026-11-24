@@ -1,7 +1,7 @@
 "use client";
 
-import { type WaveformPeaks, waveformColumns } from "@calcom/product-video/audio/waveform-peaks";
-import type { AudioClip } from "@calcom/product-video/storyboard/storyboard-schema";
+import { type WaveformPeaks, waveformColumns } from "@coss/vaunt-engine/audio/waveform-peaks";
+import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useTheme } from "next-themes";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";

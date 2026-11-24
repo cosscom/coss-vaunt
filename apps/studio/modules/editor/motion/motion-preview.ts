@@ -1,12 +1,12 @@
-import type { MotionPlacement } from "@calcom/product-video/catalogues/motion-presets/apply-motion-preset";
+import type { MotionPlacement } from "@coss/vaunt-engine/catalogues/motion-presets/apply-motion-preset";
 import {
   type MotionPose,
   type MotionPreset,
   mirrorCubic,
   poseValue,
-} from "@calcom/product-video/catalogues/motion-presets/motion-presets";
-import { PROPERTY_SPECS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
-import type { CubicPoints } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
+import { PROPERTY_SPECS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
+import type { CubicPoints } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 const LEAD_SECONDS = 0.3;
 const HOLD_SECONDS = 0.9;

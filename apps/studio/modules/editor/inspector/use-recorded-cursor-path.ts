@@ -1,7 +1,7 @@
 "use client";
 
-import { createCursorTrack } from "@calcom/product-video/stage/cursor-track";
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { createCursorTrack } from "@coss/vaunt-engine/stage/cursor-track";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useEffect, useState } from "react";
 import { loadRecording, recordingTakesFor } from "../stage/frame-sources/recording-lookup";
 

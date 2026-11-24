@@ -1,0 +1,22 @@
+{
+  "name": "coss-vaunt",
+  "private": true,
+  "packageManager": "yarn@4.17.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @coss/vaunt dev",
+    "build": "yarn workspace @coss/vaunt build",
+    "start": "yarn workspace @coss/vaunt start",
+    "type-check": "yarn workspaces foreach -A --exclude coss-vaunt run type-check",
+    "test": "TZ=UTC yarn workspaces foreach -A --exclude coss-vaunt --exclude @coss/ui run test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "vite": "8.3.5"
+  }
+}

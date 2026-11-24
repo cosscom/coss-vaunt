@@ -1,5 +1,5 @@
-import type { TransitionKind, VideoTrack } from "@calcom/product-video/storyboard/storyboard-schema";
-import { clipEnd } from "@calcom/product-video/storyboard/track-resolution";
+import type { TransitionKind, VideoTrack } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { clipEnd } from "@coss/vaunt-engine/storyboard/track-resolution";
 
 /** An overlap on a track, owned by its incoming clip. */
 export type TransitionRegion = {

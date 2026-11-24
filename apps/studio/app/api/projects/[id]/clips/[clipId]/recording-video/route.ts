@@ -1,6 +1,6 @@
 import path from "node:path";
-import { recordingDirectory } from "@calcom/product-video/recording/recording-manifest";
-import { ensureRecordingVideo } from "@calcom/product-video/recording/recording-video";
+import { recordingDirectory } from "@coss/vaunt-engine/recording/recording-manifest";
+import { ensureRecordingVideo } from "@coss/vaunt-engine/recording/recording-video";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

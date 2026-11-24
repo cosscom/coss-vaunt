@@ -1,4 +1,4 @@
-import { PROPERTY_SPECS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
+import { PROPERTY_SPECS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
 import { keysInGroup } from "./timeline/keyframed-properties";
 
 /** K: the selected lanes exactly, else the property edited last. */

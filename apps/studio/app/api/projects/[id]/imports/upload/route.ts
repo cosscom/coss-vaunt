@@ -1,7 +1,7 @@
 import path from "node:path";
-import { importUploadedAudio } from "@calcom/product-video/imports/audio-upload";
-import { mediaTypeOf } from "@calcom/product-video/imports/media-types";
-import { importUploadedMedia, MediaUploadError } from "@calcom/product-video/imports/media-upload";
+import { importUploadedAudio } from "@coss/vaunt-engine/imports/audio-upload";
+import { mediaTypeOf } from "@coss/vaunt-engine/imports/media-types";
+import { importUploadedMedia, MediaUploadError } from "@coss/vaunt-engine/imports/media-upload";
 import { MEDIA_UPLOAD_NAME_HEADER } from "@/modules/editor/media/media-upload-request";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 

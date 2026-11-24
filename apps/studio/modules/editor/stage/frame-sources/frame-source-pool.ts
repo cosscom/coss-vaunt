@@ -1,4 +1,4 @@
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type { FrameSource } from "./frame-source";
 import { createImageFrameSource } from "./image-frame-source";
 import { createPlaceholderFrameSource } from "./placeholder-frame-source";

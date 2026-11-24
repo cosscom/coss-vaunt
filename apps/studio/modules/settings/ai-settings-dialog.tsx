@@ -1,12 +1,5 @@
 "use client";
 
-import {
-  AI_PROVIDERS,
-  type AiProvider,
-  type AiSettingsView,
-  API_KEY_ENV,
-  DEFAULT_MODELS,
-} from "@calcom/product-video/ai/ai-providers";
 import { Button } from "@coss/ui/components/button";
 import {
   Dialog,
@@ -25,6 +18,13 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@co
 import { toastManager } from "@coss/ui/components/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { SettingsIcon } from "@coss/ui/icons";
+import {
+  AI_PROVIDERS,
+  type AiProvider,
+  type AiSettingsView,
+  API_KEY_ENV,
+  DEFAULT_MODELS,
+} from "@coss/vaunt-engine/ai/ai-providers";
 import type * as React from "react";
 import { useState } from "react";
 import {

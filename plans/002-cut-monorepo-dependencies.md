@@ -31,4 +31,4 @@ Three workspace packages tie the studio to the monorepo. `@calcom/ai` is the one
 
 ## Verify
 
-`grep -rn "@calcom/" apps/studio packages/product-video/src` finds only `@calcom/product-video`. Type checks, the studio's tests and the package's tests pass. A draft, a generate and an export work against the local Cal app.
+`grep -rn "@calcom/" apps/studio packages/product-video/src` finds only `@coss/vaunt-engine`. Type checks, the studio's tests and the package's tests pass. A draft, a generate and an export work against the local Cal app.

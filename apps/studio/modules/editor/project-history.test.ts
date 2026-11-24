@@ -1,5 +1,5 @@
-import { createProject } from "@calcom/product-video/storyboard/storyboard-factories";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { createProject } from "@coss/vaunt-engine/storyboard/storyboard-factories";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { describe, expect, it } from "vitest";
 import { createHistory, pushHistory, redo, undo } from "./project-history";
 

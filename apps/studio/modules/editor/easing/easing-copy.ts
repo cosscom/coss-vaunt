@@ -2,8 +2,8 @@ import {
   type EaseDirection,
   type EaseFamily,
   findEasePreset,
-} from "@calcom/product-video/storyboard/ease-presets";
-import type { Ease } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/storyboard/ease-presets";
+import type { Ease } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { STUDIO_COPY } from "../../studio-copy";
 
 const FAMILIES: Record<EaseFamily, string> = {

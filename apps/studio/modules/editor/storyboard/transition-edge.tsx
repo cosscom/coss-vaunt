@@ -1,10 +1,5 @@
 "use client";
 
-import {
-  MAX_TRANSITION_SECONDS,
-  TRANSITION_KINDS,
-  type TransitionKind,
-} from "@calcom/product-video/storyboard/storyboard-schema";
 import { Field, FieldLabel } from "@coss/ui/components/field";
 import {
   NumberField,
@@ -16,6 +11,11 @@ import {
 import { Popover, PopoverPopup, PopoverTrigger } from "@coss/ui/components/popover";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@coss/ui/components/select";
 import { cn } from "@coss/ui/lib/utils";
+import {
+  MAX_TRANSITION_SECONDS,
+  TRANSITION_KINDS,
+  type TransitionKind,
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getSmoothStepPath } from "@xyflow/react";
 import type * as React from "react";
 import { createContext, useContext } from "react";

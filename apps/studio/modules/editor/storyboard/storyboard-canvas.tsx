@@ -1,7 +1,5 @@
 "use client";
 
-import { BOARD_NODE_SIZE, type BoardIssue } from "@calcom/product-video/storyboard/board-edits";
-import { BOARD_NODE_KINDS, type BoardNode } from "@calcom/product-video/storyboard/board-schema";
 import { Button } from "@coss/ui/components/button";
 import { ContextMenu, ContextMenuTrigger } from "@coss/ui/components/context-menu";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@coss/ui/components/menu";
@@ -9,6 +7,8 @@ import { Toolbar, ToolbarButton, ToolbarSeparator } from "@coss/ui/components/to
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { FocusIcon, Maximize2Icon, Minimize2Icon, PlusIcon, SplitIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import { BOARD_NODE_SIZE, type BoardIssue } from "@coss/vaunt-engine/storyboard/board-edits";
+import { BOARD_NODE_KINDS, type BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
 import {
   Background,
   BackgroundVariant,

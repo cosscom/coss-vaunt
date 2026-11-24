@@ -1,6 +1,5 @@
 "use client";
 
-import { PROPERTY_SPECS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import {
   NumberField,
   NumberFieldGroup,
@@ -8,6 +7,7 @@ import {
   NumberFieldScrubArea,
 } from "@coss/ui/components/number-field";
 import { cn } from "@coss/ui/lib/utils";
+import { PROPERTY_SPECS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
 import type * as React from "react";
 import type { KeyframeState } from "./keyframe-state";
 import { KeyframeToggle } from "./keyframe-toggle";

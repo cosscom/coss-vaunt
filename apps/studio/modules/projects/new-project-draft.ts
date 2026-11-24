@@ -1,7 +1,7 @@
-import type { AppLogin } from "@calcom/product-video/project-store/project-store";
-import { isAllowedRecordingHost } from "@calcom/product-video/recording/host-allowlist";
-import type { ProjectSetup } from "@calcom/product-video/storyboard/storyboard-factories";
-import type { AspectRatio } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { AppLogin } from "@coss/vaunt-engine/project-store/project-store";
+import { isAllowedRecordingHost } from "@coss/vaunt-engine/recording/host-allowlist";
+import type { ProjectSetup } from "@coss/vaunt-engine/storyboard/storyboard-factories";
+import type { AspectRatio } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export type AppChoice = "web" | "none";
 

@@ -1,4 +1,4 @@
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { saveProjectAction } from "@/modules/projects/project-actions";
 
 let queue: Promise<unknown> = Promise.resolve();

@@ -1,7 +1,7 @@
 "use client";
 
-import { frameFileName } from "@calcom/product-video/recording/recording-manifest";
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { frameFileName } from "@coss/vaunt-engine/recording/recording-manifest";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useEffect, useState } from "react";
 import { loadRecording, recordingTakesFor } from "../stage/frame-sources/recording-lookup";
 

@@ -1,21 +1,17 @@
-import { type BlurGuideShapes, blurGuideShapes } from "@calcom/product-video/stage/blur-guides";
-import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
-import { type CanvasMode, dragTarget } from "@calcom/product-video/stage/canvas-drag";
-import { deviceOutline } from "@calcom/product-video/stage/clip-picking";
-import { type CursorSource, withBlurOnCursor } from "@calcom/product-video/stage/cursor-focus";
-import { depthOfFieldParams } from "@calcom/product-video/stage/depth-of-field";
-import {
-  type RotationGizmo,
-  type RotationKey,
-  rotationGizmo,
-} from "@calcom/product-video/stage/rotation-gizmo";
-import { resolveBlurSettings } from "@calcom/product-video/storyboard/blur-settings";
+import { type BlurGuideShapes, blurGuideShapes } from "@coss/vaunt-engine/stage/blur-guides";
+import type { LayerGeometry } from "@coss/vaunt-engine/stage/camera-projection";
+import { type CanvasMode, dragTarget } from "@coss/vaunt-engine/stage/canvas-drag";
+import { deviceOutline } from "@coss/vaunt-engine/stage/clip-picking";
+import { type CursorSource, withBlurOnCursor } from "@coss/vaunt-engine/stage/cursor-focus";
+import { depthOfFieldParams } from "@coss/vaunt-engine/stage/depth-of-field";
+import { type RotationGizmo, type RotationKey, rotationGizmo } from "@coss/vaunt-engine/stage/rotation-gizmo";
+import { resolveBlurSettings } from "@coss/vaunt-engine/storyboard/blur-settings";
 import {
   evaluateClipProperties,
   type PropertyValues,
-} from "@calcom/product-video/storyboard/property-evaluation";
-import type { BlurSettings, Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
+} from "@coss/vaunt-engine/storyboard/property-evaluation";
+import type { BlurSettings, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { activeClipsAt } from "@coss/vaunt-engine/storyboard/track-resolution";
 import { drawBlurGuides } from "./blur-guides-drawing";
 import { drawRotationGizmo } from "./rotation-gizmo-drawing";
 import { drawLayerOutline } from "./selection-outline-drawing";

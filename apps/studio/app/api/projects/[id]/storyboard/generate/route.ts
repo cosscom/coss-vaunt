@@ -1,6 +1,6 @@
 import path from "node:path";
-import { generateBoardRequestSchema } from "@calcom/product-video/ai/generation-events";
-import { latestGenerationJob, startGenerationJob } from "@calcom/product-video/ai/generation-jobs";
+import { generateBoardRequestSchema } from "@coss/vaunt-engine/ai/generation-events";
+import { latestGenerationJob, startGenerationJob } from "@coss/vaunt-engine/ai/generation-jobs";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

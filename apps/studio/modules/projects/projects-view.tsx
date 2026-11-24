@@ -1,7 +1,5 @@
 "use client";
 
-import type { ProjectStill } from "@calcom/product-video/project-store/project-still";
-import type { ProjectSummary } from "@calcom/product-video/project-store/project-store";
 import { Button } from "@coss/ui/components/button";
 import {
   Empty,
@@ -13,6 +11,8 @@ import {
 } from "@coss/ui/components/empty";
 import { toastManager } from "@coss/ui/components/toast";
 import { FolderIcon, PlusIcon, Trash2Icon } from "@coss/ui/icons";
+import type { ProjectStill } from "@coss/vaunt-engine/project-store/project-still";
+import type { ProjectSummary } from "@coss/vaunt-engine/project-store/project-store";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";

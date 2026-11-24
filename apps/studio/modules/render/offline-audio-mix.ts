@@ -1,8 +1,8 @@
 "use client";
 
-import { DUCKING, duckingGainAt, sfxIntervals } from "@calcom/product-video/audio/audio-ducking";
-import { audioSegmentsBetween } from "@calcom/product-video/audio/audio-schedule";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { DUCKING, duckingGainAt, sfxIntervals } from "@coss/vaunt-engine/audio/audio-ducking";
+import { audioSegmentsBetween } from "@coss/vaunt-engine/audio/audio-schedule";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { createAudioBufferCache } from "../editor/audio/audio-buffer-cache";
 import { startAudioVoice } from "../editor/audio/audio-voice";
 

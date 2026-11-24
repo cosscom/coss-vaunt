@@ -1,10 +1,6 @@
 "use client";
 
 import {
-  getTextEffect,
-  listTextEffects,
-} from "@calcom/product-video/catalogues/text-effects/text-effect-catalogue";
-import {
   Select,
   SelectGroup,
   SelectGroupLabel,
@@ -13,6 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@coss/ui/components/select";
+import {
+  getTextEffect,
+  listTextEffects,
+} from "@coss/vaunt-engine/catalogues/text-effects/text-effect-catalogue";
 import * as React from "react";
 import { InspectorRow } from "../inspector/inspector-row";
 import { groupTextEffects } from "./text-effect-groups";

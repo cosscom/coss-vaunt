@@ -1,6 +1,6 @@
 "use client";
 
-import type { DiscoveredPage } from "@calcom/product-video/discovery/page-discovery";
+import type { DiscoveredPage } from "@coss/vaunt-engine/discovery/page-discovery";
 import { useEffect, useState } from "react";
 import { type PageOption, pageOptionsFrom } from "./page-options";
 

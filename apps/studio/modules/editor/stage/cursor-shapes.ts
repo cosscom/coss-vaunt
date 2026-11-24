@@ -1,5 +1,5 @@
-import { CURSOR_SHAPES } from "@calcom/product-video/stage/cursor-plane-layout";
-import type { CursorStyle } from "@calcom/product-video/storyboard/storyboard-schema";
+import { CURSOR_SHAPES } from "@coss/vaunt-engine/stage/cursor-plane-layout";
+import type { CursorStyle } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from "three";
 
 /** Far more texels per page pixel than the recording itself has, so the cursor stays sharp under zoom. */

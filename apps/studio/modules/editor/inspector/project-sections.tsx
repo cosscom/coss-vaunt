@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { BackgroundSwatches } from "./background-swatches";
 import { InspectorNumberRow } from "./inspector-number-row";

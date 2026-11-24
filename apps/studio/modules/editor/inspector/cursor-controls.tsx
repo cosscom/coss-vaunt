@@ -1,8 +1,8 @@
 "use client";
 
-import { resolveCursorSettings, setCursorSettings } from "@calcom/product-video/storyboard/cursor-settings";
-import { type Clip, CURSOR_STYLES, type Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+import { resolveCursorSettings, setCursorSettings } from "@coss/vaunt-engine/storyboard/cursor-settings";
+import { type Clip, CURSOR_STYLES, type Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { InspectorNumberRow } from "./inspector-number-row";
 import { InspectorRow } from "./inspector-row";

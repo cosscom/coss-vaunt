@@ -1,7 +1,5 @@
 "use client";
 
-import { BOARD_NODE_KINDS, type BoardNode } from "@calcom/product-video/storyboard/board-schema";
-import { TRANSITION_KINDS, type TransitionKind } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   ContextMenuCheckboxItem,
   ContextMenuItem,
@@ -13,6 +11,8 @@ import {
   ContextMenuSubPopup,
   ContextMenuSubTrigger,
 } from "@coss/ui/components/context-menu";
+import { BOARD_NODE_KINDS, type BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
+import { TRANSITION_KINDS, type TransitionKind } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { MenuShortcut } from "../menu-shortcut";
 import { SCENE_ICONS } from "./scene-node";

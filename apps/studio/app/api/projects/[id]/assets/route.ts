@@ -1,7 +1,7 @@
 import path from "node:path";
-import { withImportTemplates } from "@calcom/product-video/project-store/import-templates";
-import { listProjectAssets } from "@calcom/product-video/project-store/project-assets";
-import { scanProjectAssets } from "@calcom/product-video/project-store/scan-project-assets";
+import { withImportTemplates } from "@coss/vaunt-engine/project-store/import-templates";
+import { listProjectAssets } from "@coss/vaunt-engine/project-store/project-assets";
+import { scanProjectAssets } from "@coss/vaunt-engine/project-store/scan-project-assets";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

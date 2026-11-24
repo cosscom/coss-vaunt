@@ -1,8 +1,5 @@
 "use client";
 
-import type { BoardIssue } from "@calcom/product-video/storyboard/board-edits";
-import type { Board, BoardNode } from "@calcom/product-video/storyboard/board-schema";
-import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -17,6 +14,9 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@co
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { MoonIcon, SunIcon, XIcon } from "@coss/ui/icons";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+import type { BoardIssue } from "@coss/vaunt-engine/storyboard/board-edits";
+import type { Board, BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
+import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { SCENE_ICONS } from "./scene-node";

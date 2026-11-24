@@ -1,7 +1,7 @@
 "use client";
 
-import { audioClipEdges } from "@calcom/product-video/audio/audio-edits";
-import type { AudioClip, Keyframe, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { audioClipEdges } from "@coss/vaunt-engine/audio/audio-edits";
+import type { AudioClip, Keyframe, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { AUDIO_COPY } from "../../audio/audio-copy";

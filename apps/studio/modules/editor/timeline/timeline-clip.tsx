@@ -1,8 +1,8 @@
 "use client";
 
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { CaptionsIcon, FileIcon, FocusIcon, MonitorIcon, VideoIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { hasMotionDrag, MOTION_DRAG_TYPE, type MotionDrop, parseMotionDrag } from "../motion/motion-drag";

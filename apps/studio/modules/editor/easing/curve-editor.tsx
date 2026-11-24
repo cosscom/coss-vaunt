@@ -1,7 +1,7 @@
 "use client";
 
-import type { CubicPoints } from "@calcom/product-video/storyboard/storyboard-schema";
 import { cn } from "@coss/ui/lib/utils";
+import type { CubicPoints } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useId, useRef } from "react";
 import {

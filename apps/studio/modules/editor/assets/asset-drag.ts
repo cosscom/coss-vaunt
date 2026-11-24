@@ -1,5 +1,5 @@
-import type { AssetTemplate } from "@calcom/product-video/project-store/project-assets";
-import { audioClipSchema, clipSchema } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { AssetTemplate } from "@coss/vaunt-engine/project-store/project-assets";
+import { audioClipSchema, clipSchema } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 /** Drag data type for an asset from the assets pane; files from the desktop arrive as `Files` instead. */
 export const ASSET_DRAG_TYPE = "application/x-studio-asset";

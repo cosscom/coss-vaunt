@@ -1,7 +1,5 @@
 "use client";
 
-import type { ProjectStill } from "@calcom/product-video/project-store/project-still";
-import type { ProjectSummary } from "@calcom/product-video/project-store/project-store";
 import { Badge } from "@coss/ui/components/badge";
 import { Button } from "@coss/ui/components/button";
 import { Card } from "@coss/ui/components/card";
@@ -9,6 +7,8 @@ import { Checkbox } from "@coss/ui/components/checkbox";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@coss/ui/components/menu";
 import { EllipsisIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import type { ProjectStill } from "@coss/vaunt-engine/project-store/project-still";
+import type { ProjectSummary } from "@coss/vaunt-engine/project-store/project-store";
 import Link from "next/link";
 import type * as React from "react";
 import { projectFileUrl } from "../editor/audio/project-file-url";

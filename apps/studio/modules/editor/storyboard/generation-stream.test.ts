@@ -1,4 +1,4 @@
-import { createTextClip } from "@calcom/product-video/storyboard/storyboard-factories";
+import { createTextClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
 import { describe, expect, it } from "vitest";
 import { applyGenerationEvent, failUnfinished, parseGenerationStream, shownSteps } from "./generation-stream";
 

@@ -1,8 +1,8 @@
 "use client";
 
-import type { TextEffect } from "@calcom/product-video/catalogues/text-effects/text-effect";
-import type { TEXT_SIZES } from "@calcom/product-video/storyboard/storyboard-schema";
-import { evaluateTextEffect, SHOWCASE_FONT_PX } from "@calcom/product-video/text/evaluate-text-effect";
+import type { TextEffect } from "@coss/vaunt-engine/catalogues/text-effects/text-effect";
+import type { TEXT_SIZES } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { evaluateTextEffect, SHOWCASE_FONT_PX } from "@coss/vaunt-engine/text/evaluate-text-effect";
 import type * as React from "react";
 import { TextEffectFrameView } from "./text-effect-frame-view";
 import type { TextTypography } from "./text-typography";

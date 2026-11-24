@@ -1,10 +1,10 @@
-import type { CameraRig, LayerPlacement, Size } from "@calcom/product-video/stage/camera-rig";
+import type { CameraRig, LayerPlacement, Size } from "@coss/vaunt-engine/stage/camera-rig";
 import {
   type DevicePose,
   REFLECTION_FADE_HEIGHT,
   REFLECTION_PEAK,
-} from "@calcom/product-video/stage/device-pose";
-import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/stage/device-pose";
+import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { Matrix4, Mesh, PerspectiveCamera, PlaneGeometry, Scene, type Texture } from "three";
 import { type CursorDraw, createCursorSprite } from "./cursor-sprite";
 import { createDeviceMaterial } from "./device-material";

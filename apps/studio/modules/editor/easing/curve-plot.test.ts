@@ -1,4 +1,4 @@
-import type { CubicPoints } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { CubicPoints } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { describe, expect, it } from "vitest";
 import { curvePath, fromPointer, handleOnPlot, moveHandle, nudgeHandle, toPlot } from "./curve-plot";
 

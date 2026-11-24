@@ -1,5 +1,5 @@
-import type { KeyframeRef } from "@calcom/product-video/storyboard/storyboard-edits";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { KeyframeRef } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export type SelectedKeyframe = KeyframeRef & { clipId: string };
 

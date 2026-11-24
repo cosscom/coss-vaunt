@@ -1,7 +1,7 @@
 "use client";
 
-import { findAudioClip, updateAudioClip } from "@calcom/product-video/audio/audio-edits";
-import type { AudioClip } from "@calcom/product-video/storyboard/storyboard-schema";
+import { findAudioClip, updateAudioClip } from "@coss/vaunt-engine/audio/audio-edits";
+import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";

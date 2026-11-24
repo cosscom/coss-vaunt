@@ -1,18 +1,18 @@
 "use client";
 
+import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import {
   blurPropertyKeys,
   resetBlur,
   resolveBlurSettings,
   setBlurSettings,
-} from "@calcom/product-video/storyboard/blur-settings";
+} from "@coss/vaunt-engine/storyboard/blur-settings";
 import {
   BLUR_FOCUS_MODES,
   BLUR_MODES,
   type BlurSettings,
   type Clip,
-} from "@calcom/product-video/storyboard/storyboard-schema";
-import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useRef } from "react";
 import type { PlaybackClock } from "../player/playback-clock";

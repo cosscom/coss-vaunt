@@ -1,7 +1,7 @@
 "use client";
 
-import type { ProjectAssets } from "@calcom/product-video/project-store/project-assets";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { ProjectAssets } from "@coss/vaunt-engine/project-store/project-assets";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useCallback, useEffect, useState } from "react";
 
 /** Changes when a clip is added, removed or re-pinned, which is when the listing on disk can differ. */

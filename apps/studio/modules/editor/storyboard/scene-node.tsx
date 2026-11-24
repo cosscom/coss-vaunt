@@ -1,8 +1,5 @@
 "use client";
 
-import { isAppPath } from "@calcom/product-video/recording/app-path";
-import { BOARD_NODE_SIZE } from "@calcom/product-video/storyboard/board-edits";
-import type { BoardNode, BoardNodeKind } from "@calcom/product-video/storyboard/board-schema";
 import { Badge } from "@coss/ui/components/badge";
 import {
   CaptionsIcon,
@@ -13,6 +10,9 @@ import {
   VideoIcon,
 } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import { isAppPath } from "@coss/vaunt-engine/recording/app-path";
+import { BOARD_NODE_SIZE } from "@coss/vaunt-engine/storyboard/board-edits";
+import type { BoardNode, BoardNodeKind } from "@coss/vaunt-engine/storyboard/board-schema";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";

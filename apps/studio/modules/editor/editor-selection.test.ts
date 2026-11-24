@@ -1,5 +1,5 @@
-import { toggleKeyframeAt } from "@calcom/product-video/storyboard/storyboard-edits";
-import { createProject, createTextClip } from "@calcom/product-video/storyboard/storyboard-factories";
+import { toggleKeyframeAt } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import { createProject, createTextClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_SELECTION,

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { findProjectStill } from "@calcom/product-video/project-store/project-still";
+import { findProjectStill } from "@coss/vaunt-engine/project-store/project-still";
 import type { Metadata } from "next";
 import { StudioIntro } from "@/modules/intro/studio-intro";
 import { ProjectsView } from "@/modules/projects/projects-view";

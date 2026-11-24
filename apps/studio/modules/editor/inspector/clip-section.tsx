@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@coss/ui/lib/utils";
 import {
   findClipLocation,
   incomingOverlap,
@@ -8,14 +9,13 @@ import {
   setClipDuration,
   setClipStart,
   updateClip,
-} from "@calcom/product-video/storyboard/storyboard-edits";
+} from "@coss/vaunt-engine/storyboard/storyboard-edits";
 import {
   type Clip,
   MAX_RECORDING_SECONDS,
   type Project,
   TRANSITION_KINDS,
-} from "@calcom/product-video/storyboard/storyboard-schema";
-import { cn } from "@coss/ui/lib/utils";
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import { DraftInput } from "./draft-text-field";

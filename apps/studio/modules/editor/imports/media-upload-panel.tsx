@@ -1,12 +1,12 @@
 "use client";
 
-import { ACCEPTED_MEDIA } from "@calcom/product-video/imports/media-types";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Alert, AlertDescription } from "@coss/ui/components/alert";
 import { Button } from "@coss/ui/components/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@coss/ui/components/empty";
 import { CircleAlertIcon, UploadIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import { ACCEPTED_MEDIA } from "@coss/vaunt-engine/imports/media-types";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { mediaFilesFromDrop } from "../media/clipboard-media";

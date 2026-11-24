@@ -1,5 +1,5 @@
 import path from "node:path";
-import { linkRecordingTake } from "@calcom/product-video/recording/link-recording-take";
+import { linkRecordingTake } from "@coss/vaunt-engine/recording/link-recording-take";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

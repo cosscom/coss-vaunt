@@ -1,6 +1,15 @@
 {
-  "extends": "@calcom/tsconfig/nextjs.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "jsx": "preserve",
+    "useUnknownInCatchVariables": true,
     "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./*"],

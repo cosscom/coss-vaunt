@@ -1,8 +1,8 @@
 "use client";
 
-import { layoutBoard } from "@calcom/product-video/storyboard/board-edits";
-import { type Board, boardSchema } from "@calcom/product-video/storyboard/board-schema";
 import { toastManager } from "@coss/ui/components/toast";
+import { layoutBoard } from "@coss/vaunt-engine/storyboard/board-edits";
+import { type Board, boardSchema } from "@coss/vaunt-engine/storyboard/board-schema";
 import { useRef, useState } from "react";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 

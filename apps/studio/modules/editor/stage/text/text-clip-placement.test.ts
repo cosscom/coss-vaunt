@@ -1,5 +1,5 @@
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
-import type { ActiveClip } from "@calcom/product-video/storyboard/track-resolution";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import type { ActiveClip } from "@coss/vaunt-engine/storyboard/track-resolution";
 import { describe, expect, it } from "vitest";
 import { textClipPlacement } from "./text-clip-placement";
 

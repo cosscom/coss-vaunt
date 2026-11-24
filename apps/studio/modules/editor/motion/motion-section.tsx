@@ -1,15 +1,15 @@
 "use client";
 
-import type { MotionPlacement } from "@calcom/product-video/catalogues/motion-presets/apply-motion-preset";
-import {
-  MOTION_PRESETS,
-  type MotionPreset,
-} from "@calcom/product-video/catalogues/motion-presets/motion-presets";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@coss/ui/components/collapsible";
 import { toastManager } from "@coss/ui/components/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { ChevronDownIcon } from "@coss/ui/icons";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+import type { MotionPlacement } from "@coss/vaunt-engine/catalogues/motion-presets/apply-motion-preset";
+import {
+  MOTION_PRESETS,
+  type MotionPreset,
+} from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
 import type * as React from "react";
 import { useRef, useState } from "react";
 import type { EditorState } from "../use-editor-state";

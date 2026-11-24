@@ -1,5 +1,5 @@
-import { createBoardNode } from "@calcom/product-video/storyboard/board-edits";
-import type { Board } from "@calcom/product-video/storyboard/board-schema";
+import { createBoardNode } from "@coss/vaunt-engine/storyboard/board-edits";
+import type { Board } from "@coss/vaunt-engine/storyboard/board-schema";
 import { describe, expect, it } from "vitest";
 import {
   applySelectChanges,

@@ -1,4 +1,4 @@
-import type { Drift } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Drift } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 type Focus = Drift["focus"];
 type Box = { left: number; top: number; width: number; height: number };

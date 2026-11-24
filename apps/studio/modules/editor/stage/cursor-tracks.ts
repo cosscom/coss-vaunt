@@ -1,5 +1,5 @@
-import type { RecordingManifest } from "@calcom/product-video/recording/recording-manifest";
-import { type CursorTrack, createCursorTrack } from "@calcom/product-video/stage/cursor-track";
+import type { RecordingManifest } from "@coss/vaunt-engine/recording/recording-manifest";
+import { type CursorTrack, createCursorTrack } from "@coss/vaunt-engine/stage/cursor-track";
 
 export type LoadedCursorTrack = { track: CursorTrack; viewport: RecordingManifest["viewport"] };
 

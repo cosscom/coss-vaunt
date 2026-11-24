@@ -16,9 +16,9 @@ import {
   toggleVolumeKeyframeAt,
   updateAudioClip,
   updateAudioTrack,
-} from "@calcom/product-video/audio/audio-edits";
-import { keyframePasteTime } from "@calcom/product-video/storyboard/storyboard-edits";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/audio/audio-edits";
+import { keyframePasteTime } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useState } from "react";
 import { AUDIO_COPY } from "../../audio/audio-copy";
 import {

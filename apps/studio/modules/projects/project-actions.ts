@@ -1,7 +1,7 @@
 "use server";
 
-import { newProjectInputSchema } from "@calcom/product-video/project-store/new-project-input";
-import { projectSchema } from "@calcom/product-video/storyboard/storyboard-schema";
+import { newProjectInputSchema } from "@coss/vaunt-engine/project-store/new-project-input";
+import { projectSchema } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { studioProjectStore } from "./studio-project-store";
 
 const projectId = projectSchema.shape.id;

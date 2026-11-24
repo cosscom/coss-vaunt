@@ -1,8 +1,8 @@
 import path from "node:path";
-import type { ExportEvent } from "@calcom/product-video/export/export-events";
-import { cancelExportJob, followExportJob, startExportJob } from "@calcom/product-video/export/export-jobs";
-import { exportFileName, exportSettingsSchema } from "@calcom/product-video/export/export-settings";
-import { unrecordedClips } from "@calcom/product-video/recording/recording-status";
+import type { ExportEvent } from "@coss/vaunt-engine/export/export-events";
+import { cancelExportJob, followExportJob, startExportJob } from "@coss/vaunt-engine/export/export-jobs";
+import { exportFileName, exportSettingsSchema } from "@coss/vaunt-engine/export/export-settings";
+import { unrecordedClips } from "@coss/vaunt-engine/recording/recording-status";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

@@ -1,11 +1,5 @@
 "use client";
 
-import { listTextEffects } from "@calcom/product-video/catalogues/text-effects/text-effect-catalogue";
-import { ACCEPTED_MEDIA } from "@calcom/product-video/imports/media-types";
-import type { FileAsset } from "@calcom/product-video/project-store/project-assets";
-import { isAppPath } from "@calcom/product-video/recording/app-path";
-import type { BoardNode } from "@calcom/product-video/storyboard/board-schema";
-import { MAX_CLIP_SECONDS, MAX_RECORDING_SECONDS } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Alert, AlertDescription, AlertTitle } from "@coss/ui/components/alert";
 import {
   Autocomplete,
@@ -26,6 +20,12 @@ import {
   SelectValue,
 } from "@coss/ui/components/select";
 import { CircleAlertIcon, UploadIcon } from "@coss/ui/icons";
+import { listTextEffects } from "@coss/vaunt-engine/catalogues/text-effects/text-effect-catalogue";
+import { ACCEPTED_MEDIA } from "@coss/vaunt-engine/imports/media-types";
+import type { FileAsset } from "@coss/vaunt-engine/project-store/project-assets";
+import { isAppPath } from "@coss/vaunt-engine/recording/app-path";
+import type { BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
+import { MAX_CLIP_SECONDS, MAX_RECORDING_SECONDS } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useRef, useState } from "react";
 import { DraftInput, DraftTextarea } from "../inspector/draft-text-field";

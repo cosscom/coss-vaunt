@@ -1,7 +1,7 @@
 "use client";
 
-import { addAudioTrack, findAudioClip, placeAudioClips } from "@calcom/product-video/audio/audio-edits";
-import { ACCEPTED_AUDIO } from "@calcom/product-video/imports/media-types";
+import { addAudioTrack, findAudioClip, placeAudioClips } from "@coss/vaunt-engine/audio/audio-edits";
+import { ACCEPTED_AUDIO } from "@coss/vaunt-engine/imports/media-types";
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import { ASSET_DRAG_TYPE, parseAssetDrag } from "../../assets/asset-drag";

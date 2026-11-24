@@ -1,7 +1,7 @@
 "use client";
 
-import type { ExportEvent } from "@calcom/product-video/export/export-events";
-import type { ExportSettings } from "@calcom/product-video/export/export-settings";
+import type { ExportEvent } from "@coss/vaunt-engine/export/export-events";
+import type { ExportSettings } from "@coss/vaunt-engine/export/export-settings";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_MS = 1000;

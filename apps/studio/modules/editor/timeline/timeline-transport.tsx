@@ -1,6 +1,5 @@
 "use client";
 
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@coss/ui/components/menu";
 import { Toggle } from "@coss/ui/components/toggle";
@@ -19,6 +18,7 @@ import {
   RepeatIcon,
   UploadIcon,
 } from "@coss/ui/icons";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { ImportYoutubeButton } from "../imports/import-youtube-button";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";

@@ -1,5 +1,5 @@
-import { createTextClip } from "@calcom/product-video/storyboard/storyboard-factories";
-import type { AudioClip } from "@calcom/product-video/storyboard/storyboard-schema";
+import { createTextClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
+import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { describe, expect, it } from "vitest";
 import { ASSET_DRAG_TYPE, hasAssetDrag, parseAssetDrag, serializeAssetDrag } from "./asset-drag";
 

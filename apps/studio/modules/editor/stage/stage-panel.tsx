@@ -1,13 +1,13 @@
 "use client";
 
-import type { CanvasMode } from "@calcom/product-video/stage/canvas-drag";
-import { aspectRatioSize, letterbox } from "@calcom/product-video/stage/frame-letterbox";
-import type { PropertyKey } from "@calcom/product-video/storyboard/property-specs";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
 import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RotateCwIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+import type { CanvasMode } from "@coss/vaunt-engine/stage/canvas-drag";
+import { aspectRatioSize, letterbox } from "@coss/vaunt-engine/stage/frame-letterbox";
+import type { PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { activeClipsAt } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";

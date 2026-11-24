@@ -1,5 +1,5 @@
-import { createProject, createTextClip } from "@calcom/product-video/storyboard/storyboard-factories";
-import type { AudioClip, Ease, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { createProject, createTextClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
+import type { AudioClip, Ease, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { describe, expect, it } from "vitest";
 import { EMPTY_AUDIO_SELECTION } from "../audio/audio-selection";
 import { EMPTY_SELECTION } from "../editor-selection";

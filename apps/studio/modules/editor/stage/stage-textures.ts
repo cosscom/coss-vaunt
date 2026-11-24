@@ -1,4 +1,4 @@
-import { linearGradientLine, parseBackgroundGradient } from "@calcom/product-video/stage/background-gradient";
+import { linearGradientLine, parseBackgroundGradient } from "@coss/vaunt-engine/stage/background-gradient";
 import { CanvasTexture, SRGBColorSpace } from "three";
 
 function canvasTexture(canvas: HTMLCanvasElement): CanvasTexture {

@@ -1,19 +1,20 @@
 "use client";
 
+import { toastManager } from "@coss/ui/components/toast";
 import {
   applyMotionPreset,
   type MotionPlacement,
   motionPresetKeys,
-} from "@calcom/product-video/catalogues/motion-presets/apply-motion-preset";
-import { findMotionPreset } from "@calcom/product-video/catalogues/motion-presets/motion-presets";
-import { applyGeneratedClips } from "@calcom/product-video/storyboard/board-generation";
-import { type Board, EMPTY_BOARD } from "@calcom/product-video/storyboard/board-schema";
+} from "@coss/vaunt-engine/catalogues/motion-presets/apply-motion-preset";
+import { findMotionPreset } from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
+import { applyGeneratedClips } from "@coss/vaunt-engine/storyboard/board-generation";
+import { type Board, EMPTY_BOARD } from "@coss/vaunt-engine/storyboard/board-schema";
 import {
   PROPERTY_KEYS,
   PROPERTY_SPECS,
   type PropertyGroup,
   type PropertyKey,
-} from "@calcom/product-video/storyboard/property-specs";
+} from "@coss/vaunt-engine/storyboard/property-specs";
 import {
   addKeyframesAt,
   type ClipOnTrack,
@@ -58,8 +59,8 @@ import {
   toggleKeyframesAt,
   updateClip,
   updateVideoTrack,
-} from "@calcom/product-video/storyboard/storyboard-edits";
-import { createRecordingClip, createTextClip } from "@calcom/product-video/storyboard/storyboard-factories";
+} from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import { createRecordingClip, createTextClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
 import {
   type Clip,
   type Ease,
@@ -67,9 +68,8 @@ import {
   type ProjectSettings,
   projectSchema,
   type TransitionKind,
-} from "@calcom/product-video/storyboard/storyboard-schema";
-import { clipEnd } from "@calcom/product-video/storyboard/track-resolution";
-import { toastManager } from "@coss/ui/components/toast";
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { clipEnd } from "@coss/vaunt-engine/storyboard/track-resolution";
 import { useRef, useState } from "react";
 import { linkTakeRequest } from "./assets/link-take-request";
 import {

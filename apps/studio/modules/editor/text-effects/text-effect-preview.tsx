@@ -1,7 +1,7 @@
 "use client";
 
-import type { TextEffect } from "@calcom/product-video/catalogues/text-effects/text-effect";
-import { textEffectTotalsMs } from "@calcom/product-video/text/evaluate-text-effect";
+import type { TextEffect } from "@coss/vaunt-engine/catalogues/text-effects/text-effect";
+import { textEffectTotalsMs } from "@coss/vaunt-engine/text/evaluate-text-effect";
 import * as React from "react";
 import { TextClipLayer } from "../stage/text/text-clip-layer";
 import { previewLoopTime } from "./preview-loop";

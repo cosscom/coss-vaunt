@@ -1,12 +1,12 @@
 "use client";
 
-import { setVolumeKeyframeEase, updateAudioClip } from "@calcom/product-video/audio/audio-edits";
-import { easeToCubic, sameCurve } from "@calcom/product-video/storyboard/keyframe-ease";
-import { applyEase } from "@calcom/product-video/storyboard/property-evaluation";
-import type { Ease } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@coss/ui/components/collapsible";
 import { ChevronDownIcon, PlayIcon } from "@coss/ui/icons";
+import { setVolumeKeyframeEase, updateAudioClip } from "@coss/vaunt-engine/audio/audio-edits";
+import { easeToCubic, sameCurve } from "@coss/vaunt-engine/storyboard/keyframe-ease";
+import { applyEase } from "@coss/vaunt-engine/storyboard/property-evaluation";
+import type { Ease } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { audioSelectionFor, pruneAudioSelection, useAudioSelection } from "../audio/audio-selection";

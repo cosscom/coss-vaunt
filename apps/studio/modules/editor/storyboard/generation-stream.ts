@@ -1,4 +1,4 @@
-import { type Clip, clipSchema } from "@calcom/product-video/storyboard/storyboard-schema";
+import { type Clip, clipSchema } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export const GENERATION_STATUSES = ["queued", "exploring", "recording", "done", "failed"] as const;
 export type GenerationStatus = (typeof GENERATION_STATUSES)[number];

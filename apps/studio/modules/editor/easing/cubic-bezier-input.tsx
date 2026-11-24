@@ -1,8 +1,8 @@
 "use client";
 
-import { formatCubicBezier, parseCubicBezier } from "@calcom/product-video/storyboard/keyframe-ease";
-import type { CubicPoints } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Input } from "@coss/ui/components/input";
+import { formatCubicBezier, parseCubicBezier } from "@coss/vaunt-engine/storyboard/keyframe-ease";
+import type { CubicPoints } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useId, useState } from "react";
 import { EASING_COPY as copy } from "./easing-copy";

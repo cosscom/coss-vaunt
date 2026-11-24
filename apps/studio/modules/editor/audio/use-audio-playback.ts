@@ -1,6 +1,6 @@
 "use client";
 
-import type { AudioTrack } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { AudioTrack } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useEffect, useState } from "react";
 import type { PlaybackClock } from "../player/playback-clock";
 import { type AudioPlaybackEngine, createAudioPlaybackEngine } from "./audio-playback-engine";

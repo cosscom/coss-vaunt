@@ -1,6 +1,6 @@
-import { DUCKING, duckingGainAt, sfxIntervals } from "@calcom/product-video/audio/audio-ducking";
-import { audioSegmentsBetween, projectTimeAt } from "@calcom/product-video/audio/audio-schedule";
-import type { AudioTrack } from "@calcom/product-video/storyboard/storyboard-schema";
+import { DUCKING, duckingGainAt, sfxIntervals } from "@coss/vaunt-engine/audio/audio-ducking";
+import { audioSegmentsBetween, projectTimeAt } from "@coss/vaunt-engine/audio/audio-schedule";
+import type { AudioTrack } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type { PlaybackClock } from "../player/playback-clock";
 import { type AudioBufferCache, createAudioBufferCache } from "./audio-buffer-cache";
 import { type AudioVoice, silenceAudioVoice, startAudioVoice } from "./audio-voice";

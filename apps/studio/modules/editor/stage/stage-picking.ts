@@ -1,7 +1,7 @@
-import type { LayerGeometry } from "@calcom/product-video/stage/camera-projection";
-import { videoClipAt } from "@calcom/product-video/stage/clip-picking";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { activeClipsAt } from "@calcom/product-video/storyboard/track-resolution";
+import type { LayerGeometry } from "@coss/vaunt-engine/stage/camera-projection";
+import { videoClipAt } from "@coss/vaunt-engine/stage/clip-picking";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { activeClipsAt } from "@coss/vaunt-engine/storyboard/track-resolution";
 
 export type FrameRect = { x: number; y: number; width: number; height: number };
 

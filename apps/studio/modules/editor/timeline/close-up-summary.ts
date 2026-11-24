@@ -1,4 +1,4 @@
-import type { Drift } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Drift } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { STUDIO_COPY } from "../../studio-copy";
 
 /** "1.6× · Slide · 50%": what the close-up does, short enough for a lane. */

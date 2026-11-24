@@ -1,10 +1,5 @@
 "use client";
 
-import {
-  APP_INSTRUCTIONS_MAX,
-  ASPECT_RATIOS,
-  type AspectRatio,
-} from "@calcom/product-video/storyboard/storyboard-schema";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@coss/ui/components/field";
 import { Input } from "@coss/ui/components/input";
 import { Label } from "@coss/ui/components/label";
@@ -12,6 +7,11 @@ import { Radio, RadioGroup } from "@coss/ui/components/radio-group";
 import { Switch } from "@coss/ui/components/switch";
 import { Textarea } from "@coss/ui/components/textarea";
 import { LockIcon } from "@coss/ui/icons";
+import {
+  APP_INSTRUCTIONS_MAX,
+  ASPECT_RATIOS,
+  type AspectRatio,
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { cssAspectRatio } from "./css-aspect-ratio";

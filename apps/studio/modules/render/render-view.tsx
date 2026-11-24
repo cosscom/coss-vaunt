@@ -1,7 +1,7 @@
 "use client";
 
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { activeClipsAt, projectDuration } from "@calcom/product-video/storyboard/track-resolution";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { activeClipsAt, projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { createStageRenderer } from "../editor/stage/stage-renderer";

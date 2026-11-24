@@ -1,7 +1,7 @@
 "use client";
 
-import type { AudioClip, Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { toastManager } from "@coss/ui/components/toast";
+import type { AudioClip, Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useCallback, useRef, useState } from "react";
 import { MEDIA_IMPORT_COPY as copy } from "./media-import-copy";
 import { type MediaUploadResult, uploadMediaFile } from "./media-upload-request";

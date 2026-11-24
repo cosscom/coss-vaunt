@@ -1,10 +1,5 @@
 "use client";
 
-import {
-  ASPECT_RATIOS,
-  type Project,
-  type ProjectSettings,
-} from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@coss/ui/components/select";
 import { Separator } from "@coss/ui/components/separator";
@@ -21,6 +16,11 @@ import {
   RotateCwIcon,
 } from "@coss/ui/icons";
 import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
+import {
+  ASPECT_RATIOS,
+  type Project,
+  type ProjectSettings,
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";

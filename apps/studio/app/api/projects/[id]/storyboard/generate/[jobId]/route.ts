@@ -1,5 +1,5 @@
-import { type GenerationEvent, isGenerationEnd } from "@calcom/product-video/ai/generation-events";
-import { followGenerationJob } from "@calcom/product-video/ai/generation-jobs";
+import { type GenerationEvent, isGenerationEnd } from "@coss/vaunt-engine/ai/generation-events";
+import { followGenerationJob } from "@coss/vaunt-engine/ai/generation-jobs";
 
 export const dynamic = "force-dynamic";
 

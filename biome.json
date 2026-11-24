@@ -1,0 +1,173 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "root": true,
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              ["**/__mocks__/**", "**/bookingScenario*", "**/booking-scenario*"],
+              [":PACKAGE_WITH_PROTOCOL:", ":PACKAGE:"],
+              ["@calcom/**", "@ee/**"],
+              ["@lib/**", "@components/**", "@server/**", "@trpc/**"],
+              "~/**",
+              ":PATH:"
+            ]
+          }
+        }
+      }
+    },
+    "enabled": true
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "lineWidth": 110,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf"
+  },
+  "files": {
+    "includes": [
+      "**/*",
+      "!!**/node_modules",
+      "!!**/.next",
+      "!!**/.studio",
+      "!!**/*.d.ts",
+      "!!.yarn",
+      "!!*.lock",
+      "!!.agents",
+      "!!packages/coss-ui/src"
+    ],
+    "maxSize": 4194304
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "bracketSameLine": true,
+      "quoteStyle": "double",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "es5"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "next": "recommended",
+      "react": "recommended",
+      "project": "recommended",
+      "test": "none"
+    },
+    "rules": {
+      "preset": "recommended",
+      "a11y": "off",
+      "correctness": {
+        "noUnusedFunctionParameters": "error",
+        "noUnusedImports": "error",
+        "noUnusedPrivateClassMembers": "error",
+        "noUnusedVariables": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.tsx"],
+      "javascript": {
+        "jsxRuntime": "transparent"
+      }
+    },
+    {
+      "includes": ["**/*"],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "useExplicitType": "info",
+            "useSortedClasses": {
+              "level": "warn",
+              "options": {
+                "attributes": ["className", "classList"],
+                "functions": ["clsx", "cva", "cn", "tw"]
+              }
+            }
+          },
+          "correctness": {
+            "useImportExtensions": "off",
+            "noProcessGlobal": "off",
+            "useExhaustiveDependencies": "warn",
+            "noUnknownProperty": "warn",
+            "noUnreachable": "warn",
+            "noEmptyPattern": "warn",
+            "noSwitchDeclarations": "warn",
+            "useHookAtTopLevel": "error",
+            "useJsxKeyInIterable": "warn",
+            "noUnsafeOptionalChaining": "error",
+            "noUndeclaredDependencies": "off",
+            "useQwikValidLexicalScope": "off",
+            "noUnresolvedImports": "off"
+          },
+          "style": {
+            "useExportsLast": "warn",
+            "noProcessEnv": "warn",
+            "useNodejsImportProtocol": "error",
+            "noNestedTernary": "warn",
+            "noTernary": "info"
+          },
+          "complexity": {
+            "noExcessiveLinesPerFunction": {
+              "level": "warn",
+              "options": {
+                "maxLines": 100,
+                "skipBlankLines": true
+              }
+            }
+          },
+          "performance": {
+            "noImgElement": "warn"
+          },
+          "suspicious": {
+            "noDoubleEquals": "warn",
+            "noAssignInExpressions": "warn",
+            "noExplicitAny": "warn",
+            "useIterableCallbackReturn": "warn",
+            "noImplicitAnyLet": "warn",
+            "noRedeclare": "warn",
+            "noControlCharactersInRegex": "warn",
+            "noArrayIndexKey": "warn",
+            "noShadowRestrictedNames": "warn",
+            "noAsyncPromiseExecutor": "warn",
+            "noReactForwardRef": "warn",
+            "noTsIgnore": "error"
+          },
+          "security": {
+            "noBlankTarget": "warn",
+            "noDangerouslySetInnerHtml": "warn"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.e2e-spec.ts",
+        "**/*.integration-test.ts"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "useArrowFunction": "off",
+            "noExcessiveLinesPerFunction": "off"
+          }
+        }
+      }
+    }
+  ]
+}

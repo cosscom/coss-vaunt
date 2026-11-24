@@ -1,5 +1,5 @@
-import { BoardDraftError, draftBoard, draftBoardRequestSchema } from "@calcom/product-video/ai/board-draft";
-import { MissingApiKeyError } from "@calcom/product-video/ai/studio-model";
+import { BoardDraftError, draftBoard, draftBoardRequestSchema } from "@coss/vaunt-engine/ai/board-draft";
+import { MissingApiKeyError } from "@coss/vaunt-engine/ai/studio-model";
 import { studioProjectPages, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

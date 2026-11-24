@@ -1,5 +1,5 @@
-import { audioClipGainAt } from "@calcom/product-video/audio/audio-volume";
-import type { AudioClip } from "@calcom/product-video/storyboard/storyboard-schema";
+import { audioClipGainAt } from "@coss/vaunt-engine/audio/audio-volume";
+import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 /** The line keeps clear of the clip's top and bottom border so full and silent stay grabbable. */
 export const VOLUME_LINE_INSET_PX = 3;

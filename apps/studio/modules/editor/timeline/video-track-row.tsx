@@ -1,12 +1,12 @@
 "use client";
 
-import { PROPERTY_SPECS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
-import type { Clip, Keyframe, VideoTrack } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Toggle } from "@coss/ui/components/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { ChevronDownIcon, EyeIcon, EyeOffIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import { PROPERTY_SPECS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
+import type { Clip, Keyframe, VideoTrack } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { hasAssetDrag } from "../assets/asset-drag";

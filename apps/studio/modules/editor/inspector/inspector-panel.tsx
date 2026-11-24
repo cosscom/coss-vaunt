@@ -1,7 +1,7 @@
 "use client";
 
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { ScrollArea } from "@coss/ui/components/scroll-area";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { SelectedAudioClipInspector, useSelectedAudioClip } from "../audio/selected-audio-clip-inspector";
 import { PanelHeader } from "../panel-header";

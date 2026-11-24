@@ -1,4 +1,4 @@
-import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { Camera, Color, Scene, type Texture, type WebGLRenderer } from "three";
 import { createGradientTexture } from "./stage-textures";
 

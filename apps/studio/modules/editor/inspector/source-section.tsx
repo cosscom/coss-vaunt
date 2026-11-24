@@ -1,14 +1,14 @@
 "use client";
 
+import { Badge } from "@coss/ui/components/badge";
+import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import {
   type Clip,
   type ClipSource,
   type Project,
   TEXT_ALIGNS,
   TEXT_SIZES,
-} from "@calcom/product-video/storyboard/storyboard-schema";
-import { Badge } from "@coss/ui/components/badge";
-import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { RecordClipButton } from "../recording/record-clip-button";
 import type { PageOption } from "../storyboard/page-options";

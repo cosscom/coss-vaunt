@@ -1,4 +1,4 @@
-import { mediaTypeOf } from "@calcom/product-video/imports/media-types";
+import { mediaTypeOf } from "@coss/vaunt-engine/imports/media-types";
 
 type TransferItem = { kind: string; type: string; getAsFile: () => File | null };
 /** The parts of a `DataTransfer` read here, so tests can pass a plain object. */

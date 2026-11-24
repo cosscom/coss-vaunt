@@ -1,5 +1,5 @@
-import { applyEase, evaluateClipProperties } from "@calcom/product-video/storyboard/property-evaluation";
-import type { ActiveClip } from "@calcom/product-video/storyboard/track-resolution";
+import { applyEase, evaluateClipProperties } from "@coss/vaunt-engine/storyboard/property-evaluation";
+import type { ActiveClip } from "@coss/vaunt-engine/storyboard/track-resolution";
 
 /** Where a text clip sits in the frame, with its transition folded in; x and y are frame fractions, y down. */
 export type TextClipPlacement = { opacity: number; scale: number; x: number; y: number };

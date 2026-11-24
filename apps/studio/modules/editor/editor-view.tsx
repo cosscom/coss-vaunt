@@ -1,8 +1,8 @@
 "use client";
 
-import { PROPERTY_SPECS } from "@calcom/product-video/storyboard/property-specs";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { projectDuration } from "@calcom/product-video/storyboard/track-resolution";
+import { PROPERTY_SPECS } from "@coss/vaunt-engine/storyboard/property-specs";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { InspectorPanel } from "./inspector/inspector-panel";

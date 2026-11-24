@@ -1,4 +1,4 @@
-import type { AiProvider, AiSettingsView } from "@calcom/product-video/ai/ai-providers";
+import type { AiProvider, AiSettingsView } from "@coss/vaunt-engine/ai/ai-providers";
 
 export type AiSettingsForm = { provider: AiProvider; model: string; apiKey: string; removeKey: boolean };
 

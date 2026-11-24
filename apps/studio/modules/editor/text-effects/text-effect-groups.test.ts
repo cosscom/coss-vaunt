@@ -1,4 +1,4 @@
-import { listTextEffects } from "@calcom/product-video/catalogues/text-effects/text-effect-catalogue";
+import { listTextEffects } from "@coss/vaunt-engine/catalogues/text-effects/text-effect-catalogue";
 import { describe, expect, it } from "vitest";
 import { groupTextEffects } from "./text-effect-groups";
 

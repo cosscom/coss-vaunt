@@ -1,5 +1,5 @@
-import { type DepthOfFieldParams, MAX_BLUR_RADIUS } from "@calcom/product-video/stage/depth-of-field";
-import type { BlurMode } from "@calcom/product-video/storyboard/storyboard-schema";
+import { type DepthOfFieldParams, MAX_BLUR_RADIUS } from "@coss/vaunt-engine/stage/depth-of-field";
+import type { BlurMode } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import {
   type Camera,
   DepthTexture,

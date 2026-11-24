@@ -1,16 +1,16 @@
 "use client";
 
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
+import { cn } from "@coss/ui/lib/utils";
+import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import {
   EASE_DIRECTIONS,
   EASE_PRESETS,
   type EaseDirection,
   findEasePreset,
-} from "@calcom/product-video/storyboard/ease-presets";
-import { easeToCubic, sameCurve } from "@calcom/product-video/storyboard/keyframe-ease";
-import type { Ease } from "@calcom/product-video/storyboard/storyboard-schema";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
-import { cn } from "@coss/ui/lib/utils";
-import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+} from "@coss/vaunt-engine/storyboard/ease-presets";
+import { easeToCubic, sameCurve } from "@coss/vaunt-engine/storyboard/keyframe-ease";
+import type { Ease } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { curvePath, holdPath } from "./curve-plot";

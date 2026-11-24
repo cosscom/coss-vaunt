@@ -1,4 +1,4 @@
-import type { TextEffect } from "@calcom/product-video/catalogues/text-effects/text-effect";
+import type { TextEffect } from "@coss/vaunt-engine/catalogues/text-effects/text-effect";
 
 const GROUP_ORDER = ["per-character", "per-word", "per-line", "whole"] as const;
 

@@ -1,4 +1,4 @@
-import { PROPERTY_SPECS } from "@calcom/product-video/storyboard/property-specs";
+import { PROPERTY_SPECS } from "@coss/vaunt-engine/storyboard/property-specs";
 
 export type Point = { x: number; y: number };
 /** The output frame drawn in the pad, in pad units. */

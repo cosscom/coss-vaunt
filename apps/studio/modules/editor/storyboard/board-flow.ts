@@ -1,5 +1,5 @@
-import { BOARD_NODE_SIZE, type BoardIssue } from "@calcom/product-video/storyboard/board-edits";
-import type { Board, BoardEdge, BoardNode } from "@calcom/product-video/storyboard/board-schema";
+import { BOARD_NODE_SIZE, type BoardIssue } from "@coss/vaunt-engine/storyboard/board-edits";
+import type { Board, BoardEdge, BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeGeneration } from "./generation-stream";
 

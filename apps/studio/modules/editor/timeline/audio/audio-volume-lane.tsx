@@ -1,7 +1,5 @@
 "use client";
 
-import { KEYFRAME_SNAP_SECONDS, keyframeAt } from "@calcom/product-video/storyboard/storyboard-edits";
-import { type AudioClip, EASES, type Keyframe } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   ContextMenu,
   ContextMenuGroup,
@@ -14,6 +12,8 @@ import {
   ContextMenuTrigger,
 } from "@coss/ui/components/context-menu";
 import { cn } from "@coss/ui/lib/utils";
+import { KEYFRAME_SNAP_SECONDS, keyframeAt } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import { type AudioClip, EASES, type Keyframe } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { AUDIO_COPY } from "../../audio/audio-copy";

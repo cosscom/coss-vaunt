@@ -1,4 +1,4 @@
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useSyncExternalStore } from "react";
 import type { PlaybackClock } from "../player/playback-clock";
 

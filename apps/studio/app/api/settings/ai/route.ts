@@ -4,7 +4,7 @@ import {
   applyAiSettingsUpdate,
   readAiSettings,
   writeAiSettings,
-} from "@calcom/product-video/ai/ai-settings";
+} from "@coss/vaunt-engine/ai/ai-settings";
 
 export const dynamic = "force-dynamic";
 

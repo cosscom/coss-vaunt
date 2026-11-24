@@ -1,17 +1,17 @@
 "use client";
 
-import {
-  type Clip,
-  DRIFT_DIRECTIONS,
-  DRIFT_MOTIONS,
-  type Drift,
-} from "@calcom/product-video/storyboard/storyboard-schema";
 import { Label } from "@coss/ui/components/label";
 import { Slider } from "@coss/ui/components/slider";
 import { Switch } from "@coss/ui/components/switch";
 import { ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+import {
+  type Clip,
+  DRIFT_DIRECTIONS,
+  DRIFT_MOTIONS,
+  type Drift,
+} from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useId, useState } from "react";
 import type { EditorState } from "../use-editor-state";

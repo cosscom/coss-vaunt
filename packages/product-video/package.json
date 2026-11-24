@@ -1,5 +1,5 @@
 {
-  "name": "@calcom/product-video",
+  "name": "@coss/vaunt-engine",
   "private": true,
   "version": "0.0.0",
   "license": "MIT",
@@ -298,10 +298,10 @@
     "lint": "biome lint src",
     "lint:fix": "biome lint --write src",
     "type-check": "tsc --pretty --noEmit",
-    "type-check:ci": "node \"$PROJECT_CWD/scripts/type-check-ci.js\" --pretty --noEmit",
     "record": "tsx src/recording/record-clip-cli.ts",
     "backfill-videos": "tsx src/recording/backfill-recording-videos-cli.ts",
-    "export": "tsx src/export/export-video-cli.ts"
+    "export": "tsx src/export/export-video-cli.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.116",
@@ -313,7 +313,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
-    "@calcom/tsconfig": "workspace:*",
     "@types/node": "20.17.23",
     "tsx": "4.23.1",
     "typescript": "7.0.2",

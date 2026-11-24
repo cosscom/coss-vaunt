@@ -1,4 +1,4 @@
-import { frameFileName } from "@calcom/product-video/recording/recording-manifest";
+import { frameFileName } from "@coss/vaunt-engine/recording/recording-manifest";
 import { LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, Texture } from "three";
 import type { FrameSource } from "./frame-source";
 import type { LoadedRecording } from "./recording-lookup";

@@ -1,4 +1,4 @@
-import type { Point, RotationGizmo, RotationKey } from "@calcom/product-video/stage/rotation-gizmo";
+import type { Point, RotationGizmo, RotationKey } from "@coss/vaunt-engine/stage/rotation-gizmo";
 
 const AXIS_COLOUR: Record<RotationKey, string> = {
   rotateX: "rgb(239 68 68)",

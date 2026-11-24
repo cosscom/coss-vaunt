@@ -1,7 +1,7 @@
-import { findAudioClip } from "@calcom/product-video/audio/audio-edits";
-import { sameEase } from "@calcom/product-video/storyboard/keyframe-ease";
-import { findClip } from "@calcom/product-video/storyboard/storyboard-edits";
-import type { Ease, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { findAudioClip } from "@coss/vaunt-engine/audio/audio-edits";
+import { sameEase } from "@coss/vaunt-engine/storyboard/keyframe-ease";
+import { findClip } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import type { Ease, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { type AudioSelection, primaryAudioClipId } from "../audio/audio-selection";
 import type { EditorSelection, SelectedKeyframe } from "../editor-selection";
 

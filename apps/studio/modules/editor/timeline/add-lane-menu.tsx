@@ -1,6 +1,5 @@
 "use client";
 
-import { PROPERTY_SPECS, type PropertyKey } from "@calcom/product-video/storyboard/property-specs";
 import { Button } from "@coss/ui/components/button";
 import {
   Menu,
@@ -13,6 +12,7 @@ import {
 } from "@coss/ui/components/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { PlusIcon } from "@coss/ui/icons";
+import { PROPERTY_SPECS, type PropertyKey } from "@coss/vaunt-engine/storyboard/property-specs";
 import type * as React from "react";
 import { keysInGroup, PROPERTY_GROUP_ORDER } from "./keyframed-properties";
 import { STUDIO_COPY } from "@/modules/studio-copy";

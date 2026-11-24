@@ -1,6 +1,6 @@
-import type { AudioConversion } from "@calcom/product-video/imports/audio-upload";
-import type { VideoConversion } from "@calcom/product-video/imports/media-upload";
-import type { AudioClip, Clip } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { AudioConversion } from "@coss/vaunt-engine/imports/audio-upload";
+import type { VideoConversion } from "@coss/vaunt-engine/imports/media-upload";
+import type { AudioClip, Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export const MEDIA_UPLOAD_NAME_HEADER = "x-file-name";
 

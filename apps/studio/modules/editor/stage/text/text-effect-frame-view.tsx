@@ -1,5 +1,5 @@
-import type { StyledTextUnit, TextEffectFrame } from "@calcom/product-video/text/evaluate-text-effect";
-import type { UnitStyle } from "@calcom/product-video/text/unit-style";
+import type { StyledTextUnit, TextEffectFrame } from "@coss/vaunt-engine/text/evaluate-text-effect";
+import type { UnitStyle } from "@coss/vaunt-engine/text/unit-style";
 import type * as React from "react";
 
 const UNIT_BASE: React.CSSProperties = {

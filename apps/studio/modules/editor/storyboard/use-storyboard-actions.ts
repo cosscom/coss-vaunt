@@ -14,14 +14,9 @@ import {
   reorderBoardNode,
   updateBoardEdge,
   updateBoardNode,
-} from "@calcom/product-video/storyboard/board-edits";
-import { boardOrder } from "@calcom/product-video/storyboard/board-order";
-import type {
-  Board,
-  BoardEdge,
-  BoardNode,
-  BoardNodeKind,
-} from "@calcom/product-video/storyboard/board-schema";
+} from "@coss/vaunt-engine/storyboard/board-edits";
+import { boardOrder } from "@coss/vaunt-engine/storyboard/board-order";
+import type { Board, BoardEdge, BoardNode, BoardNodeKind } from "@coss/vaunt-engine/storyboard/board-schema";
 import { useState } from "react";
 import type { EditorState } from "../use-editor-state";
 import { type BoardSelection, EMPTY_BOARD_SELECTION } from "./board-flow";

@@ -1,8 +1,8 @@
 "use client";
 
-import type { Board } from "@calcom/product-video/storyboard/board-schema";
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { toastManager } from "@coss/ui/components/toast";
+import type { Board } from "@coss/vaunt-engine/storyboard/board-schema";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useEffect, useRef, useState } from "react";
 import { saveProjectInOrder } from "../project-save-queue";
 import { appliedScenes, saveAppliedScenes } from "./generation-applied";

@@ -1,21 +1,5 @@
 "use client";
 
-import {
-  EXPORT_FRAME_RATES,
-  EXPORT_PRESETS,
-  EXPORT_RESOLUTIONS,
-  type ExportPreset,
-  type ExportResolution,
-  type ExportSettings,
-  estimatedBytes,
-  exportSize,
-  MAX_VIDEO_BITRATE_MBPS,
-  MIN_VIDEO_BITRATE_MBPS,
-  matchingPreset,
-  presetSettings,
-} from "@calcom/product-video/export/export-settings";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { projectDuration } from "@calcom/product-video/storyboard/track-resolution";
 import { Button } from "@coss/ui/components/button";
 import {
   Dialog,
@@ -35,6 +19,22 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@co
 import { Switch } from "@coss/ui/components/switch";
 import { CircleCheckIcon, CircleXIcon, DownloadIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import {
+  EXPORT_FRAME_RATES,
+  EXPORT_PRESETS,
+  EXPORT_RESOLUTIONS,
+  type ExportPreset,
+  type ExportResolution,
+  type ExportSettings,
+  estimatedBytes,
+  exportSize,
+  MAX_VIDEO_BITRATE_MBPS,
+  MIN_VIDEO_BITRATE_MBPS,
+  matchingPreset,
+  presetSettings,
+} from "@coss/vaunt-engine/export/export-settings";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useState } from "react";
 import type { SaveStatus } from "../use-project-autosave";

@@ -1,5 +1,8 @@
 "use client";
 
+import { Badge } from "@coss/ui/components/badge";
+import { CaptionsIcon, MusicIcon, VideoIcon } from "@coss/ui/icons";
+import { cn } from "@coss/ui/lib/utils";
 import {
   type AssetTake,
   type AssetTemplate,
@@ -7,10 +10,7 @@ import {
   type ProjectAssets,
   pinnedTakeFor,
   type RecordingAsset,
-} from "@calcom/product-video/project-store/project-assets";
-import { Badge } from "@coss/ui/components/badge";
-import { CaptionsIcon, MusicIcon, VideoIcon } from "@coss/ui/icons";
-import { cn } from "@coss/ui/lib/utils";
+} from "@coss/vaunt-engine/project-store/project-assets";
 import type * as React from "react";
 import { InspectorSection } from "../inspector/inspector-section";
 import { formatTimecode } from "../timeline/format-timecode";

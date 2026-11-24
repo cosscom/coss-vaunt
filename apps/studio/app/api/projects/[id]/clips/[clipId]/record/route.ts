@@ -1,12 +1,12 @@
 import path from "node:path";
-import type { RecordingEvent, RecordingStreamEvent } from "@calcom/product-video/recording/recording-events";
+import type { RecordingEvent, RecordingStreamEvent } from "@coss/vaunt-engine/recording/recording-events";
 import {
   followRecordingJob,
   isRecordingJobRunning,
   recordingJobKey,
   startRecordingJob,
-} from "@calcom/product-video/recording/recording-jobs";
-import { findClip, recordingStatus } from "@calcom/product-video/recording/recording-status";
+} from "@coss/vaunt-engine/recording/recording-jobs";
+import { findClip, recordingStatus } from "@coss/vaunt-engine/recording/recording-status";
 import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";

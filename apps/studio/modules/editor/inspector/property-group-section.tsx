@@ -1,15 +1,5 @@
 "use client";
 
-import { aspectRatioSize } from "@calcom/product-video/stage/frame-letterbox";
-import { evaluateProperty } from "@calcom/product-video/storyboard/property-evaluation";
-import {
-  PROPERTY_KEYS,
-  PROPERTY_SPECS,
-  type PropertyGroup,
-  type PropertyKey,
-} from "@calcom/product-video/storyboard/property-specs";
-import { editLocalTime, frameTolerance } from "@calcom/product-video/storyboard/storyboard-edits";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -17,6 +7,16 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@coss/ui/components/context-menu";
+import { aspectRatioSize } from "@coss/vaunt-engine/stage/frame-letterbox";
+import { evaluateProperty } from "@coss/vaunt-engine/storyboard/property-evaluation";
+import {
+  PROPERTY_KEYS,
+  PROPERTY_SPECS,
+  type PropertyGroup,
+  type PropertyKey,
+} from "@coss/vaunt-engine/storyboard/property-specs";
+import { editLocalTime, frameTolerance } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { MenuShortcut } from "../menu-shortcut";

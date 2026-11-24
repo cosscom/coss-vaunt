@@ -3,8 +3,8 @@ import {
   PROPERTY_SPECS,
   type PropertyGroup,
   type PropertyKey,
-} from "@calcom/product-video/storyboard/property-specs";
-import type { Clip, Keyframe } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/storyboard/property-specs";
+import type { Clip, Keyframe } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export type KeyframedProperty = { key: PropertyKey; keyframes: Keyframe[] };
 

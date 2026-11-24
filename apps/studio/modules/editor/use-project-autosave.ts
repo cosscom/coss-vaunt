@@ -1,6 +1,6 @@
 "use client";
 
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { useEffect, useRef, useState } from "react";
 import { saveProjectInOrder } from "./project-save-queue";
 

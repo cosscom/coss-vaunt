@@ -1,4 +1,4 @@
-import { findMotionPreset } from "@calcom/product-video/catalogues/motion-presets/motion-presets";
+import { findMotionPreset } from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
 import { describe, expect, it } from "vitest";
 import { motionPreviewFrames, previewStyle } from "./motion-preview";
 

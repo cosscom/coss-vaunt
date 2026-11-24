@@ -7,8 +7,8 @@ import {
   setVolumeAt,
   trimAudioClip,
   updateAudioClip,
-} from "@calcom/product-video/audio/audio-edits";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/audio/audio-edits";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { snapSpanStart, snapTime } from "../timeline-snapping";
 
 export type AudioDragMode =

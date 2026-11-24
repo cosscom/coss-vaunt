@@ -1,0 +1,13 @@
+node_modules
+.next
+*.tsbuildinfo
+next-env.d.ts
+
+# Projects, recordings and exports (local only)
+.studio/
+
+.env
+.env.*
+
+.yarn/*
+!.yarn/releases

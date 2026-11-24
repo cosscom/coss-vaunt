@@ -1,5 +1,5 @@
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
-import { clipEnd } from "@calcom/product-video/storyboard/track-resolution";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { clipEnd } from "@coss/vaunt-engine/storyboard/track-resolution";
 
 type SnapOptions = { targets: number[]; thresholdSeconds: number; free: boolean };
 

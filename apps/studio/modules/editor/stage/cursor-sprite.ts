@@ -1,5 +1,5 @@
-import type { CursorPlaneLayout, PlaneQuad } from "@calcom/product-video/stage/cursor-plane-layout";
-import type { CursorStyle } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { CursorPlaneLayout, PlaneQuad } from "@coss/vaunt-engine/stage/cursor-plane-layout";
+import type { CursorStyle } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { type CanvasTexture, Matrix4, Mesh, type PlaneGeometry } from "three";
 import { createCursorRippleMaterial, createCursorSpriteMaterial } from "./cursor-materials";
 import { createCursorTexture } from "./cursor-shapes";

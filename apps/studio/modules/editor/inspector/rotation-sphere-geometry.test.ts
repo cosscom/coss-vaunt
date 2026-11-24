@@ -1,4 +1,4 @@
-import { deviceRotation, transform as stageTransform } from "@calcom/product-video/stage/device-pose";
+import { deviceRotation, transform as stageTransform } from "@coss/vaunt-engine/stage/device-pose";
 import { describe, expect, it } from "vitest";
 import {
   circlePaths,

@@ -1,15 +1,15 @@
 "use client";
 
+import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import {
   setAudioFade,
   setAudioTrimStart,
   setVolumeAt,
   toggleVolumeKeyframeAt,
-} from "@calcom/product-video/audio/audio-edits";
-import { evaluateProperty } from "@calcom/product-video/storyboard/property-evaluation";
-import { MIN_CLIP_SECONDS } from "@calcom/product-video/storyboard/storyboard-edits";
-import { type AudioClip, MAX_AUDIO_FADE_SECONDS } from "@calcom/product-video/storyboard/storyboard-schema";
-import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+} from "@coss/vaunt-engine/audio/audio-edits";
+import { evaluateProperty } from "@coss/vaunt-engine/storyboard/property-evaluation";
+import { MIN_CLIP_SECONDS } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import { type AudioClip, MAX_AUDIO_FADE_SECONDS } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { DraftInput } from "../inspector/draft-text-field";
 import { InspectorNumberRow } from "../inspector/inspector-number-row";

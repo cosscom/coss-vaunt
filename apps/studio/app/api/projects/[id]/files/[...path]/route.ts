@@ -2,9 +2,9 @@ import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { isProjectId } from "@calcom/product-video/project-store/file-project-store";
-import { ensureRecordingTake } from "@calcom/product-video/recording/link-recording-take";
-import { RECORDING_MANIFEST_FILE } from "@calcom/product-video/recording/recording-manifest";
+import { isProjectId } from "@coss/vaunt-engine/project-store/file-project-store";
+import { ensureRecordingTake } from "@coss/vaunt-engine/recording/link-recording-take";
+import { RECORDING_MANIFEST_FILE } from "@coss/vaunt-engine/recording/recording-manifest";
 import { parseByteRange } from "@/modules/editor/player/byte-range";
 import { STUDIO_ROOT } from "@/modules/projects/studio-project-store";
 

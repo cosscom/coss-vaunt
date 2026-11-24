@@ -1,4 +1,4 @@
-import type { FloorRect, ShadowFootprint } from "@calcom/product-video/stage/device-pose";
+import type { FloorRect, ShadowFootprint } from "@coss/vaunt-engine/stage/device-pose";
 import { ShaderMaterial, Vector2 } from "three";
 
 /** Falloff of the tight contact shadow and the wide ambient one, in device heights. */

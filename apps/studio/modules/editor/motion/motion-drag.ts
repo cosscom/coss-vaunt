@@ -1,8 +1,8 @@
 import {
   MOTION_PLACEMENTS,
   type MotionPlacement,
-} from "@calcom/product-video/catalogues/motion-presets/apply-motion-preset";
-import { findMotionPreset } from "@calcom/product-video/catalogues/motion-presets/motion-presets";
+} from "@coss/vaunt-engine/catalogues/motion-presets/apply-motion-preset";
+import { findMotionPreset } from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
 
 /** Drag data type for a motion preset from the motion pane, dropped onto a timeline clip. */
 export const MOTION_DRAG_TYPE = "application/x-studio-motion";

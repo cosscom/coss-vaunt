@@ -7,7 +7,7 @@ import { exportVideo } from "./export-video";
 
 const DEFAULT_STUDIO_ROOT = path.resolve(import.meta.dirname, "../../../../.studio");
 const USAGE =
-  "Usage: yarn workspace @calcom/product-video export <projectId> [--format mp4|prores] [--resolution 1080p] [--fps 30] [--bitrate 8] [--no-audio] [--name file.mp4] [--studio http://localhost:3102] [--json]";
+  "Usage: yarn workspace @coss/vaunt-engine export <projectId> [--format mp4|prores] [--resolution 1080p] [--fps 30] [--bitrate 8] [--no-audio] [--name file.mp4] [--studio http://localhost:3102] [--json]";
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({

@@ -1,4 +1,4 @@
-import type { AudioClip } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { describe, expect, it } from "vitest";
 import { volumeCurvePoints, volumeLineY } from "./volume-curve";
 

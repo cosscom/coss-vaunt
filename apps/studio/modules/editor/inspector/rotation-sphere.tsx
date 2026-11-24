@@ -1,7 +1,7 @@
 "use client";
 
-import { PROPERTY_SPECS } from "@calcom/product-video/storyboard/property-specs";
 import { cn } from "@coss/ui/lib/utils";
+import { PROPERTY_SPECS } from "@coss/vaunt-engine/storyboard/property-specs";
 import type * as React from "react";
 import { useId, useRef, useState } from "react";
 import { AxisRow } from "./axis-row";

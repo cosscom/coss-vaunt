@@ -1,11 +1,11 @@
 "use client";
 
-import type { AudioClip, AudioTrack } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Toggle } from "@coss/ui/components/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import { MusicIcon, UploadIcon, Volume2Icon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
+import type { AudioClip, AudioTrack } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useState } from "react";
 import { hasAssetDrag } from "../assets/asset-drag";

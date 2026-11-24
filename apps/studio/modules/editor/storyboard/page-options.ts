@@ -1,4 +1,4 @@
-import type { DiscoveredPage } from "@calcom/product-video/discovery/page-discovery";
+import type { DiscoveredPage } from "@coss/vaunt-engine/discovery/page-discovery";
 
 export type PageOption = { path: string; label: string };
 

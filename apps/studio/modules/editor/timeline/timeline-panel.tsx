@@ -1,9 +1,9 @@
 "use client";
 
-import { PROPERTY_KEYS } from "@calcom/product-video/storyboard/property-specs";
-import { frameTolerance } from "@calcom/product-video/storyboard/storyboard-edits";
-import { projectDuration } from "@calcom/product-video/storyboard/track-resolution";
 import { ContextMenu, ContextMenuTrigger } from "@coss/ui/components/context-menu";
+import { PROPERTY_KEYS } from "@coss/vaunt-engine/storyboard/property-specs";
+import { frameTolerance } from "@coss/vaunt-engine/storyboard/storyboard-edits";
+import { projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
 import type * as React from "react";
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { ASSET_DRAG_TYPE, parseAssetDrag } from "../assets/asset-drag";

@@ -1,10 +1,10 @@
 import "server-only";
 import path from "node:path";
-import { type DiscoveredPage, projectPages } from "@calcom/product-video/discovery/page-discovery";
-import { createFileProjectStore, readAppLogin } from "@calcom/product-video/project-store/file-project-store";
-import { isAllowedRecordingHost } from "@calcom/product-video/recording/host-allowlist";
-import { DEFAULT_BASE_URL } from "@calcom/product-video/storyboard/storyboard-factories";
-import type { Project } from "@calcom/product-video/storyboard/storyboard-schema";
+import { type DiscoveredPage, projectPages } from "@coss/vaunt-engine/discovery/page-discovery";
+import { createFileProjectStore, readAppLogin } from "@coss/vaunt-engine/project-store/file-project-store";
+import { isAllowedRecordingHost } from "@coss/vaunt-engine/recording/host-allowlist";
+import { DEFAULT_BASE_URL } from "@coss/vaunt-engine/storyboard/storyboard-factories";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 // `next dev` runs from apps/studio, so the repo root is two levels up.
 export const STUDIO_ROOT = path.resolve(process.cwd(), "../../.studio");

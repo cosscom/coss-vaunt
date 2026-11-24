@@ -1,6 +1,6 @@
 "use client";
 
-import type { TextLayoutMeasurements } from "@calcom/product-video/text/evaluate-text-effect";
+import type { TextLayoutMeasurements } from "@coss/vaunt-engine/text/evaluate-text-effect";
 import * as React from "react";
 import { groupWordsIntoLines } from "./measured-lines";
 

@@ -1,4 +1,4 @@
-import type { RecordingPhase, RecordingStreamEvent } from "@calcom/product-video/recording/recording-events";
+import type { RecordingPhase, RecordingStreamEvent } from "@coss/vaunt-engine/recording/recording-events";
 
 export type RecordingViewState =
   | { kind: "checking" }

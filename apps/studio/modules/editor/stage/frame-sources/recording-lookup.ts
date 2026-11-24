@@ -1,10 +1,10 @@
-import { takeCandidates } from "@calcom/product-video/project-store/project-assets";
+import { takeCandidates } from "@coss/vaunt-engine/project-store/project-assets";
 import {
   RECORDING_MANIFEST_FILE,
   type RecordingManifest,
   recordingDirectory,
-} from "@calcom/product-video/recording/recording-manifest";
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
+} from "@coss/vaunt-engine/recording/recording-manifest";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export type LoadedRecording = { directoryUrl: string; manifest: RecordingManifest; hash: string };
 

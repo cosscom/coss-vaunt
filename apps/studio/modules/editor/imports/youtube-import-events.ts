@@ -1,5 +1,5 @@
-import type { YoutubeImportProgress } from "@calcom/product-video/imports/youtube-import";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { YoutubeImportProgress } from "@coss/vaunt-engine/imports/youtube-import";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 export type YoutubeImportEvent =
   | { type: "progress"; progress: YoutubeImportProgress }

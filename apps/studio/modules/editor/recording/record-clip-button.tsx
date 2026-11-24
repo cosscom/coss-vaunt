@@ -1,12 +1,12 @@
 "use client";
 
-import type { RecordingStreamEvent } from "@calcom/product-video/recording/recording-events";
-import type { Clip, Project } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Button } from "@coss/ui/components/button";
 import { Progress } from "@coss/ui/components/progress";
 import { Spinner } from "@coss/ui/components/spinner";
 import { toastManager } from "@coss/ui/components/toast";
 import { CircleAlertIcon, CircleCheckIcon, VideoIcon } from "@coss/ui/icons";
+import type { RecordingStreamEvent } from "@coss/vaunt-engine/recording/recording-events";
+import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveProjectInOrder } from "../project-save-queue";

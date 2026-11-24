@@ -1,7 +1,7 @@
 "use client";
 
-import type { Clip, Drift } from "@calcom/product-video/storyboard/storyboard-schema";
 import { ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, FocusIcon } from "@coss/ui/icons";
+import type { Clip, Drift } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { closeUpSummary } from "./close-up-summary";
 import { KEYFRAME_LANE_HEIGHT_PX } from "./timeline-metrics";

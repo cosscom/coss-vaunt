@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  parsePeaksFile,
-  peaksFilePath,
-  type WaveformPeaks,
-} from "@calcom/product-video/audio/waveform-peaks";
+import { parsePeaksFile, peaksFilePath, type WaveformPeaks } from "@coss/vaunt-engine/audio/waveform-peaks";
 import { useEffect, useState } from "react";
 import { projectFileUrl } from "../../audio/project-file-url";
 

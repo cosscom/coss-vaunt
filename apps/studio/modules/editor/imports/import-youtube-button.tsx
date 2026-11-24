@@ -1,7 +1,5 @@
 "use client";
 
-import type { YoutubeImportProgress } from "@calcom/product-video/imports/youtube-import";
-import type { Clip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Alert, AlertDescription } from "@coss/ui/components/alert";
 import { Button } from "@coss/ui/components/button";
 import {
@@ -21,6 +19,8 @@ import { Input } from "@coss/ui/components/input";
 import { Progress } from "@coss/ui/components/progress";
 import { CircleAlertIcon, UploadIcon } from "@coss/ui/icons";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
+import type { YoutubeImportProgress } from "@coss/vaunt-engine/imports/youtube-import";
+import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { useRef, useState } from "react";
 import { MediaUploadPanel } from "./media-upload-panel";

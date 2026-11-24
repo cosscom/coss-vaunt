@@ -1,8 +1,8 @@
 "use client";
 
-import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
 import { RadioGroupPrimitive, RadioPrimitive } from "@coss/ui/components/radio-group";
 import { CheckIcon } from "@coss/ui/icons";
+import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { InspectorRow } from "./inspector-row";
 import { STUDIO_COPY } from "@/modules/studio-copy";

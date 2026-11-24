@@ -1,5 +1,5 @@
-import { type AudioSegment, voiceTiming } from "@calcom/product-video/audio/audio-schedule";
-import { audioGainCurve } from "@calcom/product-video/audio/audio-volume";
+import { type AudioSegment, voiceTiming } from "@coss/vaunt-engine/audio/audio-schedule";
+import { audioGainCurve } from "@coss/vaunt-engine/audio/audio-volume";
 
 const GAIN_SAMPLES_PER_SECOND = 100;
 const STOP_RAMP_SECONDS = 0.015;

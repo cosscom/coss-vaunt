@@ -1,10 +1,10 @@
 "use client";
 
-import type { FileAsset } from "@calcom/product-video/project-store/project-assets";
-import { boardIssues } from "@calcom/product-video/storyboard/board-edits";
 import { Badge } from "@coss/ui/components/badge";
 import { Dialog, DialogPopup, DialogTitle } from "@coss/ui/components/dialog";
 import { toastManager } from "@coss/ui/components/toast";
+import type { FileAsset } from "@coss/vaunt-engine/project-store/project-assets";
+import { boardIssues } from "@coss/vaunt-engine/storyboard/board-edits";
 import type * as React from "react";
 import { useState } from "react";
 import { InspectorSection } from "../inspector/inspector-section";

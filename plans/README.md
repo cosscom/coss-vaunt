@@ -6,9 +6,9 @@ The studio (`apps/studio`) and its engine (`packages/product-video`) already wor
 
 | Order | Plan | Size | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| 1 | [001 — Record any web app](001-record-any-web-app.md) | LARGE | — | TODO |
-| 2 | [002 — Cut the monorepo dependencies](002-cut-monorepo-dependencies.md) | MEDIUM | — | TODO |
-| 3 | [003 — Move to its own repo](003-move-to-own-repo.md) | SMALL | 002, ideally 001 | TODO |
+| 1 | [001 — Record any web app](001-record-any-web-app.md) | LARGE | — | Done, without a Cal profile: any app, a generic sign-in and a page crawl |
+| 2 | [002 — Cut the monorepo dependencies](002-cut-monorepo-dependencies.md) | MEDIUM | — | Done; coss ui is copied into `packages/coss-ui` |
+| 3 | [003 — Move to its own repo](003-move-to-own-repo.md) | SMALL | 002, ideally 001 | Done, except removing it from the Cal monorepo |
 | 4 | [004 — Desktop app](004-desktop-app.md) | LARGE | 003 | TODO |
 
 001 comes first because it's easiest to test with the Cal app beside it: Cal becomes the built-in profile of a general feature, not the only thing the engine knows. 002 is mechanical and could land first if the repo move is more urgent than other apps.

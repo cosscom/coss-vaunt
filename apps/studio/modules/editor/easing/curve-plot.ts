@@ -1,4 +1,4 @@
-import type { CubicPoints } from "@calcom/product-video/storyboard/storyboard-schema";
+import type { CubicPoints } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
 const PLOT_X_PAD = 0.1;
 const SCALE = 100;

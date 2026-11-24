@@ -1,7 +1,7 @@
 "use client";
 
-import { frameFileName } from "@calcom/product-video/recording/recording-manifest";
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "@coss/ui/components/preview-card";
+import { frameFileName } from "@coss/vaunt-engine/recording/recording-manifest";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { formatTimecode } from "../timeline/format-timecode";

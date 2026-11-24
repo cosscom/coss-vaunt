@@ -1,4 +1,4 @@
-import type { PropertyKey, PropertySpec } from "@calcom/product-video/storyboard/property-specs";
+import type { PropertyKey, PropertySpec } from "@coss/vaunt-engine/storyboard/property-specs";
 
 const FORMATS: Record<PropertySpec["unit"], Intl.NumberFormatOptions> = {
   deg: { style: "unit", unit: "degree", unitDisplay: "narrow", maximumFractionDigits: 1 },

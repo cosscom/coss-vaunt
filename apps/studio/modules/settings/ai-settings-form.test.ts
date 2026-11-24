@@ -1,4 +1,4 @@
-import type { AiSettingsView } from "@calcom/product-video/ai/ai-providers";
+import type { AiSettingsView } from "@coss/vaunt-engine/ai/ai-providers";
 import { describe, expect, it } from "vitest";
 import { aiSettingsRequest, hasKeyAfterSave, initialAiSettingsForm } from "./ai-settings-form";
 

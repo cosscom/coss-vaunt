@@ -1,8 +1,8 @@
 "use client";
 
-import { audioClipGainAt } from "@calcom/product-video/audio/audio-volume";
-import type { AudioClip } from "@calcom/product-video/storyboard/storyboard-schema";
 import { cn } from "@coss/ui/lib/utils";
+import { audioClipGainAt } from "@coss/vaunt-engine/audio/audio-volume";
+import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
 import { AUDIO_COPY } from "../../audio/audio-copy";
 import type { PlaybackClock } from "../../player/playback-clock";
