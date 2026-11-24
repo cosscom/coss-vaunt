@@ -1,10 +1,16 @@
-import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
 import type { Action, Clip, Project } from "../storyboard/storyboard-schema";
+import { isAppPath } from "./app-path";
 import { captureDpr, MAX_CAPTURE_DPR, MIN_CAPTURE_DPR } from "./capture-dpr";
 import { type ReplayStep, replayChain } from "./replay-chain";
 
 /** Bump when the recorder changes what it captures, so old recordings stop matching. */
-export const RECORDER_VERSION = 2;
+export const RECORDER_VERSION = 3;
+
+/** Every recording's page: the same viewport, timezone and clock in every take, so takes match. */
+export const RECORDING_VIEWPORT = { width: 1440, height: 900 };
+/** Projects made before they kept the author's timezone record in UTC. */
+export const DEFAULT_RECORDING_TIMEZONE = "UTC";
+export const RECORDING_CLOCK_TIME = "2026-11-18T08:00:00.000Z";
 
 /** Everything that changes a recording's pixels; camera, text and audio edits stay out. */
 export type CaptureSpec = {
@@ -18,7 +24,7 @@ export type CaptureSpec = {
   dpr: number;
   /** The manifest logs this selector's rect per frame. */
   focus: string | null;
-  routeEntry: RouteCatalogueEntry;
+  timezone: string;
   /** Recordings replayed before capture, earliest first; absent for a fresh start so older hashes still match. */
   replay?: ReplayStep[];
 };
@@ -33,8 +39,7 @@ export function captureSpecFor({
   theme?: "light" | "dark";
 }): CaptureSpec {
   if (clip.source.kind !== "recording") throw new Error(`Clip "${clip.name}" is not a recording`);
-  const routeEntry = routeEntryFor(clip.source.route);
-  if (!routeEntry) throw new Error(`Route ${clip.source.route} is not a path in the app`);
+  if (!isAppPath(clip.source.route)) throw new Error(`Route ${clip.source.route} is not a path in the app`);
   const replay = replayChain(project.videoTracks, clip);
   return {
     recorderVersion: RECORDER_VERSION,
@@ -43,10 +48,10 @@ export function captureSpecFor({
     duration: clip.source.captureLength ?? clip.duration,
     fps: project.settings.fps,
     theme,
-    viewport: routeEntry.viewport,
-    dpr: captureDpr({ aspectRatio: project.settings.aspectRatio, viewport: routeEntry.viewport, clip }).dpr,
+    viewport: RECORDING_VIEWPORT,
+    dpr: captureDpr({ aspectRatio: project.settings.aspectRatio, viewport: RECORDING_VIEWPORT, clip }).dpr,
     focus: clip.focus ?? null,
-    routeEntry,
+    timezone: project.settings.timezone ?? DEFAULT_RECORDING_TIMEZONE,
     replay: replay.length > 0 ? replay : undefined,
   };
 }
@@ -77,14 +82,8 @@ export function fnv1a64(text: string): string {
   return hash.toString(16).padStart(16, "0");
 }
 
-/** The parts of a route's entry that reach the page; targets, labels and descriptions only guide planning. */
-function pixelInputs(entry: RouteCatalogueEntry) {
-  const { hiddenSelectors, viewport, login, timezone, clockTime, replyFixture } = entry;
-  return { hiddenSelectors, viewport, login, timezone, clockTime, replyFixture };
-}
-
 export function captureHash(spec: CaptureSpec): string {
-  return fnv1a64(canonicalJson({ ...spec, routeEntry: pixelInputs(spec.routeEntry) }));
+  return fnv1a64(canonicalJson({ ...spec, clockTime: RECORDING_CLOCK_TIME }));
 }
 
 export function captureHashForClip(args: Parameters<typeof captureSpecFor>[0]): string {

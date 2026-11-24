@@ -1,6 +1,6 @@
 type AppliedStorage = Pick<Storage, "getItem" | "setItem">;
 
-const storageKey = (projectId: string) => `coss-motion:generation-applied:${projectId}`;
+const storageKey = (projectId: string) => `coss-vaunt:generation-applied:${projectId}`;
 
 /**
  * The scenes of `jobId` whose clips this browser already put on the timeline. Only the project's latest job is

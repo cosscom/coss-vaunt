@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { PAGE_OPTIONS, pageMatches } from "./page-options";
+import { pageMatches, pageOptionsFrom } from "./page-options";
 
-describe("PAGE_OPTIONS", () => {
-  it("lists each path once", () => {
-    const paths = PAGE_OPTIONS.map((option) => option.path);
-    expect(new Set(paths).size).toBe(paths.length);
-    expect(paths).toContain("/bookings/past");
+describe("pageOptionsFrom", () => {
+  it("names each page by its link, else its title, else its path", () => {
+    expect(
+      pageOptionsFrom([
+        { path: "/projects", label: "Projects", title: "All projects", inNav: true },
+        { path: "/team", label: "", title: "Team · Acme", inNav: false },
+        { path: "/raw", label: "", title: "", inNav: false },
+      ])
+    ).toEqual([
+      { path: "/projects", label: "Projects" },
+      { path: "/team", label: "Team · Acme" },
+      { path: "/raw", label: "/raw" },
+    ]);
   });
 });
 

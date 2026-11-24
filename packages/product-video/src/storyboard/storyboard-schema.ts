@@ -309,12 +309,31 @@ export const audioTrackSchema = z.object({
 
 export const APP_INSTRUCTIONS_MAX = 4000;
 
-/** What the project records: the local Cal.com, another local web app, or nothing (only imported files). */
-export const projectAppSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("cal") }),
-  z.object({ kind: z.literal("custom"), instructions: z.string().max(APP_INSTRUCTIONS_MAX) }),
-  z.object({ kind: z.literal("none") }),
-]);
+function isTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Projects saved before recording became app-agnostic named their app "cal" or "custom". */
+function legacyApp(app: unknown): unknown {
+  const kind = (app as { kind?: unknown } | null)?.kind;
+  if (kind === "cal") return { kind: "web", instructions: "" };
+  if (kind === "custom") return { ...(app as object), kind: "web" };
+  return app;
+}
+
+/** What the project records: a web app running on this machine, or nothing (only imported files). */
+export const projectAppSchema = z.preprocess(
+  legacyApp,
+  z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("web"), instructions: z.string().max(APP_INSTRUCTIONS_MAX) }),
+    z.object({ kind: z.literal("none") }),
+  ])
+);
 export type ProjectApp = z.infer<typeof projectAppSchema>;
 
 export const projectSettingsSchema = z.object({
@@ -329,8 +348,10 @@ export const projectSettingsSchema = z.object({
     reflection: z.number().min(0).max(1),
   }),
   baseUrl: z.url(),
-  /** Absent on projects made before apps could be chosen; those record Cal.com. */
+  /** Absent on projects made before apps could be chosen; those record a web app with no instructions. */
   app: projectAppSchema.optional(),
+  /** The page's timezone while recording, so an app that compares it with the user's profile doesn't ask to switch. */
+  timezone: z.string().max(64).refine(isTimeZone, "Not a timezone like Europe/London").optional(),
 });
 
 export const projectSchema = z.object({

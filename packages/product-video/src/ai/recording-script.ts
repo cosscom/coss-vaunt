@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
 import { TYPE_CHARACTERS_PER_SECOND } from "../recording/action-schedule";
 import { type Action, actionSchema } from "../storyboard/storyboard-schema";
 
@@ -47,9 +46,4 @@ export function scriptErrors(script: RecordingScript, { duration }: { duration: 
     }
   });
   return errors;
-}
-
-/** The catalogue target a selector is, so progress can say what the agent found. */
-export function catalogueTargetName(entry: RouteCatalogueEntry, selector: string): string | null {
-  return entry.targets.find((target) => target.selector === selector)?.name ?? null;
 }

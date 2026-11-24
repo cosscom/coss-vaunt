@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { AgentReplyError } from "../recording/agent-replies";
 import type { Board, BoardNode } from "../storyboard/board-schema";
 import { createProject } from "../storyboard/storyboard-factories";
 import type { Project } from "../storyboard/storyboard-schema";
@@ -158,33 +157,7 @@ describe("generateBoard", () => {
     });
   });
 
-  it("fails the scene with the agent's error instead of handing it to the script as a mistake", async () => {
-    const events: GenerationEvent[] = [];
-    const deps = fakeDeps([]);
-    await generateBoard({
-      project,
-      board,
-      nodeIds: ["ask"],
-      emit: (event) => events.push(event),
-      deps: {
-        ...deps,
-        explore: async ({ rehearse }) => {
-          await rehearse([]);
-          throw new Error("explored past an agent failure");
-        },
-        rehearse: async () => {
-          throw new AgentReplyError("The Cal.com agent couldn't answer");
-        },
-      },
-    });
-    expect(events).toContainEqual({
-      nodeId: "ask",
-      status: "failed",
-      message: "The Cal.com agent couldn't answer",
-    });
-  });
-
-  it("fails recording scenes for a project that doesn't record Cal.com", async () => {
+  it("fails recording scenes for a project that only uses its own files", async () => {
     const events: GenerationEvent[] = [];
     const filesOnly: Project = { ...project, settings: { ...project.settings, app: { kind: "none" } } };
     await generateBoard({

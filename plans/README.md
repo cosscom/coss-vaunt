@@ -1,4 +1,4 @@
-# coss motion — extraction and desktop plans
+# coss vaunt — extraction and desktop plans
 
 Written on 2026-11-19 at commit `6ed766e478c` on branch `matthew/product-video-studio`. Committed with the proof of concept so the plan travels with it.
 
@@ -17,7 +17,7 @@ The studio (`apps/studio`) and its engine (`packages/product-video`) already wor
 
 1. **Drop agent-browser?** The scene explorer drives the page through `agent-browser`, a native CLI binary per platform. Playwright, which recording needs anyway, can do everything the explorer uses: snapshot, click, type, describe an element, count a selector. Dropping it removes one native binary from every install and signing step in 004. The cost is reworking the explorer's page snapshots and re-checking how well the AI scripts scenes. Recommendation: only if the extra binary becomes a problem in 004.
 2. **H.264 in a shipped desktop app.** Export uses ffmpeg with libx264, which is GPL. See 004 for the options; it's a licensing decision, not an engineering one.
-3. **Name of the repo and packages.** Plans use `coss-motion` as a placeholder.
+3. **Name of the repo and packages.** Decided: coss vaunt, in [cosscom/coss-vaunt](https://github.com/cosscom/coss-vaunt).
 
 ## Stays as it is
 

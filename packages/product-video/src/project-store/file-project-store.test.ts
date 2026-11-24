@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createRecordingClip } from "../storyboard/storyboard-factories";
 import type { Project } from "../storyboard/storyboard-schema";
-import { createFileProjectStore } from "./file-project-store";
+import { createFileProjectStore, readAppLogin } from "./file-project-store";
 
 function withClips(project: Project, clips: Project["videoTracks"][number]["clips"]): Project {
   return { ...project, videoTracks: [{ ...project.videoTracks[0], clips }] };
@@ -41,13 +41,13 @@ describe("createFileProjectStore", () => {
     const store = createFileProjectStore(rootDir, { now });
     const project = await store.create("Demo", {
       aspectRatio: "9:16",
-      app: { kind: "custom", instructions: "The dashboard is at /app" },
+      app: { kind: "web", instructions: "The dashboard is at /app" },
       baseUrl: "http://localhost:3000",
       login: { username: "demo@example.com", password: "demo-password" },
     });
     expect(project.settings).toMatchObject({
       aspectRatio: "9:16",
-      app: { kind: "custom", instructions: "The dashboard is at /app" },
+      app: { kind: "web", instructions: "The dashboard is at /app" },
       baseUrl: "http://localhost:3000",
     });
     const dir = path.join(rootDir, project.id);
@@ -57,6 +57,28 @@ describe("createFileProjectStore", () => {
       password: "demo-password",
     });
     expect((await stat(path.join(dir, "app-login.json"))).mode & 0o777).toBe(0o600);
+    expect(await readAppLogin(dir)).toEqual({ username: "demo@example.com", password: "demo-password" });
+  });
+
+  it("reads no login for a project that doesn't sign in", async () => {
+    const project = await createFileProjectStore(rootDir, { now }).create("Public");
+    expect(await readAppLogin(path.join(rootDir, project.id))).toBeNull();
+  });
+
+  it("opens projects saved with the old Cal.com and custom app kinds as web apps", async () => {
+    const store = createFileProjectStore(rootDir, { now });
+    const project = await store.create("Old");
+    const file = path.join(rootDir, project.id, "project.json");
+    for (const [app, expected] of [
+      [{ kind: "cal" }, { kind: "web", instructions: "" }],
+      [
+        { kind: "custom", instructions: "Use /app" },
+        { kind: "web", instructions: "Use /app" },
+      ],
+    ] as const) {
+      await writeFile(file, JSON.stringify({ ...project, settings: { ...project.settings, app } }));
+      expect((await store.get(project.id))?.settings.app).toEqual(expected);
+    }
   });
 
   it("saves edits, bumps updatedAt and leaves no temp files", async () => {

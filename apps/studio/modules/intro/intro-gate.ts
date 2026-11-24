@@ -1,4 +1,4 @@
-const SEEN_KEY = "coss-motion:intro-seen";
+const SEEN_KEY = "coss-vaunt:intro-seen";
 /** If the page's JavaScript hasn't started the intro by then (a slow dev compile, a script error), uncover the page. */
 const START_DEADLINE_MS = 4000;
 

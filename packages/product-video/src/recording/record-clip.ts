@@ -10,19 +10,12 @@ import {
   type Request,
   type Route,
 } from "playwright";
-import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
+import { readAppLogin } from "../project-store/file-project-store";
+import type { AppLogin } from "../project-store/project-store";
 import { MAX_RECORDING_SECONDS, type Project } from "../storyboard/storyboard-schema";
 import { type FrameInput, scheduleActions } from "./action-schedule";
-import {
-  type AgentConversation,
-  type AgentReplies,
-  AgentReplyError,
-  agentConversation,
-  paceReply,
-  readAgentReplies,
-  writeAgentReplies,
-} from "./agent-replies";
-import { type CaptureSpec, captureHash, captureSpecFor } from "./capture-hash";
+import { signIn } from "./app-sign-in";
+import { type CaptureSpec, captureHash, captureSpecFor, RECORDING_CLOCK_TIME } from "./capture-hash";
 import { cursorPointAtFrame, type Point, restPoint } from "./cursor-path";
 import { assertAllowedRecordingHost } from "./host-allowlist";
 import type { RecordingProgress } from "./recording-events";
@@ -34,11 +27,10 @@ import {
   type Rect,
   recordingDirectory,
 } from "./recording-manifest";
-import { type AgentCaptureState, type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
+import { type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
 import { findClip, readRecordingManifest } from "./recording-status";
 import { writeRecordingVideo } from "./recording-video";
 import type { ReplayStep } from "./replay-chain";
-import { GENERIC_REPLY, normalisePrompt, scriptedTurnChunks } from "./scripted-reply";
 
 const runFile = promisify(execFile);
 
@@ -98,12 +90,7 @@ export async function recordClip({
   const existing = await readRecordingManifest(directory);
   if (existing && !force) return { manifest: existing, directory, reused: true, secondsPerFrame: null };
 
-  const replies = await ensureAgentReplies({
-    spec,
-    baseUrl: project.settings.baseUrl,
-    projectDir,
-    onProgress,
-  });
+  const login = await readAppLogin(projectDir);
   const partial = `${directory}.partial-${process.pid}`;
   await rm(partial, { recursive: true, force: true });
   await mkdir(path.join(partial, "frames"), { recursive: true });
@@ -114,7 +101,7 @@ export async function recordClip({
       clipId: clip.id,
       baseUrl: project.settings.baseUrl,
       framesDir: path.join(partial, "frames"),
-      replies,
+      login,
       onProgress,
     });
     onProgress({ type: "phase", phase: "proxy" });
@@ -138,164 +125,26 @@ export async function recordClip({
 export async function rehearseClip({
   project,
   clipId,
-  projectDir,
+  login,
 }: {
   project: Project;
   clipId: string;
-  /** Where the agent's captured replies are kept; without it a rehearsal captures them and forgets them. */
-  projectDir?: string;
+  login: AppLogin | null;
 }): Promise<void> {
   const clip = findClip(project, clipId);
   if (!clip || clip.source.kind !== "recording")
     throw new Error(`Clip ${clipId} is not a recording in this project`);
   assertAllowedRecordingHost(project.settings.baseUrl);
   const spec = captureSpecFor({ project, clip });
-  const replies = await ensureAgentReplies({
-    spec,
-    baseUrl: project.settings.baseUrl,
-    projectDir: projectDir ?? null,
-    onProgress: () => undefined,
-  });
   await capture({
     spec,
     hash: captureHash(spec),
     clipId,
     baseUrl: project.settings.baseUrl,
     framesDir: null,
-    replies,
+    login,
     onProgress: () => undefined,
   });
-}
-
-/** How long the real agent gets to answer one message while its reply is captured. */
-const AGENT_REPLY_TIMEOUT_MS = 180_000;
-
-/**
- * The real agent's replies to what the clip sends, captured once in real time and kept in the project, so the
- * frame-by-frame recording replays a genuine answer and every take shows the same one. Null when the clip
- * doesn't talk to the agent.
- */
-async function ensureAgentReplies({
-  spec,
-  baseUrl,
-  projectDir,
-  onProgress,
-}: {
-  spec: CaptureSpec;
-  baseUrl: string;
-  projectDir: string | null;
-  onProgress: (progress: RecordingProgress) => void;
-}): Promise<AgentReplies | null> {
-  const steps = [...(spec.replay ?? []), { route: spec.route, actions: spec.actions }].map((step) => ({
-    ...step,
-    entry: routeEntryFor(step.route),
-  }));
-  const conversation = agentConversation(steps);
-  if (!conversation) return null;
-  if (projectDir) {
-    const stored = await readAgentReplies(projectDir, conversation);
-    if (stored) return stored;
-  }
-  onProgress({ type: "phase", phase: "agent" });
-  const replies = await captureAgentReplies({
-    baseUrl,
-    conversation,
-    entry: steps[0]?.entry ?? spec.routeEntry,
-  });
-  if (projectDir) await writeAgentReplies(projectDir, replies);
-  return replies;
-}
-
-async function captureAgentReplies({
-  baseUrl,
-  conversation,
-  entry,
-}: {
-  baseUrl: string;
-  conversation: AgentConversation;
-  entry: RouteCatalogueEntry;
-}): Promise<AgentReplies> {
-  const composer = entry.targets.find((target) => target.name === "composer")?.selector;
-  const send = entry.targets.find((target) => target.name === "send")?.selector;
-  if (!composer)
-    throw new AgentReplyError(`${conversation.route} has no agent composer to send messages from`);
-  const browser = await chromium.launch();
-  try {
-    const storageState = await signIn({ baseUrl, entry, newContext: () => browser.newContext() });
-    const context = await browser.newContext({
-      storageState,
-      viewport: entry.viewport,
-      timezoneId: entry.timezone,
-      locale: "en-US",
-    });
-    await context.addInitScript({ content: routeRuntimeScript(entry, "", { capture: true }) });
-    const page = await context.newPage();
-    await page.goto(new URL(conversation.route, baseUrl).toString(), { waitUntil: "load", timeout: 120_000 });
-    for (const [index, message] of conversation.messages.entries()) {
-      await page.locator(composer).first().fill(message, { timeout: 60_000 });
-      if (send) await page.locator(send).first().click();
-      else await page.locator(composer).first().press("Enter");
-      try {
-        await page.waitForFunction(
-          (turn) =>
-            (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture.turns[
-              turn
-            ]?.done === true,
-          index,
-          { timeout: AGENT_REPLY_TIMEOUT_MS }
-        );
-      } catch {
-        const sent = await page.evaluate(
-          (turn) =>
-            (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture.turns
-              .length > turn,
-          index
-        );
-        throw new AgentReplyError(
-          sent
-            ? `The Cal.com agent at ${baseUrl} didn't finish answering "${message}" within ${AGENT_REPLY_TIMEOUT_MS / 1000} s. Is its Trigger.dev agent worker running?`
-            : `The page at ${baseUrl}${conversation.route} never sent "${message}" to the agent`
-        );
-      }
-    }
-    // The session title arrives a moment after the first reply.
-    await page
-      .waitForFunction(
-        () =>
-          (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture.title !==
-          null,
-        null,
-        { timeout: 10_000 }
-      )
-      .catch(() => undefined);
-    const captured = await page.evaluate(
-      () => (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture
-    );
-    const turns = captured.turns.map((turn) => turn.chunks);
-    for (const [index, turn] of captured.turns.entries()) {
-      const error = turn.chunks.find((entry) => entry.chunk.type === "error")?.chunk;
-      const reason = error
-        ? JSON.stringify(error).slice(0, 300)
-        : (turn.failure ?? (turn.chunks.length === 0 ? "the reply was empty" : null));
-      if (reason)
-        throw new AgentReplyError(
-          `The Cal.com agent couldn't answer "${conversation.messages[index]}": ${reason}`
-        );
-    }
-    return {
-      ...conversation,
-      title: captured.title,
-      turns: turns.map(paceReply),
-      capturedAt: new Date().toISOString(),
-    };
-  } catch (error) {
-    if (error instanceof AgentReplyError) throw error;
-    throw new AgentReplyError(
-      `Capturing the Cal.com agent's reply failed: ${error instanceof Error ? error.message : String(error)}`
-    );
-  } finally {
-    await browser.close();
-  }
 }
 
 async function capture({
@@ -304,7 +153,7 @@ async function capture({
   clipId,
   baseUrl,
   framesDir,
-  replies,
+  login,
   onProgress,
 }: {
   spec: CaptureSpec;
@@ -313,30 +162,29 @@ async function capture({
   baseUrl: string;
   /** Null rehearses: the same run with no screenshots. */
   framesDir: string | null;
-  /** The real agent's captured answers to what the clip sends; null plays the route's script. */
-  replies: AgentReplies | null;
+  login: AppLogin | null;
   onProgress: (progress: RecordingProgress) => void;
 }): Promise<{ manifest: Omit<RecordingManifest, "proxy">; secondsPerFrame: number }> {
-  const entry = spec.routeEntry;
   const browser = await chromium.launch({ args: ["--force-color-profile=srgb", "--hide-scrollbars"] });
   try {
-    onProgress({ type: "phase", phase: "login" });
-    const storageState = await signIn({ baseUrl, entry, newContext: () => browser.newContext() });
+    const startRoute = spec.replay?.[0]?.route ?? spec.route;
+    if (login) onProgress({ type: "phase", phase: "login" });
+    const storageState = await signIn({ browser, baseUrl, startPath: startRoute, login });
 
     onProgress({ type: "phase", phase: "load" });
     const context = await browser.newContext({
       storageState,
       viewport: spec.viewport,
       deviceScaleFactor: spec.dpr,
-      timezoneId: entry.timezone,
+      timezoneId: spec.timezone,
       locale: "en-US",
       colorScheme: spec.theme,
       reducedMotion: "no-preference",
     });
-    const startTime = Date.parse(entry.clockTime);
+    const startTime = Date.parse(RECORDING_CLOCK_TIME);
     await context.clock.install({ time: startTime });
     await context.clock.pauseAt(startTime + 1000);
-    await context.addInitScript({ content: routeRuntimeScript(entry, BASE_CSS, { replies }) });
+    await context.addInitScript({ content: pageRuntimeScript(BASE_CSS) });
     const page = await context.newPage();
     // The page runtime reports writes it couldn't classify; they belong in the job's log, not lost in the page.
     page.on("console", (message) => {
@@ -344,7 +192,6 @@ async function capture({
     });
     const network = trackNetwork(page);
     await holdNetworkWhileClockRuns(page, network);
-    const startRoute = spec.replay?.[0]?.route ?? spec.route;
     await page.goto(new URL(startRoute, baseUrl).toString(), { waitUntil: "load", timeout: 120_000 });
 
     onProgress({ type: "phase", phase: "preroll" });
@@ -369,62 +216,9 @@ async function capture({
   }
 }
 
-/**
- * The page runtime for a route: seeded randomness, the agent's replies and its hidden elements. Replies are the
- * real agent's captured answers when given, else the route's scripted fixture; `capture` lets the real agent answer.
- */
-export function routeRuntimeScript(
-  entry: RouteCatalogueEntry,
-  css = "",
-  { replies = null, capture = false }: { replies?: AgentReplies | null; capture?: boolean } = {}
-): string {
-  const fixture = entry.replyFixture;
-  return recordingRuntimeScript({
-    seed: PAGE_SEED,
-    css: [
-      css,
-      ...entry.hiddenSelectors.map((selector) => `${selector} { visibility: hidden !important; }`),
-    ].join("\n"),
-    chatPath: "/api/ai/chat",
-    titlePath: "/api/ai/chat/session/title",
-    title: replies ? replies.title : (fixture?.title ?? null),
-    turns: replies
-      ? replies.turns
-      : fixture
-        ? fixture.turns.map((_, turnIndex) => scriptedTurnChunks(fixture, turnIndex))
-        : [],
-    prompt: replies ? null : fixture?.prompt ? normalisePrompt(fixture.prompt) : null,
-    fallback: { title: GENERIC_REPLY.title, turn: scriptedTurnChunks(GENERIC_REPLY, 0) },
-    capture,
-  });
-}
-
-/** Signs in as the route's synthetic user and returns the browser storage state. */
-export async function signIn({
-  baseUrl,
-  entry,
-  newContext,
-}: {
-  baseUrl: string;
-  entry: RouteCatalogueEntry;
-  newContext: () => Promise<BrowserContext>;
-}): Promise<Awaited<ReturnType<BrowserContext["storageState"]>>> {
-  const context = await newContext();
-  try {
-    const page = await context.newPage();
-    await page.goto(new URL("/auth/login", baseUrl).toString(), { timeout: 120_000 });
-    await page.fill("input[name=email]", entry.login.email);
-    await page.fill("input[name=password]", entry.login.password);
-    await Promise.all([
-      page.waitForURL((url) => !url.pathname.startsWith("/auth"), { timeout: 60_000, waitUntil: "commit" }),
-      page.click("button[type=submit]"),
-    ]);
-    return await context.storageState();
-  } catch (error) {
-    throw new Error(`Couldn't sign in as ${entry.login.email} at ${baseUrl}: ${(error as Error).message}`);
-  } finally {
-    await context.close();
-  }
+/** The page runtime: seeded randomness, faked writes and observers that report on page time. */
+export function pageRuntimeScript(css = ""): string {
+  return recordingRuntimeScript({ seed: PAGE_SEED, css });
 }
 
 type NetworkTracker = {

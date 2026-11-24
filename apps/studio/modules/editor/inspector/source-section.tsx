@@ -11,6 +11,8 @@ import { Badge } from "@coss/ui/components/badge";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type * as React from "react";
 import { RecordClipButton } from "../recording/record-clip-button";
+import type { PageOption } from "../storyboard/page-options";
+import { usePageOptions } from "../storyboard/use-page-options";
 import { TextEffectPicker } from "../text-effects/text-effect-picker";
 import { CursorControls } from "./cursor-controls";
 import { DraftTextarea } from "./draft-text-field";
@@ -22,7 +24,6 @@ import { SECONDS_FORMAT } from "./property-controls";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.inspector;
-const routeItems = STUDIO_COPY.routes.map((route) => ({ value: route.value, label: route.label }));
 const sizeItems = TEXT_SIZES.map((size) => ({ value: size, label: STUDIO_COPY.textSizes[size] }));
 const MAX_TEXT_LENGTH = 200;
 
@@ -38,8 +39,17 @@ function fileName(file: string): string {
   return file.split("/").pop() ?? file;
 }
 
+/** The app's discovered pages, with the clip's own route first so the select always shows it. */
+function routeItemsFor(route: string, pages: readonly PageOption[]): Array<{ value: string; label: string }> {
+  return [route, ...pages.map((page) => page.path).filter((path) => path !== route)].map((path) => ({
+    value: path,
+    label: path,
+  }));
+}
+
 export function SourceSection({ project, clip, onClipChange }: SourceSectionProps): React.ReactElement {
   const { source } = clip;
+  const pages = usePageOptions(project.id);
   const updateSource = <Kind extends ClipSource["kind"]>(
     kind: Kind,
     update: (source: SourceOf<Kind>) => SourceOf<Kind>
@@ -61,7 +71,7 @@ export function SourceSection({ project, clip, onClipChange }: SourceSectionProp
       {source.kind === "recording" ? (
         <>
           <InspectorSelectRow
-            items={routeItems}
+            items={routeItemsFor(source.route, pages)}
             label={copy.route}
             onChange={(route) => updateSource("recording", (current) => ({ ...current, route }))}
             value={source.route}

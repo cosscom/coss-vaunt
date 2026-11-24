@@ -29,11 +29,11 @@ export class AgentBrowserSession {
     private readonly options: {
       session: string;
       baseUrl: string;
-      /** Playwright storage state of the signed-in synthetic user. */
-      statePath: string;
+      /** Playwright storage state of the signed-in test account; null for an app without sign-in. */
+      statePath: string | null;
       initScriptPath: string;
       viewport: { width: number; height: number };
-      /** The synthetic user's profile timezone, so the app doesn't ask to switch to the machine's. */
+      /** The recorder's timezone, so exploring sees the same times the recording will. */
       timezone: string;
     }
   ) {
@@ -45,8 +45,7 @@ export class AgentBrowserSession {
     const flags = [
       "--session",
       this.options.session,
-      "--state",
-      this.options.statePath,
+      ...(this.options.statePath ? ["--state", this.options.statePath] : []),
       "--init-script",
       this.options.initScriptPath,
       "--no-webmcp",

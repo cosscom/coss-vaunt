@@ -13,6 +13,21 @@ async function writeAppLogin(dir: string, login: AppLogin): Promise<void> {
   await writeFile(path.join(dir, APP_LOGIN_FILE), `${JSON.stringify(login)}\n`, { mode: 0o600 });
 }
 
+/** The project's test login, or null when its app doesn't sign in. */
+export async function readAppLogin(projectDir: string): Promise<AppLogin | null> {
+  try {
+    const login = JSON.parse(
+      await readFile(path.join(projectDir, APP_LOGIN_FILE), "utf8")
+    ) as Partial<AppLogin>;
+    return typeof login.username === "string" && typeof login.password === "string"
+      ? { username: login.username, password: login.password }
+      : null;
+  } catch (error) {
+    if (isMissingFile(error)) return null;
+    throw error;
+  }
+}
+
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
@@ -83,7 +98,12 @@ export function createFileProjectStore(
         createProject({
           name,
           now: now(),
-          setup: setup && { aspectRatio: setup.aspectRatio, app: setup.app, baseUrl: setup.baseUrl },
+          setup: setup && {
+            aspectRatio: setup.aspectRatio,
+            app: setup.app,
+            baseUrl: setup.baseUrl,
+            timezone: setup.timezone,
+          },
         })
       );
       if (setup?.login) await writeAppLogin(projectDir(project.id), setup.login);

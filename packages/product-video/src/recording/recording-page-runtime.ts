@@ -1,34 +1,12 @@
 /// <reference lib="dom" />
 import { classifyRequest, fakeTrpcResponse } from "./request-fakes";
-import type { TimedChunk } from "./scripted-reply";
 
 type StudioRequests = { classify: typeof classifyRequest; fakeTrpc: typeof fakeTrpcResponse };
 
 export type RecordingPageConfig = {
   seed: number;
-  /** CSS added to every page: hides the OS cursor, the caret, dev overlays and the route's noisy elements. */
+  /** CSS added to every page: hides the OS cursor, the caret and dev overlays. */
   css: string;
-  chatPath: string;
-  titlePath: string;
-  title: string | null;
-  /** Timed chunks per user turn; empty when the route has no scripted reply. */
-  turns: TimedChunk[][];
-  /** The normalised message the turns answer; null answers every message. */
-  prompt: string | null;
-  /** Played, every turn, when the first message isn't `prompt`. */
-  fallback: { title: string | null; turn: TimedChunk[] };
-  /**
-   * Capturing the real agent: chat and title requests reach the app, and each reply's chunks are recorded with
-   * their arrival times on `window.__studioAgentCapture` while the page shows them as normal.
-   */
-  capture?: boolean;
-};
-
-/** What a capture run leaves on `window.__studioAgentCapture`. */
-export type AgentCaptureState = {
-  /** `failure` says why a turn ended without a reply: an HTTP status or a dropped stream. */
-  turns: Array<{ chunks: TimedChunk[]; done: boolean; failure: string | null }>;
-  title: string | null;
 };
 
 export type PageRect = { x: number; y: number; width: number; height: number };
@@ -86,7 +64,7 @@ export function installObserverGate(): void {
 
 /**
  * Runs inside the page before any of its scripts, so it is serialised with `toString()`: no imports, no closures
- * over module scope. Page timers are Playwright's fake clock, so scripted replies and animations follow page time.
+ * over module scope. Page timers are Playwright’s fake clock, so animations follow page time.
  */
 export function installRecordingRuntime(config: RecordingPageConfig): void {
   // Playwright replays install → pauseAt with the real milliseconds between the two calls, which leaks into
@@ -107,17 +85,15 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   };
-  // A capture keeps real randomness: a seeded chat session id would resume the last capture's session.
-  if (!config.capture) Math.random = random(config.seed);
+  Math.random = random(config.seed);
   const uuidRandom = random(config.seed ^ 0x5bd1e995);
-  if (!config.capture)
-    crypto.randomUUID = () => {
-      const hex = Array.from({ length: 32 }, () => Math.floor(uuidRandom() * 16).toString(16));
-      hex[12] = "4";
-      hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
-      const s = hex.join("");
-      return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}` as `${string}-${string}-${string}-${string}-${string}`;
-    };
+  crypto.randomUUID = () => {
+    const hex = Array.from({ length: 32 }, () => Math.floor(uuidRandom() * 16).toString(16));
+    hex[12] = "4";
+    hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+    const s = hex.join("");
+    return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}` as `${string}-${string}-${string}-${string}-${string}`;
+  };
 
   const ensureStyle = () => {
     if (!document.head || document.getElementById("__studio-style")) return;
@@ -129,163 +105,14 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
   document.addEventListener("DOMContentLoaded", ensureStyle);
 
   const originalFetch = window.fetch;
-  if (config.capture)
-    (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture = {
-      turns: [],
-      title: null,
-    };
   const requests = (globalThis as unknown as { __studioRequests: StudioRequests }).__studioRequests;
   /** What the page tried to write, for a look in DevTools: `window.__studioFaked`. */
   const faked: Array<{ kind: string; method: string; url: string }> = [];
   (window as unknown as { __studioFaked: typeof faked }).__studioFaked = faked;
-  let turn = 0;
-  let answered: "fixture" | "fallback" | null = null;
-  // The newest user message's text, from the AI SDK request body; null when the body has none.
-  const userText = (body: unknown): string | null => {
-    const messages = (
-      body as { messages?: Array<{ role?: string; parts?: Array<{ type?: string; text?: string }> }> }
-    )?.messages;
-    const last = Array.isArray(messages)
-      ? [...messages].reverse().find((message) => message.role === "user")
-      : null;
-    const text = (last?.parts ?? []).map((part) => (part.type === "text" ? (part.text ?? "") : "")).join(" ");
-    return text.trim() ? text : null;
-  };
-  const normalise = (text: string) =>
-    text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}]+/gu, " ")
-      .trim();
   window.fetch = function scriptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const request = input instanceof Request ? input : null;
     const url = new URL(request ? request.url : String(input), location.href);
     const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
-    const local = url.origin === location.origin;
-    if (config.capture && local && url.pathname === config.chatPath && method === "POST") {
-      const state = (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture;
-      const turnState = { chunks: [] as TimedChunk[], done: false, failure: null as string | null };
-      state.turns.push(turnState);
-      const started = performance.now();
-      const fail = (failure: string) => {
-        turnState.failure = failure;
-        turnState.done = true;
-      };
-      return originalFetch(input, init).then(
-        (response) => {
-          if (!response.ok || !response.body) {
-            void response
-              .clone()
-              .text()
-              .catch(() => "")
-              .then((text) => fail(`HTTP ${response.status}${text ? ` ${text.slice(0, 300)}` : ""}`));
-            return response;
-          }
-          const [mine, theirs] = response.body.tee();
-          void (async () => {
-            const reader = mine.getReader();
-            try {
-              const decoder = new TextDecoder();
-              let buffer = "";
-              for (;;) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                for (let end = buffer.indexOf("\n\n"); end >= 0; end = buffer.indexOf("\n\n")) {
-                  const block = buffer.slice(0, end);
-                  buffer = buffer.slice(end + 2);
-                  const data = block
-                    .split("\n")
-                    .filter((line) => line.startsWith("data:"))
-                    .map((line) => line.slice(5).trim())
-                    .join("");
-                  if (!data || data === "[DONE]") continue;
-                  try {
-                    turnState.chunks.push({
-                      atMs: Math.round(performance.now() - started),
-                      chunk: JSON.parse(data),
-                    });
-                  } catch {
-                    // Not JSON: a keep-alive or comment line.
-                  }
-                }
-              }
-              turnState.done = true;
-            } catch (error) {
-              fail(`the reply stream broke: ${error instanceof Error ? error.message : String(error)}`);
-            }
-          })();
-          return new Response(theirs, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
-          });
-        },
-        (error: unknown) => {
-          fail(`the request failed: ${error instanceof Error ? error.message : String(error)}`);
-          throw error;
-        }
-      );
-    }
-    if (config.capture && local && url.pathname === config.titlePath && method === "GET") {
-      const state = (window as unknown as { __studioAgentCapture: AgentCaptureState }).__studioAgentCapture;
-      return originalFetch(input, init).then(async (response) => {
-        const body = (await response
-          .clone()
-          .json()
-          .catch(() => null)) as { title?: unknown } | null;
-        if (typeof body?.title === "string") state.title = body.title;
-        return response;
-      });
-    }
-    // Every chat goes to a scripted reply: the route's fixture, the captured real one, or the generic one.
-    if (local && url.pathname === config.chatPath && method === "POST") {
-      let sessionUid: unknown;
-      let body: unknown;
-      try {
-        body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
-        sessionUid = (body as { sessionUid?: unknown }).sessionUid;
-      } catch {
-        sessionUid = undefined;
-      }
-      if (answered === null) {
-        const text = userText(body);
-        answered =
-          config.turns.length > 0 &&
-          (config.prompt === null || text === null || normalise(text) === config.prompt)
-            ? "fixture"
-            : "fallback";
-      }
-      const chunks =
-        answered === "fixture" ? config.turns[Math.min(turn, config.turns.length - 1)] : config.fallback.turn;
-      turn++;
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          for (const { atMs, chunk } of chunks) {
-            setTimeout(() => controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`)), atMs);
-          }
-          const endMs = chunks.length > 0 ? chunks[chunks.length - 1].atMs : 0;
-          setTimeout(() => {
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-            controller.close();
-          }, endMs + 1);
-        },
-      });
-      const headers = new Headers({
-        "content-type": "text/event-stream",
-        "cache-control": "no-cache",
-        "x-vercel-ai-ui-message-stream": "v1",
-      });
-      if (typeof sessionUid === "string") headers.set("x-cal-agent-session-uid", sessionUid);
-      return Promise.resolve(new Response(stream, { status: 200, headers }));
-    }
-    if (local && url.pathname === config.titlePath && method === "GET") {
-      const title = answered === "fallback" ? config.fallback.title : config.title;
-      const body = JSON.stringify({ title: turn > 0 ? title : null });
-      return Promise.resolve(
-        new Response(body, { status: 200, headers: { "content-type": "application/json" } })
-      );
-    }
     const headerOf = (name: string) =>
       new Headers(init?.headers ?? request?.headers ?? undefined).get(name) ?? null;
     const kind = requests.classify({

@@ -35,6 +35,7 @@ import {
   selectProject,
 } from "./project-selection";
 import { Wordmark } from "@/modules/brand/wordmark";
+import { AiSettingsButton } from "@/modules/settings/ai-settings-dialog";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
 
@@ -173,6 +174,7 @@ export function ProjectsView({
             </>
           ) : (
             <>
+              <AiSettingsButton />
               <AppThemeToggle />
               {projects.length > 0 ? newProjectButton : null}
             </>

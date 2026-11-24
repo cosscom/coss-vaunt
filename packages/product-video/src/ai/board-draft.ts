@@ -1,16 +1,11 @@
 import { z } from "zod";
-import {
-  findRouteEntry,
-  isAppPath,
-  ROUTE_CATALOGUE,
-  type RouteCatalogueEntry,
-} from "../catalogues/routes/route-catalogue";
 import { getTextEffect, listTextEffects } from "../catalogues/text-effects/text-effect-catalogue";
+import type { DiscoveredPage } from "../discovery/page-discovery";
+import { isAppPath } from "../recording/app-path";
 import { boardOrder } from "../storyboard/board-order";
 import { type Board, boardEdgeSchema, boardNodeSchema, boardSchema } from "../storyboard/board-schema";
 import { MAX_TRANSITION_SECONDS } from "../storyboard/storyboard-limits";
 import { boardDraftSystemPrompt, boardDraftUserPrompt, SUBMIT_BOARD_TOOL } from "./board-draft-prompt";
-import { studioModel } from "./studio-model";
 import { NoSubmissionError, runUntilSubmitted } from "./submit-tool-loop";
 
 export const NODE_SPACING = 200;
@@ -36,10 +31,9 @@ export const boardDraftSchema = z.object({
 
 export type BoardDraft = z.infer<typeof boardDraftSchema>;
 
-/** The body of a draft request: the author's prompt, pages to feature (any app paths), the target length. */
+/** The body of a draft request: the author's prompt and the target length, and the board when revising one. */
 export const draftBoardRequestSchema = z.object({
   prompt: z.string().trim().min(1).max(4000),
-  routes: z.array(z.string().startsWith("/")).max(20).default([]),
   totalSeconds: z.number().min(5).max(180),
   board: boardSchema.optional(),
   /** Revise just this scene of `board`. */
@@ -69,7 +63,7 @@ export function repairBoardDraft(
     if (ids.has(node.id)) errors.push(`Scene id "${node.id}" is used twice`);
     ids.set(node.id, existingIds.has(node.id) ? node.id : newId());
     if (node.kind === "recording" && !isAppPath(node.route)) {
-      errors.push(`Scene "${node.id}" route ${node.route} isn't a path in the app, like /bookings/upcoming`);
+      errors.push(`Scene "${node.id}" route ${node.route} isn't a path in the app, like /settings`);
     }
   }
   if (errors.length > 0) return { board: null, errors };
@@ -110,7 +104,6 @@ export function repairBoardDraft(
 
 const modelPlanner: BoardPlanner = async ({ system, prompt, check }) => {
   const { value } = await runUntilSubmitted({
-    model: studioModel("plan"),
     system,
     prompt,
     maxSteps: MAX_DRAFT_STEPS,
@@ -128,35 +121,32 @@ const modelPlanner: BoardPlanner = async ({ system, prompt, check }) => {
 export class BoardDraftError extends Error {}
 
 /**
- * Drafts a board from the author's prompt, or revises `board`. Scenes may open any page of the app; `routes` picks
- * the tuned pages to describe in detail (all of them when empty). When the model can't plan it, its reason is the error.
+ * Drafts a board from the author's prompt, or revises `board`. Scenes may open any page of the app; `pages` are the
+ * ones found by crawling it. When the model can't plan it, its reason is the error.
  */
 export async function draftBoard({
   prompt,
-  routes,
+  pages,
+  appNotes = "",
   totalSeconds,
   board,
   focusNodeId,
   planner = modelPlanner,
 }: {
   prompt: string;
-  routes: readonly string[];
+  pages: readonly DiscoveredPage[];
+  /** What the author told the AI about their app when they made the project. */
+  appNotes?: string;
   totalSeconds: number;
   board?: Board;
   focusNodeId?: string;
   planner?: BoardPlanner;
 }): Promise<Board> {
-  const notPaths = routes.filter((route) => !isAppPath(route));
-  if (notPaths.length > 0) throw new BoardDraftError(`Not paths in the app: ${notPaths.join(", ")}`);
-  const tuned = routes
-    .map((route) => findRouteEntry(route))
-    .filter((entry): entry is RouteCatalogueEntry => entry !== null);
-  const known = tuned.length > 0 ? tuned : ROUTE_CATALOGUE;
   const effects = listTextEffects()
     .filter((effect) => effect.visible)
     .map((effect) => ({ id: effect.id, description: effect.description }));
   const draft = await planner({
-    system: boardDraftSystemPrompt({ routes: known, effects, totalSeconds }),
+    system: boardDraftSystemPrompt({ pages, appNotes, effects, totalSeconds }),
     prompt: boardDraftUserPrompt({ prompt, board, focusNodeId }),
     check: (candidate) => repairBoardDraft(candidate, { existing: board }).errors,
   }).catch((error: unknown) => {

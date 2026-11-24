@@ -1,5 +1,5 @@
-import { type RouteCatalogueEntry, routeEntryFor } from "../catalogues/routes/route-catalogue";
-import { AgentReplyError } from "../recording/agent-replies";
+import { isAppPath } from "../recording/app-path";
+import { DEFAULT_RECORDING_TIMEZONE } from "../recording/capture-hash";
 import type { RecordClipResult } from "../recording/record-clip";
 import type { RecordingProgress } from "../recording/recording-events";
 import { applyGeneratedClips } from "../storyboard/board-generation";
@@ -23,7 +23,9 @@ type NodeOf<Kind extends BoardNode["kind"]> = Extract<BoardNode, { kind: Kind }>
 export type GenerateBoardDeps = {
   explore: (input: {
     node: NodeOf<"recording">;
-    entry: RouteCatalogueEntry;
+    /** What the author told the AI about their app. */
+    appNotes: string;
+    timezone: string;
     baseUrl: string;
     previous: PreviousScene | null;
     /** The board's project-wide direction; it applies to every scene. */
@@ -175,13 +177,10 @@ async function generateRecording({
   emit: (event: GenerationEvent) => void;
   deps: GenerateBoardDeps;
 }): Promise<Clip> {
-  const app = working.settings.app?.kind ?? "cal";
-  if (app === "none")
+  const app = working.settings.app;
+  if (app?.kind === "none")
     throw new NodeGenerationError("This project uses your own files, so it has no app to record");
-  if (app === "custom")
-    throw new NodeGenerationError("Recording apps other than Cal.com isn’t supported yet");
-  const entry = routeEntryFor(node.route);
-  if (!entry) throw new NodeGenerationError(`${node.route} isn't a path in the app`);
+  if (!isAppPath(node.route)) throw new NodeGenerationError(`${node.route} isn't a path in the app`);
 
   let previous: PreviousScene | null = null;
   let startFrom: string | undefined;
@@ -204,7 +203,8 @@ async function generateRecording({
   const exploreStarted = Date.now();
   const { script, usage } = await deps.explore({
     node,
-    entry,
+    appNotes: app?.instructions ?? "",
+    timezone: working.settings.timezone ?? DEFAULT_RECORDING_TIMEZONE,
     baseUrl: working.settings.baseUrl,
     previous,
     brief: working.storyboard?.brief ?? "",
@@ -213,7 +213,6 @@ async function generateRecording({
         await deps.rehearse({ project: applyGeneratedClips(working, node.id, [clipFor(actions)]), clipId });
         return [];
       } catch (error) {
-        if (error instanceof AgentReplyError) throw error;
         return [error instanceof Error ? error.message : String(error)];
       }
     },

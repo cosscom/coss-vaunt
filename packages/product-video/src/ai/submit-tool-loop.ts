@@ -1,7 +1,6 @@
-import { type Tool, tool } from "@calcom/ai/agent-tool";
-import { generateText, stepCountIs } from "@calcom/ai/generate-text";
+import { generateText, stepCountIs, type Tool, tool } from "ai";
 import type { z } from "zod";
-import type { StudioModel } from "./studio-model";
+import { loadStudioModel, type StudioModel } from "./studio-model";
 
 export type SubmitTool<Schema extends z.ZodType> = {
   name: string;
@@ -28,6 +27,7 @@ export class NoSubmissionError extends Error {
 /**
  * Runs the model with `tools` until it submits a value `submit.check` accepts, or runs out of steps. Opus 5.5
  * rejects forced tool choice, so the prompt asks for the submit tool and the loop stops once it's accepted.
+ * Without `model`, it uses the one in the AI settings.
  */
 export async function runUntilSubmitted<Schema extends z.ZodType>({
   model,
@@ -39,7 +39,7 @@ export async function runUntilSubmitted<Schema extends z.ZodType>({
   effort = "medium",
   onToolCall,
 }: {
-  model: StudioModel;
+  model?: StudioModel;
   system: string;
   prompt: string;
   tools?: Record<string, Tool>;
@@ -81,7 +81,7 @@ export async function runUntilSubmitted<Schema extends z.ZodType>({
     },
   });
   const result = await generateText({
-    model,
+    model: model ?? (await loadStudioModel()),
     system,
     prompt,
     tools: { ...tools, [submit.name]: submitTool },
@@ -90,7 +90,7 @@ export async function runUntilSubmitted<Schema extends z.ZodType>({
       stepCountIs(maxSteps),
       () => state.accepted !== null || state.rejected >= maxAttempts || state.thrown !== null,
     ],
-    providerOptions: { anthropic: { effort } },
+    providerOptions: { anthropic: { effort }, openai: { reasoningEffort: effort } },
     onStepFinish: (step) => {
       for (const call of step.toolCalls) onToolCall?.(call.toolName, call.input);
     },

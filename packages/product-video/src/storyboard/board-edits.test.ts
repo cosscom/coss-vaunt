@@ -49,7 +49,7 @@ describe("createBoardNode", () => {
       ),
     };
     expect(boardSchema.safeParse(board).success).toBe(true);
-    expect(board.nodes[0]).toMatchObject({ kind: "recording", route: "/home", startFrom: "fresh" });
+    expect(board.nodes[0]).toMatchObject({ kind: "recording", route: "/", startFrom: "fresh" });
   });
 });
 

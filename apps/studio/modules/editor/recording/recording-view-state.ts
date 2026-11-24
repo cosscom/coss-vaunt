@@ -17,7 +17,7 @@ type Recording = Extract<RecordingViewState, { kind: "recording" }>;
 
 const startedRecording: Recording = {
   kind: "recording",
-  phase: "login",
+  phase: "load",
   frame: 0,
   frameCount: null,
   etaSeconds: null,

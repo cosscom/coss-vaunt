@@ -13,7 +13,6 @@
     "type-check:ci": "node \"$PROJECT_CWD/scripts/type-check-ci.js\" --pretty --noEmit"
   },
   "dependencies": {
-    "@calcom/ai": "workspace:*",
     "@calcom/product-video": "workspace:*",
     "@coss/ui": "workspace:*",
     "@xyflow/react": "12.11.2",

@@ -1,13 +1,12 @@
 import path from "node:path";
 import { text } from "node:stream/consumers";
 import { parseArgs } from "node:util";
-import { createFileProjectStore } from "../project-store/file-project-store";
+import { createFileProjectStore, readAppLogin } from "../project-store/file-project-store";
 import { recordClip, rehearseClip } from "../recording/record-clip";
 import { generateBoard } from "./generate-board";
 import { type GenerationEvent, generateBoardRequestSchema } from "./generation-events";
 import { mediaClipForNode } from "./node-clips";
 import { exploreRecording } from "./recording-explorer";
-import { loadAiKeys } from "./studio-model";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../..");
 const USAGE = "Usage: tsx src/ai/generate-board-cli.ts <projectId> [--root <studio root>] < request.json";
@@ -26,7 +25,7 @@ async function main(): Promise<void> {
     const project = await createFileProjectStore(values.root).get(projectId);
     if (!project) throw new Error(`Project ${projectId} not found in ${values.root}`);
     const projectDir = path.join(values.root, project.id);
-    await loadAiKeys(REPO_ROOT);
+    const login = await readAppLogin(projectDir);
 
     await generateBoard({
       project,
@@ -34,8 +33,8 @@ async function main(): Promise<void> {
       nodeIds: request.nodeIds,
       emit,
       deps: {
-        explore: exploreRecording,
-        rehearse: ({ project: withClip, clipId }) => rehearseClip({ project: withClip, clipId, projectDir }),
+        explore: (input) => exploreRecording({ ...input, login }),
+        rehearse: ({ project: withClip, clipId }) => rehearseClip({ project: withClip, clipId, login }),
         record: ({ project: withClip, clipId, onProgress }) =>
           recordClip({ project: withClip, clipId, projectDir, onProgress }),
         mediaClip: (node, clipId) => mediaClipForNode(node, projectDir, clipId),

@@ -22,6 +22,7 @@ import { STUDIO_COPY } from "@/modules/studio-copy";
 const copy = STUDIO_COPY.storyboard;
 
 type SceneDetailsProps = {
+  projectId: string;
   actions: StoryboardActions;
   statuses: Record<string, NodeGeneration>;
   files: readonly FileAsset[];
@@ -30,6 +31,7 @@ type SceneDetailsProps = {
 };
 
 function SceneDetails({
+  projectId,
   actions,
   statuses,
   files,
@@ -50,6 +52,7 @@ function SceneDetails({
         key={node.id}
         node={node}
         onUpload={onUpload}
+        projectId={projectId}
         uploading={uploading}
       />
     </InspectorSection>
@@ -93,6 +96,7 @@ export function StoryboardPanel({
     fitSignal,
   };
   const details = {
+    projectId: project.id,
     actions,
     statuses: generation.statuses,
     files,

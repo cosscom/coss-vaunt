@@ -1,6 +1,5 @@
 "use client";
 
-import { AgentComposer } from "@calcom/ai/react/ui/agent-composer";
 import type { BoardIssue } from "@calcom/product-video/storyboard/board-edits";
 import type { Board, BoardNode } from "@calcom/product-video/storyboard/board-schema";
 import type { ProjectSettings } from "@calcom/product-video/storyboard/storyboard-schema";
@@ -22,6 +21,7 @@ import type * as React from "react";
 import { useState } from "react";
 import { SCENE_ICONS } from "./scene-node";
 import type { DraftRequest } from "./use-board-draft";
+import { AgentComposer } from "@/modules/agent-ui/agent-composer";
 import { BorderBeam } from "@/modules/border-beam/border-beam";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 

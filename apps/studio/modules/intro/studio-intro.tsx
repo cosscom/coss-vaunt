@@ -8,8 +8,8 @@ import { createParticleReveal, REVEAL_SETTLED_SECONDS } from "./particle-reveal"
 import { Wordmark } from "@/modules/brand/wordmark";
 import {
   WORDMARK_COSS_PATH,
-  WORDMARK_MOTION_PATH,
-  WORDMARK_MOTION_TONE,
+  WORDMARK_VAUNT_PATH,
+  WORDMARK_VAUNT_TONE,
   WORDMARK_VIEWBOX,
 } from "@/modules/brand/wordmark-outline";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -50,7 +50,7 @@ export function StudioIntro(): React.ReactElement {
       surface,
       [
         { d: WORDMARK_COSS_PATH, tone: 1 },
-        { d: WORDMARK_MOTION_PATH, tone: WORDMARK_MOTION_TONE },
+        { d: WORDMARK_VAUNT_PATH, tone: WORDMARK_VAUNT_TONE },
       ],
       WORDMARK_VIEWBOX
     );
@@ -165,7 +165,7 @@ export function StudioIntro(): React.ReactElement {
         <Wordmark
           className="size-full"
           cossClassName="text-[#f2f4f7] transition-colors duration-700 group-data-landed:text-foreground"
-          motionClassName="text-[#f2f4f7]/42 transition-colors duration-700 group-data-landed:text-muted-foreground/64"
+          vauntClassName="text-[#f2f4f7]/42 transition-colors duration-700 group-data-landed:text-muted-foreground/64"
         />
       </div>
       <p className="absolute inset-x-0 bottom-8 animate-[studio-intro-hint_400ms_ease-out_1.6s_both] text-center text-white/40 text-xs transition-opacity duration-200 group-data-leaving/intro:opacity-0">

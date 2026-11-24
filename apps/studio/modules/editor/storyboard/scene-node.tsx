@@ -1,7 +1,6 @@
 "use client";
 
-import { AgentStatusIndicator } from "@calcom/ai/react/ui/agent-status-indicator";
-import { findRouteEntry, isAppPath } from "@calcom/product-video/catalogues/routes/route-catalogue";
+import { isAppPath } from "@calcom/product-video/recording/app-path";
 import { BOARD_NODE_SIZE } from "@calcom/product-video/storyboard/board-edits";
 import type { BoardNode, BoardNodeKind } from "@calcom/product-video/storyboard/board-schema";
 import { Badge } from "@coss/ui/components/badge";
@@ -20,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SceneFlowNode } from "./board-flow";
 import { type GenerationStatus, type NodeGeneration, shownSteps } from "./generation-stream";
 import { SUCCESS_GLOW_MS, sceneBeamState } from "./scene-beam-state";
+import { AgentStatusIndicator } from "@/modules/agent-ui/agent-status-indicator";
 import { BorderBeam } from "@/modules/border-beam/border-beam";
 import { CARD_BEAM } from "@/modules/border-beam/border-beam-engine";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -53,7 +53,7 @@ function summaryOf(scene: BoardNode): { text: string; missing: boolean; error: b
   if (scene.kind === "recording") {
     if (!isAppPath(scene.route))
       return { text: `${copy.unknownRoute} · ${scene.route}`, missing: false, error: true };
-    return { text: findRouteEntry(scene.route)?.label ?? scene.route, missing: false, error: false };
+    return { text: scene.route, missing: false, error: false };
   }
   if (scene.kind === "text")
     return scene.words.trim()

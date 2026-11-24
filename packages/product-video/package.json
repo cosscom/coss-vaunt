@@ -43,8 +43,6 @@
     "./recording/recording-events": "./src/recording/recording-events.ts",
     "./recording/capture-hash": "./src/recording/capture-hash.ts",
     "./recording/capture-dpr": "./src/recording/capture-dpr.ts",
-    "./catalogues/routes/route-catalogue": "./src/catalogues/routes/route-catalogue.ts",
-    "./catalogues/routes/app-map": "./src/catalogues/routes/app-map.ts",
     "./catalogues/motion-presets/motion-presets": "./src/catalogues/motion-presets/motion-presets.ts",
     "./catalogues/motion-presets/apply-motion-preset": "./src/catalogues/motion-presets/apply-motion-preset.ts",
     "./imports/media-upload": "./src/imports/media-upload.ts",
@@ -63,7 +61,6 @@
     "./storyboard/board-generation": "./src/storyboard/board-generation.ts",
     "./storyboard/board-order": "./src/storyboard/board-order.ts",
     "./ai/board-draft": "./src/ai/board-draft.ts",
-    "./ai/studio-model": "./src/ai/studio-model.ts",
     "./ai/generation-events": "./src/ai/generation-events.ts",
     "./ai/generation-jobs": "./src/ai/generation-jobs.ts",
     "./recording/recording-video": "./src/recording/recording-video.ts",
@@ -73,7 +70,12 @@
     "./stage/cursor-focus": "./src/stage/cursor-focus.ts",
     "./export/export-settings": "./src/export/export-settings.ts",
     "./export/export-events": "./src/export/export-events.ts",
-    "./export/export-jobs": "./src/export/export-jobs.ts"
+    "./export/export-jobs": "./src/export/export-jobs.ts",
+    "./ai/ai-settings": "./src/ai/ai-settings.ts",
+    "./discovery/page-discovery": "./src/discovery/page-discovery.ts",
+    "./recording/app-path": "./src/recording/app-path.ts",
+    "./ai/ai-providers": "./src/ai/ai-providers.ts",
+    "./ai/studio-model": "./src/ai/studio-model.ts"
   },
   "typesVersions": {
     "*": {
@@ -182,12 +184,6 @@
       "recording/capture-dpr": [
         "./src/recording/capture-dpr.ts"
       ],
-      "catalogues/routes/route-catalogue": [
-        "./src/catalogues/routes/route-catalogue.ts"
-      ],
-      "catalogues/routes/app-map": [
-        "./src/catalogues/routes/app-map.ts"
-      ],
       "catalogues/motion-presets/motion-presets": [
         "./src/catalogues/motion-presets/motion-presets.ts"
       ],
@@ -239,9 +235,6 @@
       "ai/board-draft": [
         "./src/ai/board-draft.ts"
       ],
-      "ai/studio-model": [
-        "./src/ai/studio-model.ts"
-      ],
       "ai/generation-events": [
         "./src/ai/generation-events.ts"
       ],
@@ -283,6 +276,21 @@
       ],
       "export/export-jobs": [
         "./src/export/export-jobs.ts"
+      ],
+      "ai/ai-settings": [
+        "./src/ai/ai-settings.ts"
+      ],
+      "discovery/page-discovery": [
+        "./src/discovery/page-discovery.ts"
+      ],
+      "recording/app-path": [
+        "./src/recording/app-path.ts"
+      ],
+      "ai/ai-providers": [
+        "./src/ai/ai-providers.ts"
+      ],
+      "ai/studio-model": [
+        "./src/ai/studio-model.ts"
       ]
     }
   },
@@ -296,8 +304,10 @@
     "export": "tsx src/export/export-video-cli.ts"
   },
   "dependencies": {
-    "@calcom/ai": "workspace:*",
+    "@ai-sdk/anthropic": "3.0.116",
+    "@ai-sdk/openai": "3.0.109",
     "agent-browser": "0.43.0",
+    "ai": "6.0.277",
     "playwright": "1.64.1",
     "zod": "4.6.7"
   },

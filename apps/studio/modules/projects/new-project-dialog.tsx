@@ -11,12 +11,11 @@ import { cssAspectRatio } from "./css-aspect-ratio";
 import {
   draftInput,
   draftReady,
-  draftUrl,
   initialDraft,
   type NewProjectDraft,
   type NewProjectInput,
 } from "./new-project-draft";
-import { AppChoiceList, AppDetails, AspectRatioPicker, NameField } from "./new-project-fields";
+import { AppDetails, AspectRatioPicker, NameField } from "./new-project-fields";
 import { StepDissolve } from "./step-dissolve";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
@@ -26,7 +25,7 @@ function sourceLine(draft: NewProjectDraft): string {
   const title = copy.apps[draft.app].title;
   if (draft.app === "none") return title;
   try {
-    return `${title} · ${new URL(draftUrl(draft)).host}`;
+    return `${title} · ${new URL(draft.url.trim()).host}`;
   } catch {
     return title;
   }
@@ -129,7 +128,7 @@ export function NewProjectDialog({
   const create = async (value: NewProjectDraft) => {
     setPending(true);
     try {
-      await onCreate(draftInput(value, defaultAppUrl));
+      await onCreate(draftInput(value, defaultAppUrl, Intl.DateTimeFormat().resolvedOptions().timeZone));
     } finally {
       setPending(false);
     }
@@ -180,10 +179,7 @@ export function NewProjectDialog({
                         <AspectRatioPicker draft={draft} update={update} />
                       </>
                     ) : (
-                      <>
-                        <AppChoiceList draft={draft} update={update} />
-                        <AppDetails defaultAppUrl={defaultAppUrl} draft={draft} update={update} />
-                      </>
+                      <AppDetails defaultAppUrl={defaultAppUrl} draft={draft} update={update} />
                     )}
                   </div>
                 )}

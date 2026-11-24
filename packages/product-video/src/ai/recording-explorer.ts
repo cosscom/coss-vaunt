@@ -1,12 +1,13 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { tool } from "@calcom/ai/agent-tool";
+import { tool } from "ai";
 import { chromium } from "playwright";
 import { z } from "zod";
-import type { RouteCatalogueEntry } from "../catalogues/routes/route-catalogue";
-import { AgentReplyError } from "../recording/agent-replies";
-import { routeRuntimeScript, signIn } from "../recording/record-clip";
+import type { AppLogin } from "../project-store/project-store";
+import { signIn } from "../recording/app-sign-in";
+import { RECORDING_VIEWPORT } from "../recording/capture-hash";
+import { pageRuntimeScript } from "../recording/record-clip";
 import type { BoardNode } from "../storyboard/board-schema";
 import type { Action } from "../storyboard/storyboard-schema";
 import { AgentBrowserSession } from "./agent-browser-cli";
@@ -16,14 +17,8 @@ import {
   recordingExplorerUserPrompt,
   SUBMIT_SCRIPT_TOOL,
 } from "./recording-explorer-prompt";
-import {
-  actionEnd,
-  catalogueTargetName,
-  type RecordingScript,
-  recordingScriptSchema,
-  scriptErrors,
-} from "./recording-script";
-import { type StudioModel, studioModel } from "./studio-model";
+import { actionEnd, type RecordingScript, recordingScriptSchema, scriptErrors } from "./recording-script";
+import type { StudioModel } from "./studio-model";
 import { runUntilSubmitted, type SubmitLoopUsage } from "./submit-tool-loop";
 
 const MAX_STEPS = 24;
@@ -72,20 +67,25 @@ async function playActions(browser: AgentBrowserSession, actions: readonly Actio
 
 /**
  * Explores a recording node's route with agent-browser and returns a checked recording script. The agent signs in
- * as the route's synthetic user, sees the scripted agent reply instead of the real one, and never leaves the app.
+ * with the project's test login, if it has one, and never leaves the app.
  */
 export async function exploreRecording({
   node,
-  entry,
+  login,
+  appNotes = "",
+  timezone,
   baseUrl,
   previous,
   brief = "",
   rehearse,
   onProgress,
-  model = studioModel("plan"),
+  model,
 }: {
   node: RecordingNode;
-  entry: RouteCatalogueEntry;
+  login: AppLogin | null;
+  appNotes?: string;
+  /** The project's recording timezone, so exploring sees what the recording will. */
+  timezone: string;
   baseUrl: string;
   previous: PreviousScene | null;
   brief?: string;
@@ -95,33 +95,32 @@ export async function exploreRecording({
   model?: StudioModel;
 }): Promise<{ script: RecordingScript; usage: SubmitLoopUsage }> {
   const scratch = await mkdtemp(path.join(os.tmpdir(), "studio-explore-"));
-  const statePath = path.join(scratch, "state.json");
   const initScriptPath = path.join(scratch, "runtime.js");
-  onProgress(`Signing in as the demo user`);
-  const playwright = await chromium.launch();
-  try {
-    const state = await signIn({ baseUrl, entry, newContext: () => playwright.newContext() });
-    await writeFile(statePath, JSON.stringify(state), { mode: 0o600 });
-  } finally {
-    await playwright.close();
+  let statePath: string | null = null;
+  if (login) {
+    onProgress(`Signing in as ${login.username}`);
+    const playwright = await chromium.launch();
+    try {
+      const state = await signIn({ browser: playwright, baseUrl, startPath: node.route, login });
+      statePath = path.join(scratch, "state.json");
+      await writeFile(statePath, JSON.stringify(state), { mode: 0o600 });
+    } finally {
+      await playwright.close();
+    }
   }
-  await writeFile(initScriptPath, routeRuntimeScript(entry));
+  await writeFile(initScriptPath, pageRuntimeScript());
 
   const browser = new AgentBrowserSession({
     session: `studio-${crypto.randomUUID().slice(0, 8)}`,
     baseUrl,
     statePath,
     initScriptPath,
-    viewport: entry.viewport,
-    timezone: entry.timezone,
+    viewport: RECORDING_VIEWPORT,
+    timezone,
   });
   const reset = async () => {
     await browser.open(node.route);
     if (previous) await playActions(browser, previous.actions);
-  };
-  const announceTarget = (selector: string) => {
-    const name = catalogueTargetName(entry, selector);
-    if (name) onProgress(`Found the “${name}” target`);
   };
   const safely =
     <Input, Output>(run: (input: Input) => Promise<Output>) =>
@@ -202,7 +201,6 @@ export async function exploreRecording({
         const candidates = [];
         for (const selector of candidateSelectors(attributes)) {
           const matches = await browser.count(selector);
-          if (matches === 1) announceTarget(selector);
           candidates.push({ selector, matches });
         }
         return { attributes, candidates };
@@ -213,7 +211,6 @@ export async function exploreRecording({
       inputSchema: z.object({ selector: z.string().min(1) }),
       execute: safely(async ({ selector }: { selector: string }) => {
         const matches = await browser.count(selector);
-        if (matches === 1) announceTarget(selector);
         return { matches, visible: matches > 0 && (await browser.visible(selector)) };
       }),
     }),
@@ -224,7 +221,7 @@ export async function exploreRecording({
     await reset();
     const { value, usage } = await runUntilSubmitted({
       model,
-      system: recordingExplorerSystemPrompt(entry),
+      system: recordingExplorerSystemPrompt({ route: node.route, appNotes, signedIn: login !== null }),
       prompt: recordingExplorerUserPrompt({ node, previous, brief }),
       tools,
       maxSteps: MAX_STEPS,
@@ -239,10 +236,7 @@ export async function exploreRecording({
           const timing = scriptErrors(script, { duration: node.duration });
           if (timing.length > 0) return timing;
           onProgress("Rehearsing the script on the recorder's clock");
-          const errors = await rehearse(script.actions).catch((error) => {
-            if (error instanceof AgentReplyError) throw error;
-            return [errorText(error)];
-          });
+          const errors = await rehearse(script.actions).catch((error) => [errorText(error)]);
           if (errors.length > 0) onProgress(`The script needs another pass: ${errors[0]}`);
           return errors;
         },

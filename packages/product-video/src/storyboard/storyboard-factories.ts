@@ -2,7 +2,7 @@ import type { AspectRatio, AudioTrack, Clip, Project, ProjectApp, VideoTrack } f
 
 export const DEFAULT_RECORDING_SECONDS = 4;
 export const DEFAULT_TEXT_SECONDS = 3;
-export const DEFAULT_BASE_URL = "http://localhost:3101";
+export const DEFAULT_BASE_URL = "http://localhost:3000";
 
 export function createVideoTrack(name: string): VideoTrack {
   return { id: crypto.randomUUID(), name, clips: [] };
@@ -57,7 +57,7 @@ export function createTextClip({
 }
 
 /** What the new-project dialog decides; the rest of a project starts at its defaults. */
-export type ProjectSetup = { aspectRatio: AspectRatio; app: ProjectApp; baseUrl: string };
+export type ProjectSetup = { aspectRatio: AspectRatio; app: ProjectApp; baseUrl: string; timezone?: string };
 
 export function createProject({
   name,
@@ -83,6 +83,7 @@ export function createProject({
       device: { cornerRadius: 16, contactShadow: false, plinth: false, reflection: 0 },
       baseUrl: setup?.baseUrl ?? DEFAULT_BASE_URL,
       ...(setup ? { app: setup.app } : {}),
+      ...(setup?.timezone ? { timezone: setup.timezone } : {}),
     },
     videoTracks: [createVideoTrack("Video 1")],
     audioTracks: [createAudioTrack("Audio")],

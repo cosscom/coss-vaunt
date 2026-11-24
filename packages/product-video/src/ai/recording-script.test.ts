@@ -1,15 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { findRouteEntry } from "../catalogues/routes/route-catalogue";
-import {
-  recordingExplorerSystemPrompt,
-  recordingExplorerUserPrompt,
-  replySeconds,
-} from "./recording-explorer-prompt";
-import { catalogueTargetName, type RecordingScript, scriptErrors } from "./recording-script";
+import { recordingExplorerSystemPrompt, recordingExplorerUserPrompt } from "./recording-explorer-prompt";
+import { type RecordingScript, scriptErrors } from "./recording-script";
 
 const composer = "[data-testid=ai-chat-input]";
-const home = findRouteEntry("/home");
-if (!home) throw new Error("The /home route is missing from the catalogue");
 
 const script = (actions: RecordingScript["actions"]): RecordingScript => ({ actions });
 
@@ -55,21 +48,20 @@ describe("scriptErrors", () => {
   });
 });
 
-describe("catalogueTargetName", () => {
-  it("names catalogue selectors only", () => {
-    expect(catalogueTargetName(home, composer)).toBe("composer");
-    expect(catalogueTargetName(home, "#other")).toBeNull();
-  });
-});
-
 describe("recording explorer prompts", () => {
-  it("gives the catalogue targets and the reply length", () => {
-    const system = recordingExplorerSystemPrompt(home);
-    expect(system).toContain(`composer: ${composer}`);
-    expect(system).toContain(`about ${replySeconds(home)} s`);
-    expect(system).toContain("the real Cal.com agent");
+  it("names the scene's page, the author's notes and whether it is signed in", () => {
+    const system = recordingExplorerSystemPrompt({
+      route: "/projects",
+      appNotes: "Billing is off limits.",
+      signedIn: true,
+    });
+    expect(system).toContain("The scene opens on /projects.");
+    expect(system).toContain("<app-notes>\nBilling is off limits.\n</app-notes>");
+    expect(system).toContain("signed in with the author's test account");
     expect(system).toContain("must already be on screen when the cursor sets off");
-    expect(replySeconds(home)).toBeGreaterThan(0);
+    const publicApp = recordingExplorerSystemPrompt({ route: "/", signedIn: false });
+    expect(publicApp).not.toContain("signed in");
+    expect(publicApp).not.toContain("<app-notes>");
   });
 
   it("describes where a continuing scene starts", () => {

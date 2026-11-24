@@ -1,4 +1,4 @@
-import { isAppPath, ROUTE_CATALOGUE } from "../catalogues/routes/route-catalogue";
+import { isAppPath } from "../recording/app-path";
 import { boardOrder } from "./board-order";
 import { type Board, type BoardEdge, type BoardNode, type BoardNodeKind, boardSchema } from "./board-schema";
 import type { TransitionKind } from "./storyboard-schema";
@@ -25,7 +25,7 @@ export function createBoardNode(
     title,
     position = { x: 0, y: 0 },
     id = randomId(),
-    route = ROUTE_CATALOGUE[0]?.route ?? "/",
+    route = "/",
   }: { title: string; position?: Position; id?: string; route?: string }
 ): BoardNode {
   const base = { id, title, notes: "", duration: DEFAULT_SECONDS[kind], position };

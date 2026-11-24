@@ -1,10 +1,10 @@
 "use client";
 
-import { PointerGlowEdge, usePointerGlow } from "@calcom/ai/react/ui/pointer-glow";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import { dragPanelSize, type PanelSize, type PanelSpec, releasePanel, resizePanel } from "./panel-resize";
+import { PointerGlowEdge, usePointerGlow } from "@/modules/agent-ui/pointer-glow";
 
 const KEY_STEP_PX = 16;
 const KEY_STEP_LARGE_PX = 64;

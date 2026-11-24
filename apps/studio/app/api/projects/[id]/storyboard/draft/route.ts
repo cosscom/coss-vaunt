@@ -1,13 +1,12 @@
-import path from "node:path";
 import { BoardDraftError, draftBoard, draftBoardRequestSchema } from "@calcom/product-video/ai/board-draft";
-import { loadAiKeys } from "@calcom/product-video/ai/studio-model";
-import { STUDIO_ROOT, studioProjectStore } from "@/modules/projects/studio-project-store";
+import { MissingApiKeyError } from "@calcom/product-video/ai/studio-model";
+import { studioProjectPages, studioProjectStore } from "@/modules/projects/studio-project-store";
 
 export const dynamic = "force-dynamic";
 
 type DraftRouteContext = { params: Promise<{ id: string }> };
 
-/** Drafts a storyboard from a prompt. Body: `{ prompt, routes?, totalSeconds, board? }`; returns `{ board }`. */
+/** Drafts a storyboard from a prompt. Body: `{ prompt, totalSeconds, board? }`; returns `{ board }`. */
 export async function POST(request: Request, { params }: DraftRouteContext): Promise<Response> {
   const { id } = await params;
   const project = await studioProjectStore.get(id);
@@ -15,11 +14,22 @@ export async function POST(request: Request, { params }: DraftRouteContext): Pro
   const parsed = draftBoardRequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
 
-  await loadAiKeys(path.dirname(STUDIO_ROOT));
+  // A board can be planned before the app is running; it just plans without the app's page list.
+  const pages = await studioProjectPages(project).catch((error: unknown) => {
+    console.warn("Couldn't crawl the app for its pages:", error instanceof Error ? error.message : error);
+    return [];
+  });
+  const app = project.settings.app;
   try {
-    return Response.json({ board: await draftBoard(parsed.data) });
+    const board = await draftBoard({
+      ...parsed.data,
+      pages,
+      appNotes: app?.kind === "web" ? app.instructions : "",
+    });
+    return Response.json({ board });
   } catch (error) {
-    if (error instanceof BoardDraftError) return Response.json({ error: error.message }, { status: 422 });
+    if (error instanceof BoardDraftError || error instanceof MissingApiKeyError)
+      return Response.json({ error: error.message }, { status: 422 });
     console.error("Drafting a storyboard failed:", error instanceof Error ? error.message : error);
     return Response.json({ error: "Drafting the board failed" }, { status: 502 });
   }

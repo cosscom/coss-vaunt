@@ -6,7 +6,7 @@
 
 ## Plan
 
-1. New repo (`coss-motion`, placeholder) with `apps/studio` and `packages/product-video` moved as they are, keeping history with `git filter-repo --path apps/studio --path packages/product-video`.
+1. [cosscom/coss-vaunt](https://github.com/cosscom/coss-vaunt) with `apps/studio` and `packages/product-video` moved as they are, keeping history with `git filter-repo --path apps/studio --path packages/product-video --path .agents/skills/animate-text`. The engine has its own copy of the animate-text catalogue; the skill comes along so agents in the new repo can still pick and translate text effects, with `.claude/skills/animate-text` linked to it again.
 2. A small workspace setup (Yarn or pnpm) and Biome config copied from the monorepo, trimmed to these two packages.
 3. Setup steps in the README:
    - `npx playwright install chromium`

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { ROUTE_CATALOGUE } from "../catalogues/routes/route-catalogue";
 import { findClip, splitClip, trimClip } from "../storyboard/storyboard-edits";
 import { createProject, createRecordingClip } from "../storyboard/storyboard-factories";
 import { type Clip, type Project, projectSchema } from "../storyboard/storyboard-schema";
@@ -98,8 +97,8 @@ describe("captureHashForClip after timeline edits", () => {
   });
 });
 
-describe("captureHashForClip and the route catalogue", () => {
-  it("records any app path with the default entry", () => {
+describe("captureHashForClip", () => {
+  it("records any app path", () => {
     const clip = {
       ...recording("a"),
       source: { kind: "recording" as const, route: "/settings/my-account/profile", actions: [] },
@@ -107,18 +106,16 @@ describe("captureHashForClip and the route catalogue", () => {
     expect(captureHashForClip({ project: projectWith([clip]), clip })).toMatch(/^[0-9a-f]{16}$/);
   });
 
-  it("ignores catalogue targets and descriptions, which only guide planning", () => {
+  it("records again in another timezone, and records older projects in UTC", () => {
     const clip = recording("a");
     const project = projectWith([clip]);
-    const before = captureHashForClip({ project, clip });
-    const home = ROUTE_CATALOGUE[0];
-    const saved = { targets: home.targets, description: home.description };
-    home.targets = [...home.targets, { name: "new", selector: "#new", description: "A new target" }];
-    home.description = "Edited";
-    try {
-      expect(captureHashForClip({ project, clip })).toBe(before);
-    } finally {
-      Object.assign(home, saved);
-    }
+    const inZone = (timezone?: string) =>
+      captureHashForClip({ project: { ...project, settings: { ...project.settings, timezone } }, clip });
+    expect(inZone("Europe/London")).not.toBe(inZone(undefined));
+    expect(inZone("UTC")).toBe(inZone(undefined));
+    expect(
+      projectSchema.safeParse({ ...project, settings: { ...project.settings, timezone: "Mars/Base" } })
+        .success
+    ).toBe(false);
   });
 });

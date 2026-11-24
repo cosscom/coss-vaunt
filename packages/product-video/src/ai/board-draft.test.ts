@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { ROUTE_CATALOGUE } from "../catalogues/routes/route-catalogue";
 import type { Board } from "../storyboard/board-schema";
 import {
   type BoardDraft,
@@ -64,7 +63,7 @@ describe("repairBoardDraft", () => {
     });
     expect(repairBoardDraft(withRoute("/settings/my-account/profile"), { newId }).errors).toEqual([]);
     expect(repairBoardDraft(withRoute("//evil.example"), { newId }).errors).toEqual([
-      'Scene "ask" route //evil.example isn\'t a path in the app, like /bookings/upcoming',
+      'Scene "ask" route //evil.example isn\'t a path in the app, like /settings',
     ]);
   });
 
@@ -92,17 +91,22 @@ describe("repairBoardDraft", () => {
 });
 
 describe("board draft prompts", () => {
-  it("lists the catalogue, the cap and the target length", () => {
+  it("lists the app's pages and notes, the cap and the target length", () => {
     const system = boardDraftSystemPrompt({
-      routes: ROUTE_CATALOGUE,
+      pages: [
+        { path: "/projects", label: "Projects", title: "Projects · Acme", inNav: true },
+        { path: "/projects/new", label: "New project", title: "", inNav: false },
+      ],
+      appNotes: "Billing is off limits.",
       effects: [{ id: "typewriter", description: "Types the words" }],
       totalSeconds: 20,
     });
     expect(system).toContain("about 20 seconds");
     expect(system).toContain("Never add recordings to fill time");
     expect(system).toContain("at most 8 seconds");
-    expect(system).toContain("- /home (Home · Main Agent)");
-    expect(system).toContain("composer: The chat composer");
+    expect(system).toContain("- /projects (Projects · Projects · Acme), in the navigation");
+    expect(system).toContain("- /projects/new (New project)\n");
+    expect(system).toContain("<app-notes>\nBilling is off limits.\n</app-notes>");
     expect(system).toContain("- typewriter: Types the words");
     expect(system).toContain("- zoom-through:");
   });
@@ -161,15 +165,14 @@ describe("draftBoard", () => {
       expect(check(draft)).toEqual([]);
       return draft;
     };
-    const board = await draftBoard({ prompt: "Book Sandy", routes: ["/home"], totalSeconds: 20, planner });
+    const board = await draftBoard({ prompt: "Book Sandy", pages: [], totalSeconds: 20, planner });
     expect(board.nodes).toHaveLength(3);
   });
 
-  it("refuses featured routes that aren't app paths", async () => {
-    const planner: BoardPlanner = async () => draft;
-    await expect(
-      draftBoard({ prompt: "x", routes: ["//nowhere"], totalSeconds: 20, planner })
-    ).rejects.toThrow(/Not paths in the app/);
+  it("says when no pages were found rather than listing none", () => {
+    const system = boardDraftSystemPrompt({ pages: [], effects: [], totalSeconds: 20 });
+    expect(system).toContain("No pages were found by following the app's links");
+    expect(system).not.toContain("<app-notes>");
   });
 
   it("explains a request it can't plan with the model's own reason", async () => {
@@ -177,7 +180,7 @@ describe("draftBoard", () => {
       throw new NoSubmissionError("stopped", "The app has no page for editing invoices.");
     };
     await expect(
-      draftBoard({ prompt: "Edit an invoice", routes: [], totalSeconds: 20, planner })
+      draftBoard({ prompt: "Edit an invoice", pages: [], totalSeconds: 20, planner })
     ).rejects.toThrow("The app has no page for editing invoices.");
   });
 });

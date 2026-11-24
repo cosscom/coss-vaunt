@@ -11,11 +11,11 @@ import { Label } from "@coss/ui/components/label";
 import { Radio, RadioGroup } from "@coss/ui/components/radio-group";
 import { Switch } from "@coss/ui/components/switch";
 import { Textarea } from "@coss/ui/components/textarea";
-import { CalendarDaysIcon, FolderIcon, LockIcon, MonitorIcon } from "@coss/ui/icons";
+import { LockIcon } from "@coss/ui/icons";
 import type * as React from "react";
 import { useState } from "react";
 import { cssAspectRatio } from "./css-aspect-ratio";
-import { type AppChoice, type NewProjectDraft, urlProblem } from "./new-project-draft";
+import { type NewProjectDraft, urlProblem } from "./new-project-draft";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.newProject;
@@ -24,12 +24,6 @@ export type DraftFieldProps = { draft: NewProjectDraft; update: (patch: Partial<
 
 /** Widest first, so the row reads landscape to vertical. */
 const ASPECTS = [...ASPECT_RATIOS].reverse();
-
-const APP_ICONS: Record<AppChoice, React.ComponentType<{ className?: string }>> = {
-  cal: CalendarDaysIcon,
-  custom: MonitorIcon,
-  none: FolderIcon,
-};
 
 const OPTION_CARD =
   "group flex cursor-pointer rounded-lg border font-normal transition-[background-color,border-color] duration-150 hover:bg-accent/48 has-data-checked:border-info has-data-checked:bg-info/8 has-focus-visible:ring-2 has-focus-visible:ring-ring";
@@ -86,39 +80,6 @@ export function AspectRatioPicker({ draft, update }: DraftFieldProps): React.Rea
   );
 }
 
-/** Cal.com or another web app; skipping to local files is its own action beside the form. */
-export function AppChoiceList({ draft, update }: DraftFieldProps): React.ReactElement {
-  const choices: AppChoice[] = ["cal", "custom"];
-  return (
-    <RadioGroup
-      aria-label={copy.appLabel}
-      className="flex flex-col gap-2"
-      onValueChange={(value) => {
-        const app = choices.find((candidate) => candidate === value);
-        if (app) update({ app });
-      }}
-      value={draft.app}>
-      {choices.map((choice) => {
-        const Icon = APP_ICONS[choice];
-        return (
-          <Label className={`${OPTION_CARD} items-start gap-3 p-3`} key={choice}>
-            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-has-data-checked:bg-info/12 group-has-data-checked:text-info">
-              <Icon aria-hidden="true" className="size-4" />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="font-medium text-foreground text-sm">{copy.apps[choice].title}</span>
-              <span className="text-pretty text-muted-foreground text-xs">
-                {copy.apps[choice].description}
-              </span>
-            </span>
-            <Radio className="mt-1" value={choice} />
-          </Label>
-        );
-      })}
-    </RadioGroup>
-  );
-}
-
 function AddressField({
   value,
   onChange,
@@ -156,29 +117,19 @@ function AddressField({
   );
 }
 
-/** The chosen app's details: its address, and for another app what the AI should know and how to sign in. */
+/** The app's address, what the AI should know about it and how to sign in. */
 export function AppDetails({
   draft,
   update,
   defaultAppUrl,
-}: DraftFieldProps & { defaultAppUrl: string }): React.ReactElement | null {
-  if (draft.app === "none") return null;
-  if (draft.app === "cal")
-    return (
-      <AddressField
-        hint={copy.calAddressHint}
-        onChange={(calUrl) => update({ calUrl })}
-        placeholder={defaultAppUrl}
-        value={draft.calUrl}
-      />
-    );
+}: DraftFieldProps & { defaultAppUrl: string }): React.ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <AddressField
-        hint={copy.customAddressHint}
-        onChange={(customUrl) => update({ customUrl })}
-        placeholder="http://localhost:3000"
-        value={draft.customUrl}
+        hint={copy.addressHint}
+        onChange={(url) => update({ url })}
+        placeholder={defaultAppUrl}
+        value={draft.url}
       />
       <Field>
         <FieldLabel>{copy.instructionsLabel}</FieldLabel>

@@ -26,6 +26,7 @@ import type * as React from "react";
 import { useState } from "react";
 import { ExportButton } from "./export/export-dialog";
 import type { SaveStatus } from "./use-project-autosave";
+import { AiSettingsButton } from "@/modules/settings/ai-settings-dialog";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
 
@@ -210,6 +211,7 @@ export function ProjectBar({
           showLabel={STUDIO_COPY.layout.showInspector}
           side="end"
         />
+        <AiSettingsButton />
         <AppThemeToggle />
         <Separator className="mx-1 h-5" orientation="vertical" />
         <ExportButton project={project} saveStatus={saveStatus} />

@@ -7,7 +7,7 @@ import { clipFromMedia } from "../imports/media-upload";
 import type { BoardNode } from "../storyboard/board-schema";
 import { createRecordingClip, createTextClip } from "../storyboard/storyboard-factories";
 import { type Action, type Clip, clipSchema } from "../storyboard/storyboard-schema";
-import { type StudioModel, studioModel } from "./studio-model";
+import type { StudioModel } from "./studio-model";
 import { runUntilSubmitted } from "./submit-tool-loop";
 
 type NodeOf<Kind extends BoardNode["kind"]> = Extract<BoardNode, { kind: Kind }>;
@@ -26,10 +26,7 @@ export function defaultTextEffect(words: string): string {
 }
 
 /** Lets the model match an effect to the node's direction, from the visible catalogue. */
-export async function pickTextEffect(
-  node: NodeOf<"text">,
-  model: StudioModel = studioModel("plan")
-): Promise<string> {
+export async function pickTextEffect(node: NodeOf<"text">, model?: StudioModel): Promise<string> {
   const effects = listTextEffects().filter((effect) => effect.visible);
   const ids = effects.map((effect) => effect.id);
   const { value } = await runUntilSubmitted({
@@ -54,13 +51,13 @@ export async function pickTextEffect(
 export async function writeTextWords(
   node: NodeOf<"text">,
   brief: string,
-  model: StudioModel = studioModel("plan")
+  model?: StudioModel
 ): Promise<string> {
   const { value } = await runUntilSubmitted({
     model,
     effort: "low",
     maxSteps: 2,
-    system: `Write the words for one title card in a short product video for Cal.com. Keep it to one short line (at most 8 words), in sentence case, with no quotes or emoji. Call writeWords with them.`,
+    system: `Write the words for one title card in a short product video. Keep it to one short line (at most 8 words), in sentence case, with no quotes or emoji. Call writeWords with them.`,
     prompt: `Card title: ${JSON.stringify(node.title)}\nDirection: ${JSON.stringify(node.notes)}\nVideo brief: ${JSON.stringify(brief)}`,
     submit: {
       name: "writeWords",

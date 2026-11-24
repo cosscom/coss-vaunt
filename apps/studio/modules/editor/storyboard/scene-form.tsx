@@ -1,9 +1,9 @@
 "use client";
 
-import { isAppPath } from "@calcom/product-video/catalogues/routes/route-catalogue";
 import { listTextEffects } from "@calcom/product-video/catalogues/text-effects/text-effect-catalogue";
 import { ACCEPTED_MEDIA } from "@calcom/product-video/imports/media-types";
 import type { FileAsset } from "@calcom/product-video/project-store/project-assets";
+import { isAppPath } from "@calcom/product-video/recording/app-path";
 import type { BoardNode } from "@calcom/product-video/storyboard/board-schema";
 import { MAX_CLIP_SECONDS, MAX_RECORDING_SECONDS } from "@calcom/product-video/storyboard/storyboard-schema";
 import { Alert, AlertDescription, AlertTitle } from "@coss/ui/components/alert";
@@ -32,8 +32,9 @@ import { DraftInput, DraftTextarea } from "../inspector/draft-text-field";
 import { groupTextEffects } from "../text-effects/text-effect-groups";
 import { DurationRuler } from "./duration-ruler";
 import type { NodeGeneration } from "./generation-stream";
-import { PAGE_OPTIONS, pageMatches } from "./page-options";
+import { type PageOption, pageMatches } from "./page-options";
 import { fileLabel } from "./scene-node";
+import { usePageOptions } from "./use-page-options";
 import type { StoryboardActions } from "./use-storyboard-actions";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
@@ -47,6 +48,7 @@ const MAX_PATH_LENGTH = 300;
 type SceneOf<Kind extends BoardNode["kind"]> = Extract<BoardNode, { kind: Kind }>;
 
 type SceneFormProps = {
+  projectId: string;
   node: BoardNode;
   actions: StoryboardActions;
   /** Imported video and images a media scene can use. */
@@ -58,6 +60,7 @@ type SceneFormProps = {
 };
 
 export function SceneForm({
+  projectId,
   node,
   actions,
   files,
@@ -107,6 +110,7 @@ export function SceneForm({
       {node.kind === "recording" ? (
         <RouteField
           id={id("route")}
+          projectId={projectId}
           onChange={(route) => update("recording", (current) => ({ ...current, route }))}
           route={node.route}
         />
@@ -216,16 +220,19 @@ export function SceneForm({
   );
 }
 
-/** Any path in the app, with the app's known pages suggested as you type. */
+/** Any path in the app, with the pages found by crawling it suggested as you type. */
 function RouteField({
   id,
+  projectId,
   route,
   onChange,
 }: {
   id: string;
+  projectId: string;
   route: string;
   onChange: (route: string) => void;
 }): React.ReactElement {
+  const pages = usePageOptions(projectId);
   const [draft, setDraft] = useState(route);
   // Until the author types, the suggestions list every page rather than only those matching the current path.
   const [typing, setTyping] = useState(false);
@@ -235,9 +242,9 @@ function RouteField({
       <FieldLabel htmlFor={id}>{copy.route}</FieldLabel>
       <Autocomplete
         autoHighlight
-        filter={(option: (typeof PAGE_OPTIONS)[number], query) => pageMatches(option, typing ? query : "")}
-        items={PAGE_OPTIONS}
-        itemToStringValue={(option: (typeof PAGE_OPTIONS)[number]) => option.path}
+        filter={(option: PageOption, query) => pageMatches(option, typing ? query : "")}
+        items={pages}
+        itemToStringValue={(option: PageOption) => option.path}
         onValueChange={(next, details) => {
           setDraft(next);
           setTyping(details.reason !== "item-press");
@@ -258,7 +265,7 @@ function RouteField({
         />
         <AutocompletePopup className="w-(--anchor-width)">
           <AutocompleteList>
-            {(option: (typeof PAGE_OPTIONS)[number]) => (
+            {(option: PageOption) => (
               <AutocompleteItem key={option.path} value={option}>
                 <span className="truncate">{option.path}</span>
               </AutocompleteItem>

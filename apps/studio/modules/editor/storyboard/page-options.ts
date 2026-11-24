@@ -1,18 +1,11 @@
-import { APP_MAP } from "@calcom/product-video/catalogues/routes/app-map";
-import { ROUTE_CATALOGUE } from "@calcom/product-video/catalogues/routes/route-catalogue";
+import type { DiscoveredPage } from "@calcom/product-video/discovery/page-discovery";
 
 export type PageOption = { path: string; label: string };
 
-/** Pages a recording can open: the tuned routes first, then the rest of the app map. */
-export const PAGE_OPTIONS: readonly PageOption[] = (() => {
-  const options = new Map<string, string>();
-  for (const entry of ROUTE_CATALOGUE) options.set(entry.route, entry.label);
-  for (const page of APP_MAP) {
-    if (!options.has(page.path)) options.set(page.path, page.name);
-    for (const subpage of page.subpages) if (!options.has(subpage.path)) options.set(subpage.path, page.name);
-  }
-  return [...options].map(([path, label]) => ({ path, label }));
-})();
+/** Pages a recording can open, from crawling the app: its navigation first, named as the app links to them. */
+export function pageOptionsFrom(pages: readonly DiscoveredPage[]): PageOption[] {
+  return pages.map((page) => ({ path: page.path, label: page.label || page.title || page.path }));
+}
 
 export function pageMatches(option: PageOption, query: string): boolean {
   const needle = query.trim().toLowerCase();
