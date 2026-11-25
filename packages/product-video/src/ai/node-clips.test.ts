@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { BoardNode } from "../storyboard/board-schema";
-import { defaultTextEffect, mediaClipForNode, textClipForNode, textEffectFor } from "./node-clips";
+import {
+  defaultTextEffect,
+  mediaClipForNode,
+  recordingDuration,
+  textClipForNode,
+  textEffectFor,
+} from "./node-clips";
 
 const text = (
   overrides: Partial<Extract<BoardNode, { kind: "text" }>> = {}
@@ -58,5 +64,17 @@ describe("mediaClipForNode", () => {
         "/tmp"
       )
     ).rejects.toThrow("Pick a file");
+  });
+});
+
+describe("recordingDuration", () => {
+  it("keeps the planned length when the scene shows no reply", () => {
+    expect(recordingDuration(5, null)).toBe(5);
+  });
+
+  it("lengthens the scene so the reply can be read, within the recording limit", () => {
+    expect(recordingDuration(4, 2.2)).toBe(5);
+    expect(recordingDuration(6, 2)).toBe(6);
+    expect(recordingDuration(4, 7)).toBe(8);
   });
 });

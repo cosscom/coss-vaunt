@@ -57,6 +57,7 @@ function fakeDeps(recorded: Project[]): GenerateBoardDeps {
       if (clip?.source.kind === "recording" && clip.source.actions[0]?.kind === "move") {
         throw new Error("#late shows 1.0 s later");
       }
+      return { replyEndsAt: null };
     },
     record: async ({ project: withClip, onProgress }) => {
       recorded.push(withClip);
@@ -187,6 +188,36 @@ describe("generateBoard", () => {
       nodeId: "approve",
       status: "failed",
       message: "Generate the recording scene before this one first",
+    });
+  });
+
+  it("lengthens a recording scene so the app's reply can be read", async () => {
+    const events: GenerationEvent[] = [];
+    const recorded: Project[] = [];
+    const deps: GenerateBoardDeps = {
+      ...fakeDeps(recorded),
+      explore: async ({ rehearse }) => {
+        const actions = [{ kind: "type" as const, at: 0.5, target: composer, text: "show me my bookings" }];
+        expect(await rehearse(actions)).toEqual([]);
+        return { script: { actions } };
+      },
+      rehearse: async () => ({ replyEndsAt: 3.1 }),
+    };
+    await generateBoard({
+      project,
+      board: { ...board, nodes: board.nodes.filter((node) => node.id === "ask"), edges: [] },
+      emit: (event) => events.push(event),
+      deps,
+    });
+
+    const clip = recorded[0]?.videoTracks
+      .flatMap((track) => track.clips)
+      .find((c) => c.storyboardNodeId === "ask");
+    expect(clip?.duration).toBe(6);
+    expect(events).toContainEqual({
+      nodeId: "ask",
+      status: "exploring",
+      message: "Lengthened to 6 s so the app’s reply can be read",
     });
   });
 });

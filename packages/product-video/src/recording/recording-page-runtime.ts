@@ -1,13 +1,28 @@
 /// <reference lib="dom" />
+import { chatUserMessages, type PageReply, type ReplyEvent, replyKey } from "./app-replies";
 import { classifyRequest, fakeTrpcResponse } from "./request-fakes";
 
-type StudioRequests = { classify: typeof classifyRequest; fakeTrpc: typeof fakeTrpcResponse };
+type StudioRequests = {
+  classify: typeof classifyRequest;
+  fakeTrpc: typeof fakeTrpcResponse;
+  chatMessages: typeof chatUserMessages;
+  replyKey: typeof replyKey;
+};
 
 export type RecordingPageConfig = {
   seed: number;
   /** CSS added to every page: hides the OS cursor, the caret and dev overlays. */
   css: string;
+  /**
+   * Chat messages the page sends get the app's real reply: a saved one replays on the page clock, and a new one goes
+   * to the app once, reported to `window.__vauntReply` as it streams, and replays once `deliverReply` hands it back.
+   * Null fakes chat messages like any other write.
+   */
+  replies: PageReply[] | null;
 };
+
+/** Marks a chat request on its way to the app, so the recorder doesn't wait on it between frames; the page runtime spells it out. */
+export const LIVE_REPLY_HEADER = "x-vaunt-live-reply";
 
 export type PageRect = { x: number; y: number; width: number; height: number };
 
@@ -18,6 +33,12 @@ export type RecordingPageApi = {
   rectOf(selector: string): PageRect | null;
   /** Scrolls an element that's in the page but off screen to the middle of the view; false when there's nothing to do. */
   reveal(selector: string): boolean;
+  /** Chat messages waiting for the app's first reply; page time must not move while any are. */
+  liveReplies(): number;
+  /** Hands a newly captured reply to the message waiting for it, and keeps it for the rest of the run. */
+  deliverReply(reply: PageReply): void;
+  /** When each replayed reply finishes streaming, in page time. */
+  replyEnds(): number[];
 };
 
 type ObserverGate = { deliver(): Promise<void>; renderingUpdate(): Promise<void> };
@@ -109,10 +130,100 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
   /** What the page tried to write, for a look in DevTools: `window.__studioFaked`. */
   const faked: Array<{ kind: string; method: string; url: string }> = [];
   (window as unknown as { __studioFaked: typeof faked }).__studioFaked = faked;
+  const replies = new Map((config.replies ?? []).map((reply) => [reply.key, reply]));
+  const waiting = new Map<string, Array<(reply: PageReply) => void>>();
+  const replyEnds: number[] = [];
+  let liveReplies = 0;
+  const report = (event: ReplyEvent) =>
+    (window as unknown as { __vauntReply?: (event: ReplyEvent) => Promise<void> }).__vauntReply?.(event);
+  const replay = (reply: PageReply): Response => {
+    const encoder = new TextEncoder();
+    const endMs = reply.chunks.at(-1)?.atMs ?? 0;
+    replyEnds.push(performance.now() + endMs);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const { atMs, text } of reply.chunks) {
+          setTimeout(() => controller.enqueue(encoder.encode(text)), atMs);
+        }
+        setTimeout(() => controller.close(), endMs + 1);
+      },
+    });
+    return new Response(stream, { status: reply.status, headers: reply.headers });
+  };
+  /** Sends a message the app hasn't answered before and replays its reply once the recorder has saved it. */
+  const askApp = (
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    key: string,
+    messages: string[]
+  ) => {
+    liveReplies++;
+    const answered = new Promise<Response>((resolve) => {
+      waiting.set(key, [...(waiting.get(key) ?? []), (reply) => resolve(replay(reply))]);
+    });
+    if ((waiting.get(key)?.length ?? 0) > 1) return answered;
+    void report({ type: "start", key, messages });
+    const request = input instanceof Request ? input : null;
+    const headers = new Headers(init?.headers ?? request?.headers ?? undefined);
+    headers.set("x-vaunt-live-reply", "1");
+    const sent = request
+      ? originalFetch.call(window, new Request(request, { ...init, headers }))
+      : originalFetch.call(window, input, { ...init, headers });
+    sent
+      .then(async (response) => {
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, name) => {
+          responseHeaders[name] = value;
+        });
+        void report({ type: "response", key, status: response.status, headers: responseHeaders });
+        if (response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const text = decoder.decode(value, { stream: true });
+            if (text) void report({ type: "chunk", key, text });
+          }
+          const tail = decoder.decode();
+          if (tail) void report({ type: "chunk", key, text: tail });
+        }
+        void report({ type: "end", key });
+      })
+      .catch((error: unknown) => {
+        void report({ type: "error", key, message: error instanceof Error ? error.message : String(error) });
+      });
+    return answered;
+  };
+
+  const bodyOf = (init: RequestInit | undefined, request: Request | null): Promise<string> => {
+    if (typeof init?.body === "string") return Promise.resolve(init.body);
+    return request ? request.clone().text() : Promise.resolve("");
+  };
+
   window.fetch = function scriptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const request = input instanceof Request ? input : null;
     const url = new URL(request ? request.url : String(input), location.href);
     const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
+    if (config.replies && method === "POST" && url.origin === location.origin) {
+      return bodyOf(init, request).then((body) => {
+        const messages = requests.chatMessages(body);
+        if (!messages) return fakeOrSend(input, init, request, url, method);
+        const key = requests.replyKey(url.pathname, messages);
+        const saved = replies.get(key);
+        return saved ? replay(saved) : askApp(input, init, key, messages);
+      });
+    }
+    return fakeOrSend(input, init, request, url, method);
+  };
+
+  function fakeOrSend(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    request: Request | null,
+    url: URL,
+    method: string
+  ): Promise<Response> {
     const headerOf = (name: string) =>
       new Headers(init?.headers ?? request?.headers ?? undefined).get(name) ?? null;
     const kind = requests.classify({
@@ -128,13 +239,7 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
     if (kind === "trpc-mutation") {
       const calls = decodeURIComponent(url.pathname.split("/").pop() ?? "").split(",").length;
       const batch = url.searchParams.get("batch") === "1";
-      const bodyText =
-        typeof init?.body === "string"
-          ? Promise.resolve(init.body)
-          : request
-            ? request.clone().text()
-            : Promise.resolve("");
-      return bodyText.then((body) => json(requests.fakeTrpc({ body, batch, calls })));
+      return bodyOf(init, request).then((body) => json(requests.fakeTrpc({ body, batch, calls })));
     }
     if (kind === "server-action") {
       console.warn(`[studio] faked a server action at ${url.pathname}; the page may not update`);
@@ -147,7 +252,7 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
       return Promise.resolve(new Response("", { status: 204 }));
     }
     return Promise.resolve(json("{}"));
-  };
+  }
 
   navigator.sendBeacon = (url: string | URL) => {
     faked.push({ kind: "external-write", method: "BEACON", url: String(url) });
@@ -253,6 +358,15 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
       element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
       return true;
     },
+    liveReplies: () => liveReplies,
+    deliverReply(reply) {
+      replies.set(reply.key, reply);
+      const resolvers = waiting.get(reply.key) ?? [];
+      waiting.delete(reply.key);
+      liveReplies -= resolvers.length;
+      for (const resolve of resolvers) resolve(reply);
+    },
+    replyEnds: () => [...replyEnds],
   };
   (window as unknown as { __studio: RecordingPageApi }).__studio = api;
 }
@@ -261,7 +375,7 @@ export function installRecordingRuntime(config: RecordingPageConfig): void {
 export function recordingRuntimeScript(config: RecordingPageConfig): string {
   return [
     "globalThis.__name ??= (target) => target;",
-    `globalThis.__studioRequests = { classify: (${classifyRequest.toString()}), fakeTrpc: (${fakeTrpcResponse.toString()}) };`,
+    `globalThis.__studioRequests = { classify: (${classifyRequest.toString()}), fakeTrpc: (${fakeTrpcResponse.toString()}), chatMessages: (${chatUserMessages.toString()}), replyKey: (${replyKey.toString()}) };`,
     `(${installObserverGate.toString()})();`,
     `(${installRecordingRuntime.toString()})(${JSON.stringify(config)});`,
   ].join("\n");

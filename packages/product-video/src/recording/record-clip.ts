@@ -14,12 +14,21 @@ import { readAppLogin } from "../project-store/file-project-store";
 import type { AppLogin } from "../project-store/project-store";
 import { MAX_RECORDING_SECONDS, type Project } from "../storyboard/storyboard-schema";
 import { type FrameInput, scheduleActions } from "./action-schedule";
+import {
+  AppReplyError,
+  createReplyRecorder,
+  type PageReply,
+  pageReply,
+  type ReplyEvent,
+  type ReplyRecorder,
+  readAppReplies,
+} from "./app-replies";
 import { signIn } from "./app-sign-in";
 import { type CaptureSpec, captureHash, captureSpecFor, RECORDING_CLOCK_TIME } from "./capture-hash";
 import { cursorPointAtFrame, type Point, restPoint } from "./cursor-path";
 import { ffmpegHasEncoder } from "./ffmpeg";
 import { assertAllowedRecordingHost } from "./host-allowlist";
-import type { RecordingProgress } from "./recording-events";
+import type { RecordingPhase, RecordingProgress } from "./recording-events";
 import {
   type CursorSample,
   frameFileName,
@@ -28,7 +37,7 @@ import {
   type Rect,
   recordingDirectory,
 } from "./recording-manifest";
-import { type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
+import { LIVE_REPLY_HEADER, type PageRect, recordingRuntimeScript } from "./recording-page-runtime";
 import { findClip, readRecordingManifest } from "./recording-status";
 import { writeRecordingVideo } from "./recording-video";
 import type { ReplayStep } from "./replay-chain";
@@ -38,6 +47,9 @@ const runFile = promisify(execFile);
 /** How long a missing target may take to appear before the recording fails. */
 export const TARGET_TIMEOUT_MS = 10_000;
 const SETTLE_TIMEOUT_MS = 10_000;
+/** How long the app gets to answer a chat message the first time, in real time. */
+const REPLY_TIMEOUT_MS = 180_000;
+const REPLY_POLL_MS = 200;
 const PREROLL_STEPS = 30;
 const PREROLL_STEP_MS = 100;
 const PAGE_SEED = 20_261_118;
@@ -102,6 +114,7 @@ export async function recordClip({
       baseUrl: project.settings.baseUrl,
       framesDir: path.join(partial, "frames"),
       login,
+      projectDir,
       onProgress,
     });
     onProgress({ type: "phase", phase: "proxy" });
@@ -118,33 +131,43 @@ export async function recordClip({
   }
 }
 
+export type RehearsalResult = {
+  /** When the last chat reply the clip shows finishes streaming, in seconds into the clip; null when it shows none. */
+  replyEndsAt: number | null;
+};
+
 /**
  * Plays a clip exactly as `recordClip` would, on the same fake clock and page runtime, without taking
  * screenshots; throws what the recording would. A missing target's error says when, if ever, it shows up.
+ * The app's replies to chat messages are captured here the first time and saved in `projectDir`.
  */
 export async function rehearseClip({
   project,
   clipId,
   login,
+  projectDir,
 }: {
   project: Project;
   clipId: string;
   login: AppLogin | null;
-}): Promise<void> {
+  projectDir: string | null;
+}): Promise<RehearsalResult> {
   const clip = findClip(project, clipId);
   if (!clip || clip.source.kind !== "recording")
     throw new Error(`Clip ${clipId} is not a recording in this project`);
   assertAllowedRecordingHost(project.settings.baseUrl);
   const spec = captureSpecFor({ project, clip });
-  await capture({
+  const { replyEndsAt } = await capture({
     spec,
     hash: captureHash(spec),
     clipId,
     baseUrl: project.settings.baseUrl,
     framesDir: null,
     login,
+    projectDir,
     onProgress: () => undefined,
   });
+  return { replyEndsAt };
 }
 
 async function capture({
@@ -154,7 +177,8 @@ async function capture({
   baseUrl,
   framesDir,
   login,
-  onProgress,
+  projectDir,
+  onProgress: report,
 }: {
   spec: CaptureSpec;
   hash: string;
@@ -163,8 +187,20 @@ async function capture({
   /** Null rehearses: the same run with no screenshots. */
   framesDir: string | null;
   login: AppLogin | null;
+  /** Where the app's replies to chat messages are saved; null captures them for this run only. */
+  projectDir: string | null;
   onProgress: (progress: RecordingProgress) => void;
-}): Promise<{ manifest: Omit<RecordingManifest, "proxy">; secondsPerFrame: number }> {
+}): Promise<{
+  manifest: Omit<RecordingManifest, "proxy">;
+  secondsPerFrame: number;
+  replyEndsAt: number | null;
+}> {
+  let phase: RecordingPhase | null = null;
+  const onProgress = (progress: RecordingProgress) => {
+    if (progress.type === "phase") phase = progress.phase;
+    report(progress);
+  };
+  const saved = projectDir ? (await readAppReplies(projectDir)).map(pageReply) : [];
   const browser = await chromium.launch({ args: ["--force-color-profile=srgb", "--hide-scrollbars"] });
   try {
     const startRoute = spec.replay?.[0]?.route ?? spec.route;
@@ -184,14 +220,33 @@ async function capture({
     const startTime = Date.parse(RECORDING_CLOCK_TIME);
     await context.clock.install({ time: startTime });
     await context.clock.pauseAt(startTime + 1000);
-    await context.addInitScript({ content: pageRuntimeScript(BASE_CSS) });
-    const page = await context.newPage();
+    await context.addInitScript({ content: pageRuntimeScript(BASE_CSS, saved) });
+    let page: Page | null = null;
+    const replies = createReplyRecorder({
+      projectDir,
+      deliver: async (reply) => {
+        await page?.evaluate((delivered) => {
+          (window as unknown as { __studio: { deliverReply(reply: PageReply): void } }).__studio.deliverReply(
+            delivered
+          );
+        }, reply);
+      },
+    });
+    await context.exposeBinding("__vauntReply", (_source, event: ReplyEvent) => replies.onEvent(event));
+    page = await context.newPage();
     // The page runtime reports writes it couldn't classify; they belong in the job's log, not lost in the page.
     page.on("console", (message) => {
       if (message.text().startsWith("[studio]")) process.stderr.write(`${message.text()}\n`);
     });
     const network = trackNetwork(page);
     await holdNetworkWhileClockRuns(page, network);
+    await holdClockForReplies(page, network, replies, () => {
+      const resume = phase;
+      onProgress({ type: "phase", phase: "reply" });
+      return () => {
+        if (resume) onProgress({ type: "phase", phase: resume });
+      };
+    });
     await page.goto(new URL(startRoute, baseUrl).toString(), { waitUntil: "load", timeout: 120_000 });
 
     onProgress({ type: "phase", phase: "preroll" });
@@ -216,9 +271,12 @@ async function capture({
   }
 }
 
-/** The page runtime: seeded randomness, faked writes and observers that report on page time. */
-export function pageRuntimeScript(css = ""): string {
-  return recordingRuntimeScript({ seed: PAGE_SEED, css });
+/**
+ * The page runtime: seeded randomness, faked writes and observers that report on page time. With `replies`, chat
+ * messages get the app's real reply (saved ones replay); without, they're faked like any other write.
+ */
+export function pageRuntimeScript(css = "", replies: PageReply[] | null = null): string {
+  return recordingRuntimeScript({ seed: PAGE_SEED, css, replies });
 }
 
 type NetworkTracker = {
@@ -241,6 +299,8 @@ function trackNetwork(page: Page): NetworkTracker {
   page.on("request", (request) => {
     const type = request.resourceType();
     if (type === "websocket" || type === "eventsource") return;
+    // A chat message the app answers in real time; the clock waits for it in `holdClockForReplies` instead.
+    if (request.headers()[LIVE_REPLY_HEADER]) return;
     pending.add(request);
   });
   page.on("requestfinished", done);
@@ -278,6 +338,40 @@ async function holdNetworkWhileClockRuns(page: Page, network: NetworkTracker): P
       running = false;
       for (const route of held.splice(0)) void release(route);
     }
+  };
+}
+
+/**
+ * A chat message the app hasn't answered before goes to it in real time; page time stands still until the reply
+ * is saved and handed back, so it replays from the moment the message was sent, as it will in every later take.
+ */
+async function holdClockForReplies(
+  page: Page,
+  network: NetworkTracker,
+  replies: ReplyRecorder,
+  onWait: () => () => void
+): Promise<void> {
+  const runFor = network.runClock;
+  network.runClock = async (ms) => {
+    const deadline = Date.now() + REPLY_TIMEOUT_MS;
+    let resume: (() => void) | null = null;
+    try {
+      for (;;) {
+        const failure = replies.failure();
+        if (failure) throw new AppReplyError(failure);
+        if (((await page.evaluate("window.__studio.liveReplies()")) as number) === 0) break;
+        if (Date.now() > deadline) {
+          throw new AppReplyError(
+            `The app didn't finish replying to a chat message within ${REPLY_TIMEOUT_MS / 1000} s`
+          );
+        }
+        resume ??= onWait();
+        await new Promise((resolve) => setTimeout(resolve, REPLY_POLL_MS));
+      }
+    } finally {
+      resume?.();
+    }
+    await runFor(ms);
   };
 }
 
@@ -448,7 +542,11 @@ async function captureFrames({
   framesDir: string | null;
   network: NetworkTracker;
   onProgress: (progress: RecordingProgress) => void;
-}): Promise<{ manifest: Omit<RecordingManifest, "proxy">; secondsPerFrame: number }> {
+}): Promise<{
+  manifest: Omit<RecordingManifest, "proxy">;
+  secondsPerFrame: number;
+  replyEndsAt: number | null;
+}> {
   const schedule = scheduleActions({ actions: spec.actions, duration: spec.duration, fps: spec.fps });
   const { frameCount, travels } = schedule;
   const cdp: CDPSession = await context.newCDPSession(page);
@@ -465,6 +563,7 @@ async function captureFrames({
   const visible = travels.length > 0;
   const kindOf = (actionIndex: number) => spec.actions[actionIndex]?.kind ?? "action";
   const started = Date.now();
+  const clipStartMs = (await page.evaluate("performance.now()")) as number;
   let clockMs = 0;
   let point: Point = rest;
 
@@ -523,7 +622,11 @@ async function captureFrames({
     await settle(page, network);
   }
 
+  const replyEnds = (await page.evaluate("window.__studio.replyEnds()")) as number[];
+  const lastReplyEnd = Math.max(...replyEnds.map((end) => (end - clipStartMs) / 1000));
   return {
+    replyEndsAt:
+      Number.isFinite(lastReplyEnd) && lastReplyEnd > 0 ? Math.round(lastReplyEnd * 100) / 100 : null,
     manifest: {
       version: 1,
       clipId,
