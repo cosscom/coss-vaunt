@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import path from "node:path";
 import { createInterface } from "node:readline";
+import { engineCliCommand } from "../engine-cli";
 import { type ExportEvent, parseExportEvent } from "./export-events";
 import type { ExportSettings } from "./export-settings";
 
@@ -35,7 +35,6 @@ export function startExportJob({
   if (jobs.get(projectId)?.finished === false) return { started: false };
 
   const args = [
-    path.join(repoRoot, "packages/product-video/src/export/export-video-cli.ts"),
     projectId,
     "--format",
     settings.format,
@@ -54,7 +53,8 @@ export function startExportJob({
     studioRoot,
     "--json",
   ];
-  const child = spawn(path.join(repoRoot, "node_modules/.bin/tsx"), args, {
+  const cli = engineCliCommand(repoRoot, "export");
+  const child = spawn(cli.command, [...cli.args, ...args], {
     cwd: repoRoot,
     stdio: ["ignore", "pipe", "pipe"],
   });

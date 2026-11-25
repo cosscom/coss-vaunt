@@ -6,8 +6,13 @@ import { isAllowedRecordingHost } from "@coss/vaunt-engine/recording/host-allowl
 import { DEFAULT_BASE_URL } from "@coss/vaunt-engine/storyboard/storyboard-factories";
 import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 
-// `next dev` runs from apps/studio, so the repo root is two levels up.
-export const STUDIO_ROOT = path.resolve(process.cwd(), "../../.studio");
+/**
+ * Where projects live: `VAUNT_STUDIO_ROOT` (set by `vaunt start`), else `.studio` at the repo root. `next dev` runs
+ * from apps/studio, so the repo root is two levels up.
+ */
+export const STUDIO_ROOT = process.env.VAUNT_STUDIO_ROOT
+  ? path.resolve(process.env.VAUNT_STUDIO_ROOT)
+  : path.resolve(process.cwd(), "../../.studio");
 
 export const studioProjectStore = createFileProjectStore(STUDIO_ROOT);
 

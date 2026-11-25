@@ -6,9 +6,22 @@ moves, cursor, close-ups, text effects and audio. Export to MP4.
 
 It records apps running on your own machine (`localhost`) only.
 
-## Setup
+## Run it
 
-Needs [Bun](https://bun.com) 1.3, Node 22 (Next.js and the recorder run on it), and ffmpeg on the path for export.
+Needs Node 22 and ffmpeg on the path (for recording previews and export).
+
+```bash
+npx vaunt start
+```
+
+The first run downloads Chromium for the recorder. The studio opens at http://localhost:3102 (or the next free
+port), and projects, recordings and exports are kept in `~/.vaunt/projects`. `npx vaunt --help` lists the options:
+`--port`, `--data <dir>` for somewhere other than `~/.vaunt`, `--app-url` for the address new projects start with,
+and `--no-open`.
+
+## Develop
+
+Needs [Bun](https://bun.com) 1.3 as well.
 
 ```bash
 bun install
@@ -36,6 +49,7 @@ SSO aren't supported. The login is saved beside the project in `app-login.json`,
 | --- | --- |
 | `apps/studio` | The studio, a Next.js app (`@coss/vaunt`) |
 | `packages/product-video` | The engine (`@coss/vaunt-engine`): storyboard, recording, AI planning, export |
+| `packages/vaunt` | The published `vaunt` package: the `vaunt start` launcher and the build that bundles the studio and engine |
 | `packages/coss-ui` | The coss ui components the studio uses, copied from the Cal.com monorepo |
 | `.agents/skills/animate-text` | The animate-text skill for coding agents; the engine keeps its own copy of the catalogue |
 
@@ -60,3 +74,20 @@ bun run --cwd packages/product-video export <projectId> --studio http://localhos
 ```
 
 Run either with no arguments to see its options.
+
+### Publishing
+
+`packages/vaunt` is what `npx vaunt` installs. Its build makes a standalone production build of the studio and
+bundles the engine's record, export and generate CLIs to plain JavaScript, so the package runs on Node with no Bun,
+tsx or checkout:
+
+```bash
+bun run --cwd packages/vaunt build   # writes packages/vaunt/dist
+node packages/vaunt/bin/vaunt.mjs start
+cd packages/vaunt && npm publish     # builds again first (prepack)
+```
+
+Keep the package's `next`, `react`, `react-dom`, `playwright` and `agent-browser` versions in step with the studio's
+and the engine's; the build fails when they drift, or when the studio's server needs a package `vaunt` doesn't
+depend on.
+

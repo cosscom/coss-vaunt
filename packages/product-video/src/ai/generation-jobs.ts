@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
 import { createInterface } from "node:readline";
+import { engineCliCommand } from "../engine-cli";
 import {
   type GenerateBoardRequest,
   type GenerationEvent,
@@ -44,16 +44,11 @@ export function startGenerationJob({
     for (const listener of job.listeners) listener(event);
   };
 
-  const child = spawn(
-    path.join(repoRoot, "node_modules/.bin/tsx"),
-    [
-      path.join(repoRoot, "packages/product-video/src/ai/generate-board-cli.ts"),
-      projectId,
-      "--root",
-      studioRoot,
-    ],
-    { cwd: repoRoot, stdio: ["pipe", "pipe", "pipe"] }
-  );
+  const cli = engineCliCommand(repoRoot, "generate");
+  const child = spawn(cli.command, [...cli.args, projectId, "--root", studioRoot], {
+    cwd: repoRoot,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
   let stderr = "";
   child.stderr.on("data", (chunk: Buffer) => {
     stderr = (stderr + chunk.toString()).slice(-2000);

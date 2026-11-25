@@ -2,10 +2,10 @@ import { execFile } from "node:child_process";
 import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { ffmpegHasEncoder } from "./ffmpeg";
 import { RECORDING_MANIFEST_FILE, RECORDING_VIDEO_FILE, type RecordingManifest } from "./recording-manifest";
 
 const runFile = promisify(execFile);
-const FFMPEG = "/usr/bin/ffmpeg";
 /** A keyframe every 15 frames keeps a seek to any frame a short decode. */
 export const VIDEO_KEYFRAME_INTERVAL = 15;
 const VIDEO_CRF = 18;
@@ -78,7 +78,7 @@ export function videoSize(viewport: { width: number; height: number }): { width:
   return { width: viewport.width - (viewport.width % 2), height: viewport.height - (viewport.height % 2) };
 }
 
-/** Encodes `<dir>/proxy.mp4` from `<dir>/frames/`; null without ffmpeg. */
+/** Encodes `<dir>/proxy.mp4` from `<dir>/frames/`; null without an ffmpeg that has libx264. */
 export async function writeRecordingVideo({
   dir,
   fps,
@@ -88,16 +88,12 @@ export async function writeRecordingVideo({
   fps: number;
   viewport: { width: number; height: number };
 }): Promise<RecordingVideo | null> {
-  const ffmpegExists = await stat(FFMPEG).then(
-    () => true,
-    () => false
-  );
-  if (!ffmpegExists) return null;
+  if (!(await ffmpegHasEncoder("libx264"))) return null;
   const size = videoSize(viewport);
   const partial = path.join(dir, `${RECORDING_VIDEO_FILE}.partial-${process.pid}`);
   try {
     await runFile(
-      FFMPEG,
+      "ffmpeg",
       recordingVideoArgs({
         framesPattern: path.join(dir, "frames", "%06d.png"),
         output: partial,
