@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import {
@@ -17,6 +17,7 @@ import { type FrameInput, scheduleActions } from "./action-schedule";
 import { signIn } from "./app-sign-in";
 import { type CaptureSpec, captureHash, captureSpecFor, RECORDING_CLOCK_TIME } from "./capture-hash";
 import { cursorPointAtFrame, type Point, restPoint } from "./cursor-path";
+import { ffmpegHasEncoder } from "./ffmpeg";
 import { assertAllowedRecordingHost } from "./host-allowlist";
 import type { RecordingProgress } from "./recording-events";
 import {
@@ -42,7 +43,6 @@ const PREROLL_STEP_MS = 100;
 const PAGE_SEED = 20_261_118;
 const REPLAY_FPS = 10;
 const PROXY_DPR = 1;
-const FFMPEG = "/usr/bin/ffmpeg";
 
 const BASE_CSS = [
   "*, *::before, *::after { cursor: none !important; caret-color: transparent !important; }",
@@ -542,14 +542,10 @@ async function captureFrames({
 
 /** Viewport-sized WebP copies for smooth editor playback; skipped without a WebP-capable ffmpeg. */
 async function writeProxies({ dir, dpr }: { dir: string; dpr: number }): Promise<RecordingManifest["proxy"]> {
-  const ffmpegExists = await stat(FFMPEG).then(
-    () => true,
-    () => false
-  );
-  if (!ffmpegExists) return null;
+  if (!(await ffmpegHasEncoder("libwebp"))) return null;
   await mkdir(path.join(dir, "proxy"), { recursive: true });
   const scale = PROXY_DPR / dpr;
-  await runFile(FFMPEG, [
+  await runFile("ffmpeg", [
     "-hide_banner",
     "-loglevel",
     "error",

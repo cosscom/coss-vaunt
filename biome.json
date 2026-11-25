@@ -37,11 +37,13 @@
       "**/*",
       "!!**/node_modules",
       "!!**/.next",
+      "!!**/.next-vaunt",
       "!!**/.studio",
       "!!**/*.d.ts",
       "!!*.lock",
       "!!.agents",
-      "!!packages/coss-ui/src"
+      "!!packages/coss-ui/src",
+      "!!packages/vaunt/dist"
     ],
     "maxSize": 4194304
   },

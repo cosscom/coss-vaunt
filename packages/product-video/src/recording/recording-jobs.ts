@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
 import { createInterface } from "node:readline";
+import { engineCliCommand } from "../engine-cli";
 import { parseRecordingEvent, type RecordingEvent } from "./recording-events";
 
 type Job = { events: RecordingEvent[]; listeners: Set<(event: RecordingEvent) => void>; finished: boolean };
@@ -51,7 +51,6 @@ export function startRecordingJob({
   };
 
   const args = [
-    path.join(repoRoot, "packages/product-video/src/recording/record-clip-cli.ts"),
     projectId,
     clipId,
     "--theme",
@@ -61,7 +60,8 @@ export function startRecordingJob({
     studioRoot,
     ...(force ? ["--force"] : []),
   ];
-  const child = spawn(path.join(repoRoot, "node_modules/.bin/tsx"), args, {
+  const cli = engineCliCommand(repoRoot, "record");
+  const child = spawn(cli.command, [...cli.args, ...args], {
     cwd: repoRoot,
     stdio: ["ignore", "pipe", "pipe"],
   });

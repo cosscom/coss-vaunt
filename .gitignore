@@ -1,5 +1,7 @@
 node_modules
 .next
+.next-vaunt
+packages/vaunt/dist/
 *.tsbuildinfo
 next-env.d.ts
 
