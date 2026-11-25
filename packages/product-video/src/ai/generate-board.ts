@@ -1,6 +1,6 @@
 import { isAppPath } from "../recording/app-path";
 import { DEFAULT_RECORDING_TIMEZONE } from "../recording/capture-hash";
-import type { RecordClipResult } from "../recording/record-clip";
+import type { RecordClipResult, RehearsalResult } from "../recording/record-clip";
 import type { RecordingProgress } from "../recording/recording-events";
 import { applyGeneratedClips } from "../storyboard/board-generation";
 import { boardOrder } from "../storyboard/board-order";
@@ -10,6 +10,7 @@ import type { GenerationEvent } from "./generation-events";
 import {
   NodeGenerationError,
   recordingClipForNode,
+  recordingDuration,
   textClipForNode,
   textEffectFor,
   writeTextWords,
@@ -34,7 +35,7 @@ export type GenerateBoardDeps = {
     onProgress: (message: string) => void;
   }) => Promise<{ script: RecordingScript; usage?: SubmitLoopUsage }>;
   /** Plays a clip in the recorder without capturing; throws what recording it would. */
-  rehearse: (input: { project: Project; clipId: string }) => Promise<void>;
+  rehearse: (input: { project: Project; clipId: string }) => Promise<RehearsalResult>;
   record: (input: {
     project: Project;
     clipId: string;
@@ -50,6 +51,7 @@ const PHASE_MESSAGES: Record<string, string> = {
   load: "Loading the page",
   preroll: "Letting the page settle",
   replay: "Replaying the previous scene",
+  reply: "Waiting for the app’s reply",
   capture: "Capturing frames",
   proxy: "Making preview frames",
 };
@@ -199,7 +201,10 @@ async function generateRecording({
 
   emit({ nodeId: node.id, status: "exploring", message: `Exploring ${node.route}` });
   const clipId = existingId ?? crypto.randomUUID();
-  const clipFor = (actions: Action[]) => recordingClipForNode(node, { actions, clipId, startFrom });
+  const clipFor = (actions: Action[], duration?: number) =>
+    recordingClipForNode(node, { actions, clipId, startFrom, duration });
+  // The accepted script is the last one rehearsed without errors.
+  let replyEndsAt: number | null = null;
   const exploreStarted = Date.now();
   const { script, usage } = await deps.explore({
     node,
@@ -210,7 +215,11 @@ async function generateRecording({
     brief: working.storyboard?.brief ?? "",
     rehearse: async (actions) => {
       try {
-        await deps.rehearse({ project: applyGeneratedClips(working, node.id, [clipFor(actions)]), clipId });
+        const rehearsal = await deps.rehearse({
+          project: applyGeneratedClips(working, node.id, [clipFor(actions)]),
+          clipId,
+        });
+        replyEndsAt = rehearsal.replyEndsAt;
         return [];
       } catch (error) {
         return [error instanceof Error ? error.message : String(error)];
@@ -223,7 +232,15 @@ async function generateRecording({
     ? ` · ${usage.steps} steps, ${usage.inputTokens} in / ${usage.outputTokens} out tokens`
     : "";
   emit({ nodeId: node.id, status: "exploring", message: `Scripted in ${seconds} s${tokens}` });
-  const clip = clipFor(script.actions);
+  const duration = recordingDuration(node.duration, replyEndsAt);
+  if (duration > node.duration) {
+    emit({
+      nodeId: node.id,
+      status: "exploring",
+      message: `Lengthened to ${duration} s so the app’s reply can be read`,
+    });
+  }
+  const clip = clipFor(script.actions, duration);
 
   emit({ nodeId: node.id, status: "recording", message: "Recording", progress: 0 });
   await deps.record({

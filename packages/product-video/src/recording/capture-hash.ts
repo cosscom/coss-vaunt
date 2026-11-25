@@ -4,7 +4,7 @@ import { captureDpr, MAX_CAPTURE_DPR, MIN_CAPTURE_DPR } from "./capture-dpr";
 import { type ReplayStep, replayChain } from "./replay-chain";
 
 /** Bump when the recorder changes what it captures, so old recordings stop matching. */
-export const RECORDER_VERSION = 3;
+export const RECORDER_VERSION = 4;
 
 /** Every recording's page: the same viewport, timezone and clock in every take, so takes match. */
 export const RECORDING_VIEWPORT = { width: 1440, height: 900 };

@@ -14,6 +14,7 @@ export const RECORDING_COPY = {
     load: "Loading the page…",
     preroll: "Letting the page settle…",
     replay: "Replaying the previous clip…",
+    reply: "Waiting for the app’s reply…",
     capture: "Recording…",
     proxy: "Making preview frames…",
   } satisfies Record<RecordingPhase, string>,

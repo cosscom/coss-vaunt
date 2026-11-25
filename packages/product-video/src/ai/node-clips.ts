@@ -6,6 +6,7 @@ import { mediaTypeOf } from "../imports/media-types";
 import { clipFromMedia } from "../imports/media-upload";
 import type { BoardNode } from "../storyboard/board-schema";
 import { createRecordingClip, createTextClip } from "../storyboard/storyboard-factories";
+import { MAX_RECORDING_SECONDS } from "../storyboard/storyboard-limits";
 import { type Action, type Clip, clipSchema } from "../storyboard/storyboard-schema";
 import type { StudioModel } from "./studio-model";
 import { runUntilSubmitted } from "./submit-tool-loop";
@@ -95,11 +96,26 @@ export function textClipForNode(node: NodeOf<"text">, effect: string, clipId?: s
   });
 }
 
+/** How long the viewer gets to read a chat reply once it has finished streaming. */
+export const REPLY_READ_SECONDS = 2.5;
+
+/** The scene's planned length, or longer when the app's reply needs it, up to the recording limit. */
+export function recordingDuration(planned: number, replyEndsAt: number | null): number {
+  if (replyEndsAt === null) return planned;
+  const needed = Math.ceil((replyEndsAt + REPLY_READ_SECONDS) * 2) / 2;
+  return Math.min(MAX_RECORDING_SECONDS, Math.max(planned, needed));
+}
+
 export function recordingClipForNode(
   node: NodeOf<"recording">,
-  { actions, clipId, startFrom }: { actions: Action[]; clipId?: string; startFrom?: string }
+  {
+    actions,
+    clipId,
+    startFrom,
+    duration = node.duration,
+  }: { actions: Action[]; clipId?: string; startFrom?: string; duration?: number }
 ): Clip {
-  const clip = createRecordingClip({ name: node.title, route: node.route, duration: node.duration });
+  const clip = createRecordingClip({ name: node.title, route: node.route, duration });
   return clipSchema.parse({
     ...clip,
     id: clipId ?? clip.id,

@@ -1,4 +1,4 @@
-export type RecordingPhase = "login" | "load" | "preroll" | "replay" | "capture" | "proxy";
+export type RecordingPhase = "login" | "load" | "preroll" | "replay" | "reply" | "capture" | "proxy";
 
 export type RecordingProgress =
   | { type: "phase"; phase: RecordingPhase }

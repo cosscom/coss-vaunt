@@ -43,6 +43,12 @@ A new project asks for your app's address (`http://localhost:3000` by default), 
 an optional test login. With a login, the recorder signs in itself through the app's sign-in form; email links and
 SSO aren't supported. The login is saved beside the project in `app-login.json`, not in the project file.
 
+While exploring and recording, the app's writes (form posts, mutations and other API calls that change data) are
+answered in the page and never reach its server. Chat messages are the exception: when a scene sends a message to an
+assistant in your app, the app answers it for real once, and its streamed reply is saved in the project's
+`app-replies/` folder and replayed in every take. That reply runs your app's agent for real, so a message that asks it
+to change something will change it. Delete a reply's file to have the app answer that message again.
+
 ## Layout
 
 | Path | What |
