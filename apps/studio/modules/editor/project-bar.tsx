@@ -13,7 +13,6 @@ import {
   PanelRightOpenIcon,
   RotateCcwIcon,
   RotateCwIcon,
-  SparklesIcon,
 } from "@coss/ui/icons";
 import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
 import {
@@ -28,9 +27,8 @@ import { comboKeys, KEYMAP } from "./editor-keymap";
 import { ExportButton } from "./export/export-dialog";
 import { useIsMac } from "./use-is-mac";
 import type { SaveStatus } from "./use-project-autosave";
-import { AiSettingsButton } from "@/modules/settings/ai-settings-dialog";
+import { SettingsButton } from "@/modules/settings/settings-button";
 import { STUDIO_COPY } from "@/modules/studio-copy";
-import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
 
 const copy = STUDIO_COPY.editor;
 const aspectItems = ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
@@ -51,8 +49,6 @@ type ProjectBarProps = {
   onTogglePrompt: () => void;
   onToggleInspector: () => void;
   onToggleAgent: () => void;
-  aiSettingsOpen: boolean;
-  onAiSettingsOpenChange: (open: boolean) => void;
 };
 
 function Tip({ label, children }: { label: string; children: React.ReactElement }): React.ReactElement {
@@ -157,8 +153,6 @@ export function ProjectBar({
   onTogglePrompt,
   onToggleInspector,
   onToggleAgent,
-  aiSettingsOpen,
-  onAiSettingsOpenChange,
 }: ProjectBarProps): React.ReactElement {
   const [draftName, setDraftName] = useState(project.name);
   const mac = useIsMac();
@@ -237,20 +231,14 @@ export function ProjectBar({
         <Tip label={agentLabel}>
           <Toggle
             aria-label={agentOpen ? STUDIO_COPY.agent.hide : STUDIO_COPY.agent.show}
-            className={`h-7 gap-1.5 px-2 ${QUIET} data-pressed:text-foreground`}
+            className={`h-7 px-2 ${QUIET} data-pressed:text-foreground`}
             onPressedChange={onToggleAgent}
             pressed={agentOpen}
             size="sm">
-            <SparklesIcon aria-hidden="true" />
             <span className="text-[13px]">{STUDIO_COPY.agent.title}</span>
           </Toggle>
         </Tip>
-        <span className={`inline-flex ${QUIET} [&_button]:text-inherit`}>
-          <AiSettingsButton onOpenChange={onAiSettingsOpenChange} open={aiSettingsOpen} />
-        </span>
-        <span className={`inline-flex ${QUIET} [&_button]:text-inherit`}>
-          <AppThemeToggle />
-        </span>
+        <SettingsButton className={QUIET} />
         <PanelToggle
           hideLabel={STUDIO_COPY.layout.hideInspector}
           onToggle={onToggleInspector}

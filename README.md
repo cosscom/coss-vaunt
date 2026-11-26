@@ -33,9 +33,11 @@ Open http://localhost:3102. Projects, recordings and exports are kept in `.studi
 
 ### AI key
 
-Planning and scripting scenes needs a key for Anthropic, OpenAI or the Vercel AI Gateway. Add one in the studio's
-settings (the gear button); it's saved to `~/.config/coss-vaunt/settings.json`, readable only by you. A key in the
-environment (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `AI_GATEWAY_API_KEY`) takes priority over a saved one.
+Planning and scripting scenes needs a model. Settings (⌘,) › AI connects Anthropic, OpenAI, Google Gemini, xAI,
+Mistral, Groq, OpenRouter or the Vercel AI Gateway with a key, or a local OpenAI-compatible server like Ollama or LM
+Studio by its address. Keys are saved to `~/.config/coss-vaunt/settings.json`, readable only by you. A key in the
+environment (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `XAI_API_KEY`,
+`MISTRAL_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY` or `AI_GATEWAY_API_KEY`) takes priority over a saved one.
 
 ### Your app
 

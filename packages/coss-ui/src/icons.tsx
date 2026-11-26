@@ -96,6 +96,7 @@ import {
   HomeIcon as LucideHomeIcon,
   InfoIcon as LucideInfoIcon,
   ItalicIcon as LucideItalicIcon,
+  KeyboardIcon as LucideKeyboardIcon,
   KeyIcon as LucideKeyIcon,
   LayersIcon as LucideLayersIcon,
   LayoutDashboardIcon as LucideLayoutDashboardIcon,
@@ -125,6 +126,7 @@ import {
   MousePointer2Icon as LucideMousePointer2Icon,
   MusicIcon as LucideMusicIcon,
   PaintbrushIcon as LucidePaintbrushIcon,
+  PaletteIcon as LucidePaletteIcon,
   PanelRightIcon as LucidePanelRightIcon,
   PanelRightOpenIcon as LucidePanelRightOpenIcon,
   PaperclipIcon as LucidePaperclipIcon,
@@ -301,6 +303,8 @@ export const CopyIcon = createIcon(LucideCopyIcon, "copy-icon");
 export const CornerDownLeftIcon = createIcon(LucideCornerDownLeftIcon, "corner-down-left-icon");
 export const CornerDownRightIcon = createIcon(LucideCornerDownRightIcon, "corner-down-right-icon");
 export const CreditCardIcon = createIcon(LucideCreditCardIcon, "credit-card-icon");
+export const KeyboardIcon = createIcon(LucideKeyboardIcon, "keyboard-icon");
+export const PaletteIcon = createIcon(LucidePaletteIcon, "palette-icon");
 export const ReceiptIcon = createIcon(LucideReceiptIcon, "receipt-icon");
 export const DiscIcon = createIcon(LucideDiscIcon, "disc-icon");
 export const DotIcon = createIcon(LucideDotIcon, "dot-icon");

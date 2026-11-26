@@ -8,7 +8,7 @@ point it at. It discusses only for now; the storyboard composer still drafts boa
 | `agent-sidecar.tsx` | The sidecar: the agent frame in a column on the window's right edge that pushes the editor open and closed |
 | `agent-thread.tsx` | The conversation, its empty state and starters, and the light markdown replies render with |
 | `agent-input.tsx` | The composer, with the context chips in its header and the model picker |
-| `model-picker.tsx` | Switches the studio's model (the same setting as AI settings) |
+| `model-picker.tsx` | Switches the studio's model among the connected providers' (the same setting as Settings › AI) |
 | `use-agent.ts` | The thread (kept per project in localStorage), streaming, and the context sent with each message |
 | `agent-context.ts` | The context chips and the project description the agent reads |
 
@@ -31,11 +31,13 @@ Explored at `/proto/agent-shell` over four rounds; the prototype is deleted.
   editor starts clean; once opened it stays open across reloads.
 - **Open and close push the editor:** the column's width eases (320 ms, `cubic-bezier(0.32, 0.72, 0, 1)`) and the
   frame fades with it (240 ms); the frame keeps its width and is revealed from the window edge. Dragging tracks the
-  pointer with no easing; reduced motion opens and closes instantly. ⌘L, the title bar's Agent button or the
-  frame's ×.
+  pointer with no easing; reduced motion opens and closes instantly. ⌘L, the title bar's Agent button (a label, no
+  icon) or the frame's ×. The storyboard panel and the inspector open and close the same way, from their own edges
+  (`editor/layout/push-panel.tsx`, with the easing state in `use-panel-layout.ts`).
 - **Context:** chips in the composer header. The project is always attached; the selected clip and the playhead
   (when paused) attach on their own and can be removed. Starters change to clip prompts when a clip is selected.
-- **Model picker** in the composer, writing the global AI setting; ⌘I opens AI settings.
+- **Model picker** in the composer, writing the global AI setting; "AI settings…" (⌘,) opens Settings at AI
+  (see `modules/settings/README.md`).
 
 ## Empty storyboard (decided from the prototype, November 2026)
 

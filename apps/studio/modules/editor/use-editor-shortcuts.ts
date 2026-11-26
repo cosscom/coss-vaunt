@@ -39,14 +39,12 @@ export function useEditorShortcuts({
   timeline,
   onShowShortcuts,
   onToggleAgent,
-  onOpenAiSettings,
 }: {
   editor: EditorState;
   clock: PlaybackClock;
   timeline: React.RefObject<TimelineHandle | null>;
   onShowShortcuts: () => void;
   onToggleAgent: () => void;
-  onOpenAiSettings: () => void;
 }): void {
   const { project } = editor;
 
@@ -84,7 +82,8 @@ export function useEditorShortcuts({
       "zoom-out": () => timeline.current?.zoom("out"),
       "zoom-to-fit": () => timeline.current?.zoom("fit"),
       "toggle-agent": onToggleAgent,
-      "open-ai-settings": onOpenAiSettings,
+      // Settings listens for ⌘, itself, on every page.
+      "open-settings": () => undefined,
       "show-shortcuts": onShowShortcuts,
     };
     handlers[action]();
