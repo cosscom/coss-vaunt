@@ -15,6 +15,7 @@ import { ProjectBar } from "./project-bar";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { StagePanel } from "./stage/stage-panel";
 import { StageContextMenu } from "./stage-context-menu";
+import { generatingScenes } from "./storyboard/generation-stream";
 import { useBoardGeneration } from "./storyboard/use-board-generation";
 import { useStoryboardActions } from "./storyboard/use-storyboard-actions";
 import type { TimelineHandle } from "./timeline/timeline-panel";
@@ -47,6 +48,10 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
   const saveStatus = useProjectAutosave(project);
   const storyboard = useStoryboardActions(editor);
   const generation = useBoardGeneration(project, editor.applyGeneratedClips);
+  useEffect(
+    () => editor.setGeneratingScenes(generatingScenes(generation.statuses)),
+    [editor.setGeneratingScenes, generation.statuses]
+  );
   const agent = useAgent(editor, clock, {
     selectedScene: storyboard.selectedNode,
     onGenerate: () => void generation.generate(editor.board),

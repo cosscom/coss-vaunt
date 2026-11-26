@@ -10,6 +10,7 @@ import {
 import { findMotionPreset } from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
 import { applyGeneratedClips } from "@coss/vaunt-engine/storyboard/board-generation";
 import { type Board, EMPTY_BOARD } from "@coss/vaunt-engine/storyboard/board-schema";
+import { syncBoard } from "@coss/vaunt-engine/storyboard/board-sync";
 import {
   PROPERTY_KEYS,
   PROPERTY_SPECS,
@@ -122,7 +123,11 @@ function fileUrl(projectId: string, clip: Clip): string | null {
  * shortcuts share. Discrete actions read the latest render; continuous ones go through `edit`.
  */
 export function useEditorState(initialProject: Project, clock: PlaybackClock) {
-  const [history, setHistory] = useState(() => createHistory(quantiseProjectKeyframes(initialProject)));
+  const [history, setHistory] = useState(() =>
+    createHistory(quantiseProjectKeyframes(syncBoard(initialProject, initialProject)))
+  );
+  /** Scenes being generated: the board keeps them while their clips are replaced. */
+  const generatingScenes = useRef<ReadonlySet<string>>(new Set());
   const [rawSelection, setSelection] = useState<EditorSelection>(EMPTY_SELECTION);
   const [focusTransition, setFocusTransition] = useState(false);
   const [lastProperty, setLastProperty] = useState<PropertyKey | null>(null);
@@ -142,17 +147,21 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
   const playhead = () => clock.getState().time;
   const frame = 1 / project.settings.fps;
 
+  /** Every edit, from the timeline, the board or the agent, ends with the board matched to the timeline. */
+  const synced = (before: Project, after: Project) =>
+    syncBoard(before, after, { keep: generatingScenes.current });
+
   /** Edits that change a locked track's clips are dropped too, unless `unlocked` (generated clips). */
   const edit = (update: (current: Project) => Project, group?: string, { unlocked = false } = {}) =>
     setHistory((current) => {
-      const next = quantiseProjectKeyframes(update(current.present));
+      const next = quantiseProjectKeyframes(synced(current.present, update(current.present)));
       if (next === current.present || !isValid(next)) return current;
       if (!unlocked && changesLockedTracks(current.present, next)) return current;
       return pushHistory(current, next, { group, now: Date.now() });
     });
 
   const commit = (proposed: Project, { group, selection: nextSelection }: EditOptions = {}) => {
-    const next = quantiseProjectKeyframes(proposed);
+    const next = quantiseProjectKeyframes(synced(project, proposed));
     if (next === project || !isValid(next)) return false;
     if (changesLockedTracks(project, next)) {
       toastManager.add({ type: "info", title: copy.trackLockedRefused });
@@ -582,6 +591,9 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     /** Generated clips arrive while the author keeps editing, so this applies to the latest project. */
     applyGeneratedClips: (nodeId: string, clips: Clip[]) =>
       edit((current) => applyGeneratedClips(current, nodeId, clips), undefined, { unlocked: true }),
+    setGeneratingScenes: (nodeIds: ReadonlySet<string>) => {
+      generatingScenes.current = nodeIds;
+    },
   };
 }
 

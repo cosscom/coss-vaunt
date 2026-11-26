@@ -103,3 +103,12 @@ export function failUnfinished(
     ])
   );
 }
+
+/** The nodes queued or working, which the board keeps while their clips are replaced. */
+export function generatingScenes(statuses: Record<string, NodeGeneration>): ReadonlySet<string> {
+  return new Set(
+    Object.entries(statuses)
+      .filter(([, generation]) => generation.status !== "done" && generation.status !== "failed")
+      .map(([nodeId]) => nodeId)
+  );
+}
