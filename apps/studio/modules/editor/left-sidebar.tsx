@@ -12,6 +12,8 @@ import { EasingSection } from "./easing/easing-section";
 import { MotionSection } from "./motion/motion-section";
 import type { PlaybackClock } from "./player/playback-clock";
 import { StoryboardPanel } from "./storyboard/storyboard-panel";
+import type { BoardGeneration } from "./storyboard/use-board-generation";
+import type { StoryboardActions } from "./storyboard/use-storyboard-actions";
 import type { EditorState } from "./use-editor-state";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
@@ -24,9 +26,16 @@ type SidebarTab = "storyboard" | "assets";
 export function LeftSidebar({
   editor,
   clock,
+  storyboard,
+  generation,
+  onPlanWithAgent,
 }: {
   editor: EditorState;
   clock: PlaybackClock;
+  /** The board's edits and selection, shared with the agent so it sees the selected scene. */
+  storyboard: StoryboardActions;
+  generation: BoardGeneration;
+  onPlanWithAgent: () => void;
 }): React.ReactElement {
   const [tab, setTab] = useState<SidebarTab>("storyboard");
   // Open while there's nothing on the timeline to make; once there is, the storyboard steps aside for the stage.
@@ -65,7 +74,14 @@ export function LeftSidebar({
         </div>
         {/* Collapsing hides rather than unmounts, so a running generation keeps its progress. */}
         <TabsPanel className={cn("flex flex-col", !open && "hidden")} keepMounted value="storyboard">
-          <StoryboardPanel editor={editor} files={files} onAssetsChanged={refresh} />
+          <StoryboardPanel
+            actions={storyboard}
+            files={files}
+            generation={generation}
+            onAssetsChanged={refresh}
+            onPlanWithAgent={onPlanWithAgent}
+            projectId={editor.project.id}
+          />
         </TabsPanel>
         <TabsPanel className={cn(!open && "hidden")} value="assets">
           <AssetsPanel assets={assets} editor={editor} failed={failed} />

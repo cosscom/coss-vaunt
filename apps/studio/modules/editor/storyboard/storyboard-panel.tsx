@@ -1,25 +1,56 @@
 "use client";
 
 import { Badge } from "@coss/ui/components/badge";
+import { Button } from "@coss/ui/components/button";
 import { Dialog, DialogPopup, DialogTitle } from "@coss/ui/components/dialog";
-import { toastManager } from "@coss/ui/components/toast";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
+import { SparklesIcon } from "@coss/ui/icons";
 import type { FileAsset } from "@coss/vaunt-engine/project-store/project-assets";
-import { boardIssues } from "@coss/vaunt-engine/storyboard/board-edits";
+import { type BoardIssue, boardIssues } from "@coss/vaunt-engine/storyboard/board-edits";
+import type { Board } from "@coss/vaunt-engine/storyboard/board-schema";
 import type * as React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { InspectorSection } from "../inspector/inspector-section";
 import { useMediaImport } from "../media/use-media-import";
-import type { EditorState } from "../use-editor-state";
+import { exampleBoard } from "./example-board";
 import type { NodeGeneration } from "./generation-stream";
 import { SceneForm } from "./scene-form";
 import { StoryboardCanvas } from "./storyboard-canvas";
-import { StoryboardComposer } from "./storyboard-composer";
-import { useBoardDraft } from "./use-board-draft";
-import { useBoardGeneration } from "./use-board-generation";
-import { type StoryboardActions, useStoryboardActions } from "./use-storyboard-actions";
+import { StoryboardEmpty } from "./storyboard-empty";
+import type { BoardGeneration } from "./use-board-generation";
+import type { StoryboardActions } from "./use-storyboard-actions";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.storyboard;
+const EXAMPLE = exampleBoard();
+
+export function issueMessage(issue: BoardIssue, board: Board): string {
+  const title = (nodeId: string) => board.nodes.find((node) => node.id === nodeId)?.title ?? "";
+  switch (issue.code) {
+    case "empty":
+      return copy.issues.empty;
+    case "invalid":
+      return copy.issues.invalid;
+    case "unknown-route":
+      return copy.issues.unknownRoute(title(issue.nodeId));
+    case "missing-file":
+      return copy.issues.missingFile(title(issue.nodeId));
+  }
+}
+
+/** Bumps when the board is replaced wholesale (a draft, an undo of one), so the canvas fits the view to it. */
+function useReplacedSignal(board: Board): number {
+  const [signal, setSignal] = useState(0);
+  const previous = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = new Set(board.nodes.map((node) => node.id));
+    const before = previous.current;
+    previous.current = ids;
+    if (!before || ids.size === 0) return;
+    if (![...ids].some((id) => before.has(id))) setSignal((value) => value + 1);
+  }, [board]);
+  return signal;
+}
 
 type SceneDetailsProps = {
   projectId: string;
@@ -60,27 +91,31 @@ function SceneDetails({
 }
 
 /**
- * The left sidebar's storyboard: the canvas, the selected scene's fields and the agent composer. Full screen shows the
- * same board over the editor with the fields docked beside it.
+ * The left sidebar's storyboard: the canvas and the selected scene's fields, with Generate under them. Before there
+ * are scenes it shows an example board and how to get one. Full screen shows the same board over the editor with the
+ * fields docked beside it. The agent drafts and revises the board; only Generate here, or on the agent's card, records.
  */
 export function StoryboardPanel({
-  editor,
+  projectId,
+  actions,
+  generation,
   files,
   onAssetsChanged,
+  onPlanWithAgent,
 }: {
-  editor: EditorState;
+  projectId: string;
+  actions: StoryboardActions;
+  generation: BoardGeneration;
   /** Imported video and images, for media scenes. */
   files: readonly FileAsset[];
   onAssetsChanged: () => void;
+  onPlanWithAgent: () => void;
 }): React.ReactElement {
-  const { project } = editor;
-  const actions = useStoryboardActions(editor);
-  const generation = useBoardGeneration(project, editor.applyGeneratedClips);
-  const drafting = useBoardDraft(project.id);
-  const media = useMediaImport(project.id);
+  const media = useMediaImport(projectId);
   const [fullScreen, setFullScreen] = useState(false);
-  const [fitSignal, setFitSignal] = useState(0);
+  const fitSignal = useReplacedSignal(actions.board);
   const issues = boardIssues(actions.board);
+  const scenes = actions.board.nodes.length;
 
   const upload = async (picked: File[]) => {
     const [clip] = await media.importFiles(picked);
@@ -96,7 +131,7 @@ export function StoryboardPanel({
     fitSignal,
   };
   const details = {
-    projectId: project.id,
+    projectId,
     actions,
     statuses: generation.statuses,
     files,
@@ -104,6 +139,25 @@ export function StoryboardPanel({
     uploading: media.importing,
   };
 
+  if (scenes === 0)
+    return (
+      <StoryboardEmpty
+        canvas={
+          <StoryboardCanvas
+            {...canvasProps}
+            actions={{ ...actions, board: EXAMPLE }}
+            className="min-h-[220px] flex-1"
+            fit="width"
+            fullScreen={false}
+            onToggleFullScreen={() => setFullScreen(true)}
+          />
+        }
+        onAddScene={(kind) => actions.add(kind)}
+        onPlanWithAgent={onPlanWithAgent}
+      />
+    );
+
+  const totalSeconds = actions.board.nodes.reduce((sum, node) => sum + node.duration, 0);
   return (
     <div className="flex flex-1 flex-col">
       <StoryboardCanvas
@@ -114,46 +168,32 @@ export function StoryboardPanel({
         onToggleFullScreen={() => setFullScreen(true)}
       />
       <SceneDetails {...details} />
-      <StoryboardComposer
-        board={actions.board}
-        drafting={drafting.drafting}
-        generating={generation.running}
-        issues={issues}
-        onBriefChange={actions.setBrief}
-        onDraft={async (request) => {
-          const board = await drafting.draft(request);
-          if (!board) return;
-          actions.replace(board);
-          setFitSignal((value) => value + 1);
-        }}
-        onGenerate={() => void generation.generate(actions.board)}
-        onReviseScene={async (nodeId, instruction) => {
-          const board = actions.board;
-          const revised = await drafting.draft({
-            prompt: instruction,
-            totalSeconds: board.nodes.reduce((sum, node) => sum + node.duration, 0),
-            board,
-            focusNodeId: nodeId,
-          });
-          if (!revised) return false;
-          const scene = revised.nodes.find((node) => node.id === nodeId);
-          if (!scene) {
-            toastManager.add({
-              type: "error",
-              title: copy.prompt.reviseFailed,
-              description: copy.prompt.sceneDropped,
-            });
-            return false;
-          }
-          // Only the scene in context changes, whatever else the agent touched.
-          actions.updateNode(nodeId, (current) => ({ ...scene, position: current.position }));
-          return true;
-        }}
-        onStop={drafting.stop}
-        onThemeChange={(theme) => editor.updateSettings({ theme })}
-        selectedNode={actions.selectedNode}
-        theme={project.settings.theme}
-      />
+      <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t bg-background p-3">
+        <div className="flex gap-2">
+          <Button
+            className="min-w-0 flex-1"
+            disabled={issues.length > 0}
+            loading={generation.running}
+            onClick={() => void generation.generate(actions.board)}>
+            {copy.prompt.generate}
+            <span className="font-normal tabular-nums opacity-64">
+              {copy.prompt.summary(scenes, copy.seconds(totalSeconds))}
+            </span>
+          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button aria-label={copy.askAgent} onClick={onPlanWithAgent} size="icon" variant="outline" />
+              }>
+              <SparklesIcon aria-hidden="true" />
+            </TooltipTrigger>
+            <TooltipPopup>{copy.askAgent}</TooltipPopup>
+          </Tooltip>
+        </div>
+        {issues[0] ? (
+          <p className="px-1 text-muted-foreground text-xs">{issueMessage(issues[0], actions.board)}</p>
+        ) : null}
+      </div>
       <Dialog onOpenChange={setFullScreen} open={fullScreen}>
         <DialogPopup
           bottomStickOnMobile={false}

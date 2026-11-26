@@ -12,7 +12,11 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }): R
       defaultTheme="system"
       disableTransitionOnChange
       enableColorScheme
-      enableSystem>
+      enableSystem
+      // The theme script only needs to run from the server's HTML, before first paint. Rendered again on the client,
+      // React 19 warns about a <script> in a component; a non-JS type there keeps it inert and quiet (next-themes
+      // suppresses the hydration mismatch on its script).
+      scriptProps={{ type: typeof window === "undefined" ? "text/javascript" : "text/plain" }}>
       <TooltipProvider delay={300}>
         <ToastProvider position="bottom-right">
           <AnchoredToastProvider>{children}</AnchoredToastProvider>

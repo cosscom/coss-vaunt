@@ -1,4 +1,11 @@
-export type PanelSpec = { min: number; max: number; defaultSize: number; collapsible: boolean };
+export type PanelSpec = {
+  min: number;
+  max: number;
+  defaultSize: number;
+  collapsible: boolean;
+  /** Starts hidden until someone opens it. */
+  defaultCollapsed?: boolean;
+};
 export type PanelSize = { size: number; collapsed: boolean };
 
 /** Dragging well past the minimum collapses a collapsible panel; dragging back out restores it. */
@@ -12,7 +19,8 @@ export function resizePanel(spec: PanelSpec, startSize: number, delta: number): 
 
 /** Sizes read from storage are clamped so a changed spec or a hand-edited value can't break the layout. */
 export function restorePanel(spec: PanelSpec, stored: unknown): PanelSize {
-  if (typeof stored !== "object" || stored === null) return { size: spec.defaultSize, collapsed: false };
+  if (typeof stored !== "object" || stored === null)
+    return { size: spec.defaultSize, collapsed: spec.collapsible && spec.defaultCollapsed === true };
   const { size, collapsed } = stored as { size?: unknown; collapsed?: unknown };
   return {
     size:

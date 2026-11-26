@@ -7,7 +7,7 @@ import { comboKeys, KEYMAP, type ShortcutGroup } from "./editor-keymap";
 import { useIsMac } from "./use-is-mac";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
-const GROUPS: ShortcutGroup[] = ["Playback", "Editing", "Keyframes", "Timeline", "Help"];
+const GROUPS: ShortcutGroup[] = ["Playback", "Editing", "Keyframes", "Timeline", "Agent", "Help"];
 
 export function ShortcutsDialog({
   open,

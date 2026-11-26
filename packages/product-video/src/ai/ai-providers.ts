@@ -8,6 +8,25 @@ export const DEFAULT_MODELS: Record<AiProvider, string> = {
   gateway: "anthropic/claude-opus-5-5",
 };
 
+/** The models the composer's picker offers for each provider; Settings still takes any model id. */
+export const MODEL_CHOICES: Record<AiProvider, readonly { id: string; label: string }[]> = {
+  anthropic: [
+    { id: "claude-opus-5-5", label: "Opus 5.5" },
+    { id: "claude-sonnet-5-5", label: "Sonnet 5.5" },
+    { id: "claude-haiku-5-5", label: "Haiku 5.5" },
+    { id: "claude-fable-5-2", label: "Fable 5.2" },
+  ],
+  openai: [
+    { id: "gpt-5", label: "GPT-5" },
+    { id: "gpt-5-mini", label: "GPT-5 mini" },
+  ],
+  gateway: [
+    { id: "anthropic/claude-opus-5-5", label: "Opus 5.5" },
+    { id: "anthropic/claude-sonnet-5-5", label: "Sonnet 5.5" },
+    { id: "openai/gpt-5", label: "GPT-5" },
+  ],
+};
+
 export const API_KEY_ENV: Record<AiProvider, string> = {
   anthropic: "ANTHROPIC_API_KEY",
   openai: "OPENAI_API_KEY",

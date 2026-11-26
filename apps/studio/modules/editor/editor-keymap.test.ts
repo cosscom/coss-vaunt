@@ -30,6 +30,14 @@ describe("matchShortcut", () => {
     ]).toEqual(["undo", "redo", "redo"]);
   });
 
+  it("opens the agent with ⌘L and AI settings with ⌘I", () => {
+    expect([press("l", { metaKey: true }), press("i", { ctrlKey: true }), press("l")]).toEqual([
+      "toggle-agent",
+      "open-ai-settings",
+      null,
+    ]);
+  });
+
   it("separates K, Shift+K and ⌥K by physical key", () => {
     expect([press("k"), press("K", { shiftKey: true }), press("˚", { altKey: true, code: "KeyK" })]).toEqual([
       "toggle-keyframe",

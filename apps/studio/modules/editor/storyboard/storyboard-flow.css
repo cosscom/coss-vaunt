@@ -35,3 +35,12 @@
 .storyboard-flow .react-flow__selection {
   border-radius: var(--radius-lg, 0.5rem);
 }
+
+/* The empty storyboard's example board: faded, and its scenes can't be picked up. The pane, toolbar and add menu
+   still work on the real board. */
+[data-slot="storyboard-example"] .react-flow__node,
+[data-slot="storyboard-example"] .react-flow__edge,
+[data-slot="storyboard-example"] .react-flow__edgelabel-renderer {
+  opacity: 0.5;
+  pointer-events: none !important;
+}

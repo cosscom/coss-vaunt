@@ -2,7 +2,6 @@
 
 import { Button } from "@coss/ui/components/button";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@coss/ui/components/select";
-import { Separator } from "@coss/ui/components/separator";
 import { Toggle } from "@coss/ui/components/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import {
@@ -14,6 +13,7 @@ import {
   PanelRightOpenIcon,
   RotateCcwIcon,
   RotateCwIcon,
+  SparklesIcon,
 } from "@coss/ui/icons";
 import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
 import {
@@ -24,7 +24,9 @@ import {
 import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";
+import { comboKeys, KEYMAP } from "./editor-keymap";
 import { ExportButton } from "./export/export-dialog";
+import { useIsMac } from "./use-is-mac";
 import type { SaveStatus } from "./use-project-autosave";
 import { AiSettingsButton } from "@/modules/settings/ai-settings-dialog";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -32,6 +34,7 @@ import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
 
 const copy = STUDIO_COPY.editor;
 const aspectItems = ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
+const QUIET = "text-muted-foreground hover:text-foreground";
 
 type ProjectBarProps = {
   project: Project;
@@ -44,42 +47,49 @@ type ProjectBarProps = {
   onRedo: () => void;
   promptOpen: boolean;
   inspectorOpen: boolean;
+  agentOpen: boolean;
   onTogglePrompt: () => void;
   onToggleInspector: () => void;
+  onToggleAgent: () => void;
+  aiSettingsOpen: boolean;
+  onAiSettingsOpenChange: (open: boolean) => void;
 };
 
+function Tip({ label, children }: { label: string; children: React.ReactElement }): React.ReactElement {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipPopup>{label}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
 function PanelToggle({
-  pressed,
+  open,
   onToggle,
   showLabel,
   hideLabel,
   side,
 }: {
-  pressed: boolean;
+  open: boolean;
   onToggle: () => void;
   showLabel: string;
   hideLabel: string;
   side: "start" | "end";
 }): React.ReactElement {
-  const label = pressed ? hideLabel : showLabel;
-  const Icon = pressed ? PanelRightIcon : PanelRightOpenIcon;
+  const label = open ? hideLabel : showLabel;
+  const Icon = open ? PanelRightIcon : PanelRightOpenIcon;
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Toggle
-            aria-label={label}
-            className="size-7 min-w-7 sm:size-7 sm:min-w-7"
-            onPressedChange={onToggle}
-            pressed={pressed}
-            size="sm"
-            variant="outline"
-          />
-        }>
+    <Tip label={label}>
+      <Toggle
+        aria-label={label}
+        className={`size-7 min-w-7 sm:size-7 sm:min-w-7 ${QUIET}`}
+        onPressedChange={onToggle}
+        pressed={false}
+        size="sm">
         <Icon aria-hidden="true" className={side === "start" ? "-scale-x-100" : undefined} />
-      </TooltipTrigger>
-      <TooltipPopup>{label}</TooltipPopup>
-    </Tooltip>
+      </Toggle>
+    </Tip>
   );
 }
 
@@ -95,14 +105,19 @@ function HistoryButton({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <Tooltip>
-      <TooltipTrigger render={<span className="inline-flex" />}>
-        <Button aria-label={label} disabled={disabled} onClick={onClick} size="icon-sm" variant="ghost">
+    <Tip label={label}>
+      <span className="inline-flex">
+        <Button
+          aria-label={label}
+          className={QUIET}
+          disabled={disabled}
+          onClick={onClick}
+          size="icon-sm"
+          variant="ghost">
           {children}
         </Button>
-      </TooltipTrigger>
-      <TooltipPopup>{label}</TooltipPopup>
-    </Tooltip>
+      </span>
+    </Tip>
   );
 }
 
@@ -111,17 +126,22 @@ function SaveIndicator({ status }: { status: SaveStatus }): React.ReactElement {
   return (
     <span
       aria-live="polite"
-      className="flex items-center gap-1.5 text-muted-foreground text-xs data-[status=error]:text-destructive-foreground"
+      className="flex shrink-0 items-center gap-1 text-muted-foreground/72 text-xs data-[status=error]:text-destructive-foreground"
       data-status={status}
+      data-tauri-drag-region
       data-testid="save-status">
-      {status === "saved" ? <CheckIcon aria-hidden="true" className="size-3.5" /> : null}
-      {status === "saving" ? <LoaderIcon aria-hidden="true" className="size-3.5 animate-spin" /> : null}
-      {status === "error" ? <CircleAlertIcon aria-hidden="true" className="size-3.5" /> : null}
+      {status === "saved" ? <CheckIcon aria-hidden="true" className="size-3" /> : null}
+      {status === "saving" ? <LoaderIcon aria-hidden="true" className="size-3 animate-spin" /> : null}
+      {status === "error" ? <CircleAlertIcon aria-hidden="true" className="size-3" /> : null}
       {label}
     </span>
   );
 }
 
+/**
+ * The editor's title bar. In the desktop window it is the window's own: it runs up under the macOS window buttons
+ * (which the window centres in it), its empty space drags the window and a double-click zooms it.
+ */
 export function ProjectBar({
   project,
   saveStatus,
@@ -133,32 +153,46 @@ export function ProjectBar({
   onRedo,
   promptOpen,
   inspectorOpen,
+  agentOpen,
   onTogglePrompt,
   onToggleInspector,
+  onToggleAgent,
+  aiSettingsOpen,
+  onAiSettingsOpenChange,
 }: ProjectBarProps): React.ReactElement {
   const [draftName, setDraftName] = useState(project.name);
+  const mac = useIsMac();
+  const agentKeys = comboKeys(
+    KEYMAP.find((binding) => binding.action === "toggle-agent")?.combos[0] ?? {},
+    mac
+  );
+  const agentLabel = `${agentOpen ? STUDIO_COPY.agent.hide : STUDIO_COPY.agent.show} (${agentKeys.join(mac ? "" : "+")})`;
 
   return (
-    <header className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 border-b px-3">
-      <div className="flex min-w-0 items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label={copy.backToProjects}
-                render={<Link href="/" />}
-                size="icon-sm"
-                variant="ghost"
-              />
-            }>
+    <header
+      className="grid h-12 shrink-0 select-none grid-cols-[1fr_auto_1fr] items-center gap-4 ps-0.5 pe-0.5 [[data-vaunt-window]_&]:ps-[74px] [&_:is(button,a,[role=combobox])]:cursor-default"
+      data-tauri-drag-region>
+      <div className="flex min-w-0 items-center gap-1" data-tauri-drag-region>
+        <PanelToggle
+          hideLabel={STUDIO_COPY.layout.hidePrompt}
+          onToggle={onTogglePrompt}
+          open={promptOpen}
+          showLabel={STUDIO_COPY.layout.showPrompt}
+          side="start"
+        />
+        <Tip label={copy.backToProjects}>
+          <Button
+            aria-label={copy.backToProjects}
+            className={QUIET}
+            render={<Link href="/" />}
+            size="icon-sm"
+            variant="ghost">
             <ArrowLeftIcon aria-hidden="true" />
-          </TooltipTrigger>
-          <TooltipPopup>{copy.backToProjects}</TooltipPopup>
-        </Tooltip>
-        <Separator className="h-5" orientation="vertical" />
+          </Button>
+        </Tip>
         <InlineEditableText
           aria-label={copy.projectName}
-          className="min-w-0 font-medium text-sm *:data-[slot=inline-editable-text-edit]:hidden *:data-[slot=inline-editable-text-field]:rounded-md *:data-[slot=inline-editable-text-field]:px-1.5 *:data-[slot=inline-editable-text-field]:py-0.5"
+          className="ms-1 min-w-0 font-medium text-[13px] *:data-[slot=inline-editable-text-edit]:hidden *:data-[slot=inline-editable-text-field]:rounded-md *:data-[slot=inline-editable-text-field]:px-1.5 *:data-[slot=inline-editable-text-field]:py-0.5"
           maxLength={120}
           onBlur={() => {
             const name = draftName.trim();
@@ -171,12 +205,15 @@ export function ProjectBar({
         <SaveIndicator status={saveStatus} />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center" data-tauri-drag-region>
         <Select
           items={aspectItems}
           onValueChange={(value) => value && onSettingsChange({ aspectRatio: value })}
           value={project.settings.aspectRatio}>
-          <SelectTrigger aria-label={copy.aspectRatio} className="w-20 min-w-0 tabular-nums" size="sm">
+          <SelectTrigger
+            aria-label={copy.aspectRatio}
+            className="w-auto min-w-0 border-transparent bg-transparent tabular-nums shadow-none hover:bg-accent"
+            size="sm">
             <SelectValue />
           </SelectTrigger>
           <SelectPopup>
@@ -189,32 +226,41 @@ export function ProjectBar({
         </Select>
       </div>
 
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-end gap-0.5" data-tauri-drag-region>
         <HistoryButton disabled={!canUndo} label={copy.undo} onClick={onUndo}>
           <RotateCcwIcon aria-hidden="true" />
         </HistoryButton>
         <HistoryButton disabled={!canRedo} label={copy.redo} onClick={onRedo}>
           <RotateCwIcon aria-hidden="true" />
         </HistoryButton>
-        <Separator className="mx-1 h-5" orientation="vertical" />
-        <PanelToggle
-          hideLabel={STUDIO_COPY.layout.hidePrompt}
-          onToggle={onTogglePrompt}
-          pressed={promptOpen}
-          showLabel={STUDIO_COPY.layout.showPrompt}
-          side="start"
-        />
+        <span aria-hidden="true" className="mx-1.5 h-4 w-px bg-border" />
+        <Tip label={agentLabel}>
+          <Toggle
+            aria-label={agentOpen ? STUDIO_COPY.agent.hide : STUDIO_COPY.agent.show}
+            className={`h-7 gap-1.5 px-2 ${QUIET} data-pressed:text-foreground`}
+            onPressedChange={onToggleAgent}
+            pressed={agentOpen}
+            size="sm">
+            <SparklesIcon aria-hidden="true" />
+            <span className="text-[13px]">{STUDIO_COPY.agent.title}</span>
+          </Toggle>
+        </Tip>
+        <span className={`inline-flex ${QUIET} [&_button]:text-inherit`}>
+          <AiSettingsButton onOpenChange={onAiSettingsOpenChange} open={aiSettingsOpen} />
+        </span>
+        <span className={`inline-flex ${QUIET} [&_button]:text-inherit`}>
+          <AppThemeToggle />
+        </span>
         <PanelToggle
           hideLabel={STUDIO_COPY.layout.hideInspector}
           onToggle={onToggleInspector}
-          pressed={inspectorOpen}
+          open={inspectorOpen}
           showLabel={STUDIO_COPY.layout.showInspector}
           side="end"
         />
-        <AiSettingsButton />
-        <AppThemeToggle />
-        <Separator className="mx-1 h-5" orientation="vertical" />
-        <ExportButton project={project} saveStatus={saveStatus} />
+        <span className="ms-1.5">
+          <ExportButton project={project} saveStatus={saveStatus} />
+        </span>
       </div>
     </header>
   );
