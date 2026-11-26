@@ -20,6 +20,8 @@ const EDITOR_URL = "/api/settings/editor";
 type SettingsContextValue = {
   /** Opens Settings, at `section` or wherever it was last. */
   open: (section?: SettingsSection) => void;
+  /** Whether Settings is showing; the editor's shortcuts stand down while it is. */
+  isOpen: boolean;
   appearance: Appearance;
   /** Whether glass can show here: the desktop window on macOS. */
   glassCapable: boolean;
@@ -173,6 +175,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
         if (target) setSection(target);
         setOpen(true);
       },
+      isOpen,
       appearance,
       glassCapable,
       updateAppearance,
@@ -182,6 +185,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
       previewEditorPreferences,
     }),
     [
+      isOpen,
       appearance,
       glassCapable,
       updateAppearance,

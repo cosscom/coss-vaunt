@@ -7,6 +7,7 @@ import { mediaFilesFromClipboard } from "./media/clipboard-media";
 import type { PlaybackClock } from "./player/playback-clock";
 import type { TimelineHandle } from "./timeline/timeline-panel";
 import type { EditorState } from "./use-editor-state";
+import { useSettings } from "@/modules/settings/settings-provider";
 
 /** Text fields own every key; other widgets own their plain keys (arrows, Space) but not ⌘/Ctrl combos. */
 const TEXT_TARGET = "input, textarea, select, [contenteditable=''], [contenteditable='true']";
@@ -32,7 +33,7 @@ function ownsKey(event: KeyboardEvent): boolean {
   return inWidget && !event.metaKey && !event.ctrlKey;
 }
 
-/** The editor's keyboard shortcuts and clipboard handling; ignored while typing in a field. */
+/** The editor's keyboard shortcuts and clipboard handling; ignored while typing in a field or while Settings is open. */
 export function useEditorShortcuts({
   editor,
   clock,
@@ -47,6 +48,8 @@ export function useEditorShortcuts({
   onToggleAgent: () => void;
 }): void {
   const { project } = editor;
+  /** Settings covers the editor, so ⌘Z and the rest must not reach the project behind it. */
+  const settingsOpen = useSettings().isOpen;
 
   const run = (action: EditorAction) => {
     const { time, duration } = clock.getState();
@@ -90,6 +93,7 @@ export function useEditorShortcuts({
   };
 
   useEffect(() => {
+    if (settingsOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const action = matchShortcut(event);
       if (action && GLOBAL_ACTIONS.includes(action)) {
