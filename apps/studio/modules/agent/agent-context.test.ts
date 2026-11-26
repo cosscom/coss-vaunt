@@ -98,7 +98,7 @@ describe("describeProject", () => {
     });
     const text = describeProject(project, board, chips);
     expect(text).toContain("Brief: Show the booking flow");
-    expect(text).toContain("1. [text] Hook (2 s), id hook");
+    expect(text).toContain("1. [text] Hook (2 s, “Ship faster”), id hook");
     expect(text).toContain('- "Ship faster", text, at 1.0 s for 3.0 s');
     expect(text).toContain(`The author is pointing at clip "Ship faster":\n{"id":"${clipId}"`);
     expect(text).toContain("The author is pointing at 0:02.0 on the timeline.");
@@ -106,5 +106,37 @@ describe("describeProject", () => {
       { id: "scene:hook", kind: "scene", label: "Hook", nodeId: "hook" },
     ]);
     expect(pointed).toContain('The author is pointing at scene "Hook" (id hook):');
+  });
+
+  it("lists scenes in story order with what they show and the transition into the next", () => {
+    const project = createProject({ name: "Order", now: NOW });
+    const board = {
+      brief: "",
+      nodes: [
+        {
+          id: "ask",
+          kind: "recording" as const,
+          title: "Ask",
+          notes: "",
+          duration: 6,
+          route: "/home",
+          startFrom: "fresh" as const,
+          position: { x: 0, y: 500 },
+        },
+        {
+          id: "hook",
+          kind: "text" as const,
+          title: "Hook",
+          notes: "",
+          duration: 2,
+          words: "Hi",
+          position: { x: 0, y: 900 },
+        },
+      ],
+      edges: [{ id: "e", from: "hook", to: "ask", transition: "crossfade" as const, transitionSeconds: 0.5 }],
+    };
+    expect(describeProject(project, board, [])).toContain(
+      "1. [text] Hook (2 s, “Hi”), id hook; then crossfade 0.5 s\n2. [recording] Ask (6 s, /home), id ask"
+    );
   });
 });

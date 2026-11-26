@@ -1,18 +1,48 @@
 # Agent
 
 The editor's conversational agent: a thread you talk the video through with, which sees the project and whatever you
-point it at. It discusses only for now; the storyboard composer still drafts boards.
+point it at, drafts the storyboard and edits it.
 
 | File | What it is |
 | --- | --- |
 | `agent-sidecar.tsx` | The sidecar: the agent frame in a column on the window's right edge that pushes the editor open and closed |
-| `agent-thread.tsx` | The conversation, its empty state and starters, and the light markdown replies render with |
+| `agent-thread.tsx` | The conversation, its empty state and starters, the change cards (Undo, Generate, "Why these scenes"), and the light markdown replies render with |
 | `agent-input.tsx` | The composer, with the context chips in its header and the model picker |
 | `model-picker.tsx` | Switches the studio's model (the same setting as AI settings) |
-| `use-agent.ts` | The thread (kept per project in localStorage), streaming, and the context sent with each message |
-| `agent-context.ts` | The context chips and the project description the agent reads |
+| `use-agent.ts` | The thread, streaming, applying the agent's events with an Undo each, and the context sent with each message |
+| `agent-events.ts` | Parsing the event stream, the board an event leaves, and how a past turn reads back to the agent |
+| `thread-storage.ts` | Loading and saving the thread through the API, and moving an old localStorage thread over once |
+| `agent-context.ts` | The context chips and the project description the agent reads (scenes in story order, with ids and transitions) |
 
-The reply streams from `POST /api/projects/[id]/agent`, which calls `streamAgentReply` in the engine.
+The reply streams from `POST /api/projects/[id]/agent`, which calls `streamAgentEvents` in the engine
+(`packages/product-video/src/ai/agent-chat.ts`); the agent follows the video-director skill in `ai/skills`.
+
+## Tools
+
+The agent picks the smallest tool that does the job. Each one reports an event the studio applies at once, with an
+Undo on the agent's card, and returns the scenes in their new order so several edits in a turn build on each other.
+
+| Tool | Event | What it does |
+| --- | --- | --- |
+| `draftStoryboard` | `board` | The whole board from the request, by the high-effort planner (`ai/board-draft.ts`); comes with the planner's `rationale` |
+| `editScene` | `scene` | A typed patch of one scene's fields (title, notes, duration, words, effect, route, startFrom) |
+| `setSceneDuration` | `scene` | One scene's length |
+| `addScene`, `removeScene`, `moveScene` | `edit` | A scene in or out of story order, or to a new position; the chain rejoins and the board is laid out again |
+| `setTransition` | `edit` | The kind and seconds of the transition between two consecutive scenes |
+| `askAuthor`, `setTheme` | `ask`, `theme` | A question with quick replies (ends the turn); light or dark recording |
+
+The direct edits live in `ai/scene-edits.ts`. They change nothing else: a patch touches one scene, and other scenes
+keep their ids and fields (except that the first recording always starts fresh). They're held to the same rules as a
+draft (`sceneRuleErrors` in `board-draft.ts`: app paths, known text effects, the recording cap), and a broken edit
+goes back to the model as `failed` with the reason, so it can fix it.
+
+## The thread
+
+Kept per project in `agent-thread.json` beside `project.json` (`project-store/agent-thread-store.ts`), through
+`GET`/`PUT /api/projects/[id]/agent/thread`: loaded when the editor opens and saved after each turn and each undo.
+A thread from before, in this browser's localStorage, moves to the project the first time it opens without one.
+Each change keeps the board it replaced, for its Undo; a draft keeps the planner's reasons, which read back to the
+agent in later turns so it can say why a scene is there.
 
 ## Decided (from the prototype, November 2026)
 

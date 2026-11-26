@@ -76,6 +76,8 @@
     "./recording/app-path": "./src/recording/app-path.ts",
     "./ai/ai-providers": "./src/ai/ai-providers.ts",
     "./ai/agent-chat": "./src/ai/agent-chat.ts",
+    "./ai/agent-thread": "./src/ai/agent-thread.ts",
+    "./project-store/agent-thread-store": "./src/project-store/agent-thread-store.ts",
     "./ai/studio-model": "./src/ai/studio-model.ts",
     "./setup/tools-status": "./src/setup/tools-status.ts",
     "./setup/ffmpeg-install": "./src/setup/ffmpeg-install.ts",
@@ -295,6 +297,12 @@
       ],
       "ai/agent-chat": [
         "./src/ai/agent-chat.ts"
+      ],
+      "ai/agent-thread": [
+        "./src/ai/agent-thread.ts"
+      ],
+      "project-store/agent-thread-store": [
+        "./src/project-store/agent-thread-store.ts"
       ],
       "ai/studio-model": [
         "./src/ai/studio-model.ts"

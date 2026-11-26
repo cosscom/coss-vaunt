@@ -4,13 +4,26 @@ import type { DiscoveredPage } from "../discovery/page-discovery";
 import { layoutBoard } from "../storyboard/board-edits";
 import { type Board, type BoardNode, boardSchema } from "../storyboard/board-schema";
 import { BoardDraftError, type BoardPlanner, draftBoard } from "./board-draft";
+import {
+  addScene,
+  moveScene,
+  newSceneSchema,
+  patchScene,
+  removeScene,
+  type SceneEdit,
+  scenePatchSchema,
+  setSceneDuration,
+  setTransition,
+  storyLines,
+  transitionSchema,
+} from "./scene-edits";
 import { videoDirectorSkill } from "./skills/video-director";
 import { loadStudioModel, MissingApiKeyError, type StudioModel } from "./studio-model";
 
 /** A reply is a few paragraphs at most; drafting happens in a tool. */
 const MAX_REPLY_TOKENS = 1500;
-/** Enough for a question, or a draft or revision and the line about it. */
-const MAX_STEPS = 6;
+/** Enough for a question, a draft, or a few small edits in a row and the line about them. */
+const MAX_STEPS = 10;
 const THEMES = ["light", "dark"] as const;
 
 /** The body of a chat request: the conversation so far, ending with the author's message, and what they see. */
@@ -35,9 +48,11 @@ export type AgentEvent =
   | { type: "status"; label: string }
   /** A question for the author, with replies they can pick. The turn ends here. */
   | { type: "ask"; question: string; options: string[] }
-  /** A new board, already laid out, to replace the current one. */
-  | { type: "board"; board: Board; summary: string }
-  /** One revised scene, to replace that scene (keeping where it sits). */
+  /** A drafted board, already laid out, to replace the current one, and the planner's reasons for its scenes. */
+  | { type: "board"; board: Board; summary: string; rationale?: string }
+  /** The board after a direct edit (a scene added, removed or moved, or a transition set), to replace it. */
+  | { type: "edit"; board: Board; summary: string }
+  /** One edited scene, to replace that scene (keeping where it sits). */
   | { type: "scene"; nodeId: string; node: BoardNode; summary: string }
   | { type: "theme"; theme: (typeof THEMES)[number] }
   | { type: "error"; message: string };
@@ -48,6 +63,8 @@ export type AgentDeps = {
   appNotes?: string;
   /** Tests swap the model's planner for a fake. */
   planner?: BoardPlanner;
+  /** Ids for scenes and edges the tools add; tests make them predictable. */
+  newId?: () => string;
 };
 
 /** The agent's instructions: its skill, then the project the author is looking at. */
@@ -78,11 +95,25 @@ function sceneLine(board: Board): string {
 export function agentTools(
   board: Board,
   emit: (event: AgentEvent) => void,
-  { pages, appNotes = "", planner }: AgentDeps
+  { pages, appNotes = "", planner, newId = () => crypto.randomUUID() }: AgentDeps
 ): Record<string, Tool> {
   let current = board;
   const draft = (request: Omit<Parameters<typeof draftBoard>[0], "pages" | "appNotes" | "planner">) =>
     draftBoard({ ...request, pages, appNotes, planner });
+  /** Applies a direct edit to the whole board, or hands its problem back to the model to fix and retry. */
+  const editBoard = (edit: SceneEdit) => {
+    if ("error" in edit) return { failed: edit.error };
+    current = edit.board;
+    emit({ type: "edit", board: edit.board, summary: edit.summary });
+    return { done: edit.summary, scenes: storyLines(edit.board) };
+  };
+  /** Applies an edit to one scene, which keeps where it sits. */
+  const updateScene = (update: ReturnType<typeof patchScene>, sceneId: string) => {
+    if ("error" in update) return { failed: update.error };
+    current = { ...current, nodes: current.nodes.map((node) => (node.id === sceneId ? update.node : node)) };
+    emit({ type: "scene", nodeId: sceneId, node: update.node, summary: update.summary });
+    return { done: update.summary };
+  };
 
   return {
     askAuthor: tool({
@@ -109,53 +140,62 @@ export function agentTools(
       execute: async ({ request, totalSeconds }) => {
         emit({ type: "status", label: "Drafting the storyboard…" });
         try {
-          const drafted = layoutBoard({
-            ...(await draft({
-              prompt: request,
-              totalSeconds,
-              ...(current.nodes.length > 0 ? { board: current } : {}),
-            })),
-            brief: request,
+          const { board: planned, rationale } = await draft({
+            prompt: request,
+            totalSeconds,
+            ...(current.nodes.length > 0 ? { board: current } : {}),
           });
+          const drafted = layoutBoard({ ...planned, brief: request });
           current = drafted;
           const summary = sceneLine(drafted);
-          emit({ type: "board", board: drafted, summary });
-          return {
-            drafted: summary,
-            scenes: drafted.nodes.map((node) => `${node.title} (${node.kind}, ${node.duration} s)`),
-          };
+          emit({ type: "board", board: drafted, summary, rationale });
+          return { drafted: summary, scenes: storyLines(drafted), rationale };
         } catch (error) {
           if (error instanceof BoardDraftError) return { failed: error.message };
           throw error;
         }
       },
     }),
-    reviseScene: tool({
+    editScene: tool({
       description:
-        "Revise one scene of the board by its id, following the author's instruction. Only that scene changes.",
-      inputSchema: z.object({ sceneId: z.string().min(1), instruction: z.string().min(1).max(4000) }),
-      execute: async ({ sceneId, instruction }) => {
-        const before = current.nodes.find((node) => node.id === sceneId);
-        if (!before) return { failed: `There's no scene with id ${sceneId}.` };
-        emit({ type: "status", label: `Revising “${before.title}”…` });
-        try {
-          const revised = await draft({
-            prompt: instruction,
-            totalSeconds: current.nodes.reduce((sum, node) => sum + node.duration, 0),
-            board: current,
-            focusNodeId: sceneId,
-          });
-          const scene = revised.nodes.find((node) => node.id === sceneId);
-          if (!scene) return { failed: "The revision dropped the scene; nothing changed." };
-          const node = { ...scene, position: before.position };
-          current = { ...current, nodes: current.nodes.map((item) => (item.id === sceneId ? node : item)) };
-          emit({ type: "scene", nodeId: sceneId, node, summary: `Revised “${node.title}”` });
-          return { revised: node.title };
-        } catch (error) {
-          if (error instanceof BoardDraftError) return { failed: error.message };
-          throw error;
-        }
-      },
+        "Change fields of one scene by its id: title, notes, duration, words and effect (text scenes), route and " +
+        "startFrom (recording scenes). Only the fields you pass change, and no other scene does. Instant.",
+      inputSchema: z.object({ sceneId: z.string().min(1), patch: scenePatchSchema }),
+      execute: async ({ sceneId, patch }) => updateScene(patchScene(current, sceneId, patch), sceneId),
+    }),
+    setSceneDuration: tool({
+      description: "Set how many seconds one scene lasts, by its id.",
+      inputSchema: z.object({ sceneId: z.string().min(1), seconds: z.number().positive() }),
+      execute: async ({ sceneId, seconds }) =>
+        updateScene(setSceneDuration(current, sceneId, seconds), sceneId),
+    }),
+    addScene: tool({
+      description:
+        "Add one scene at a position in story order (1 is first; the end when left out). It joins the scenes " +
+        "either side of it.",
+      inputSchema: z.object({ scene: newSceneSchema, position: z.number().int().min(1).optional() }),
+      execute: async ({ scene, position }) => editBoard(addScene(current, scene, position, newId)),
+    }),
+    removeScene: tool({
+      description: "Remove one scene by its id; the scenes either side of it join up.",
+      inputSchema: z.object({ sceneId: z.string().min(1) }),
+      execute: async ({ sceneId }) => editBoard(removeScene(current, sceneId, newId)),
+    }),
+    moveScene: tool({
+      description: "Move one scene to a position in story order (1 is first).",
+      inputSchema: z.object({ sceneId: z.string().min(1), position: z.number().int().min(1) }),
+      execute: async ({ sceneId, position }) => editBoard(moveScene(current, sceneId, position, newId)),
+    }),
+    setTransition: tool({
+      description:
+        "Set the transition between two consecutive scenes: its kind and the overlap in seconds (a cut is 0).",
+      inputSchema: z.object({
+        fromSceneId: z.string().min(1),
+        toSceneId: z.string().min(1),
+        ...transitionSchema.shape,
+      }),
+      execute: async ({ fromSceneId, toSceneId, kind, seconds }) =>
+        editBoard(setTransition(current, fromSceneId, toSceneId, { kind, seconds }, newId)),
     }),
     setTheme: tool({
       description: "Set whether the app is recorded in light or dark mode.",

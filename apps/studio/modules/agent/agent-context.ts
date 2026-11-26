@@ -1,3 +1,4 @@
+import { boardOrder } from "@coss/vaunt-engine/storyboard/board-order";
 import type { Board, BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
 import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
@@ -49,6 +50,32 @@ export function contextChips({
   return chips;
 }
 
+/** What a scene shows in a few words: a text scene's words, a recording's page. */
+function sceneDetail(node: BoardNode): string {
+  if (node.kind === "text") return node.words ? `, “${node.words}”` : "";
+  if (node.kind === "recording")
+    return `, ${node.route}${node.startFrom === "previous" ? " continuing" : ""}`;
+  return "";
+}
+
+/**
+ * The board in story order, one line a scene with its id, and the transition into the next, so the agent can name
+ * scenes and transitions in its edits.
+ */
+function sceneLines(board: Board): string {
+  const order = boardOrder(board);
+  return order
+    .map((node, index) => {
+      const next = order[index + 1];
+      const edge = next && board.edges.find((item) => item.from === node.id && item.to === next.id);
+      const join = edge
+        ? `; then ${edge.transition}${edge.transition === "cut" ? "" : ` ${edge.transitionSeconds} s`}`
+        : "";
+      return `${index + 1}. [${node.kind}] ${node.title} (${node.duration} s${sceneDetail(node)}), id ${node.id}${join}`;
+    })
+    .join("\n");
+}
+
 /** The project, its board and timeline, and what the author is pointing at, as prose for the agent. */
 export function describeProject(project: Project, board: Board, chips: readonly ContextChip[]): string {
   const { aspectRatio, theme } = project.settings;
@@ -56,11 +83,7 @@ export function describeProject(project: Project, board: Board, chips: readonly 
     `Project "${project.name}", ${aspectRatio}, ${theme} theme, ${projectDuration(project).toFixed(1)} s long.`,
     board.brief ? `Brief: ${board.brief}` : "No brief yet.",
     board.nodes.length > 0
-      ? `Storyboard scenes:\n${board.nodes
-          .map(
-            (node, index) => `${index + 1}. [${node.kind}] ${node.title} (${node.duration} s), id ${node.id}`
-          )
-          .join("\n")}`
+      ? `Storyboard scenes, in story order:\n${sceneLines(board)}`
       : "The storyboard is empty.",
   ];
   project.videoTracks.forEach((track, index) => {

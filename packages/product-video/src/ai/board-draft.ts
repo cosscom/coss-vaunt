@@ -3,7 +3,13 @@ import { getTextEffect, listTextEffects } from "../catalogues/text-effects/text-
 import type { DiscoveredPage } from "../discovery/page-discovery";
 import { isAppPath } from "../recording/app-path";
 import { boardOrder } from "../storyboard/board-order";
-import { type Board, boardEdgeSchema, boardNodeSchema, boardSchema } from "../storyboard/board-schema";
+import {
+  type Board,
+  type BoardNode,
+  boardEdgeSchema,
+  boardNodeSchema,
+  boardSchema,
+} from "../storyboard/board-schema";
 import { MAX_TRANSITION_SECONDS } from "../storyboard/storyboard-limits";
 import { boardDraftSystemPrompt, boardDraftUserPrompt, SUBMIT_BOARD_TOOL } from "./board-draft-prompt";
 import { NoSubmissionError, runUntilSubmitted } from "./submit-tool-loop";
@@ -13,9 +19,14 @@ const MAX_DRAFT_STEPS = 4;
 
 const [recordingNode, textNode, mediaNode] = boardNodeSchema.options;
 
-/** What the model submits: the board without positions or edge ids. */
+/** What the model submits: the board without positions or edge ids, and why it chose these scenes. */
 export const boardDraftSchema = z.object({
   brief: z.string().max(4000),
+  rationale: z
+    .string()
+    .min(1)
+    .max(1200)
+    .describe("For the author, 2 to 4 short sentences: why these scenes, and what you left out and why."),
   nodes: z
     .array(
       z.discriminatedUnion("kind", [
@@ -31,21 +42,38 @@ export const boardDraftSchema = z.object({
 
 export type BoardDraft = z.infer<typeof boardDraftSchema>;
 
-/** The body of a draft request: the author's prompt and the target length, and the board when revising one. */
-export const draftBoardRequestSchema = z.object({
-  prompt: z.string().trim().min(1).max(4000),
-  totalSeconds: z.number().min(5).max(180),
-  board: boardSchema.optional(),
-  /** Revise just this scene of `board`. */
-  focusNodeId: z.string().optional(),
-});
-
 /** Asks the model for a draft; `check` lists what's wrong with one, for the model to fix. */
 export type BoardPlanner = (request: {
   system: string;
   prompt: string;
   check: (draft: BoardDraft) => string[];
 }) => Promise<BoardDraft>;
+
+/** The text effects a scene may name: the visible ones in the catalogue. */
+export function sceneEffectIds(): string[] {
+  return listTextEffects()
+    .filter((effect) => effect.visible)
+    .map((effect) => effect.id);
+}
+
+type SceneFields =
+  | { kind: "recording"; route: string }
+  | { kind: "text"; effect?: string }
+  | { kind: "media" };
+
+/**
+ * The rules a scene keeps beyond its schema, which every draft and edit is checked against: a recording opens a path
+ * in the app, and a text effect is one the studio renders. (The schema caps a recording at its max seconds.)
+ */
+export function sceneRuleErrors(node: SceneFields, name: string): string[] {
+  if (node.kind === "recording" && !isAppPath(node.route))
+    return [`Scene "${name}" route ${node.route} isn't a path in the app, like /settings`];
+  if (node.kind === "text" && node.effect && !getTextEffect(node.effect))
+    return [
+      `Scene "${name}" effect ${node.effect} isn't a text effect; use one of ${sceneEffectIds().join(", ")}`,
+    ];
+  return [];
+}
 
 /**
  * Turns a draft into a board: rejects routes that aren't app paths, drops unknown effects (generation picks one),
@@ -62,9 +90,8 @@ export function repairBoardDraft(
   for (const node of draft.nodes) {
     if (ids.has(node.id)) errors.push(`Scene id "${node.id}" is used twice`);
     ids.set(node.id, existingIds.has(node.id) ? node.id : newId());
-    if (node.kind === "recording" && !isAppPath(node.route)) {
-      errors.push(`Scene "${node.id}" route ${node.route} isn't a path in the app, like /settings`);
-    }
+    // Unknown effects are dropped below, so only the route can fail here.
+    if (node.kind === "recording") errors.push(...sceneRuleErrors(node, node.id));
   }
   if (errors.length > 0) return { board: null, errors };
 
@@ -89,17 +116,24 @@ export function repairBoardDraft(
     return { ...node, id, position };
   });
   const unplaced: Board = { brief: draft.brief, nodes, edges };
-  let sawRecording = false;
-  const ordered = boardOrder(unplaced).map((node, index) => {
-    const position = { x: 0, y: index * NODE_SPACING };
-    if (node.kind !== "recording") return { ...node, position };
-    const startFrom = sawRecording ? node.startFrom : "fresh";
-    sawRecording = true;
-    return { ...node, startFrom, position };
-  });
+  const ordered = withFreshFirstRecording(boardOrder(unplaced)).map((node, index) => ({
+    ...node,
+    position: { x: 0, y: index * NODE_SPACING },
+  }));
   const parsed = boardSchema.safeParse({ ...unplaced, nodes: ordered });
   if (!parsed.success) return { board: null, errors: parsed.error.issues.map((issue) => issue.message) };
   return { board: parsed.data, errors: [] };
+}
+
+/** Scenes in story order with the first recording starting fresh, since there's no recording before it to continue. */
+export function withFreshFirstRecording(order: readonly BoardNode[]): BoardNode[] {
+  let sawRecording = false;
+  return order.map((node) => {
+    if (node.kind !== "recording") return node;
+    const startFrom = sawRecording ? node.startFrom : "fresh";
+    sawRecording = true;
+    return startFrom === node.startFrom ? node : { ...node, startFrom };
+  });
 }
 
 const modelPlanner: BoardPlanner = async ({ system, prompt, check }) => {
@@ -120,6 +154,9 @@ const modelPlanner: BoardPlanner = async ({ system, prompt, check }) => {
 
 export class BoardDraftError extends Error {}
 
+/** A drafted board and the planner's reasons for it, for the agent to explain its choices. */
+export type DraftedBoard = { board: Board; rationale: string };
+
 /**
  * Drafts a board from the author's prompt, or revises `board`. Scenes may open any page of the app; `pages` are the
  * ones found by crawling it. When the model can't plan it, its reason is the error.
@@ -130,7 +167,6 @@ export async function draftBoard({
   appNotes = "",
   totalSeconds,
   board,
-  focusNodeId,
   planner = modelPlanner,
 }: {
   prompt: string;
@@ -139,15 +175,14 @@ export async function draftBoard({
   appNotes?: string;
   totalSeconds: number;
   board?: Board;
-  focusNodeId?: string;
   planner?: BoardPlanner;
-}): Promise<Board> {
+}): Promise<DraftedBoard> {
   const effects = listTextEffects()
     .filter((effect) => effect.visible)
     .map((effect) => ({ id: effect.id, description: effect.description }));
   const draft = await planner({
     system: boardDraftSystemPrompt({ pages, appNotes, effects, totalSeconds }),
-    prompt: boardDraftUserPrompt({ prompt, board, focusNodeId }),
+    prompt: boardDraftUserPrompt({ prompt, board }),
     check: (candidate) => repairBoardDraft(candidate, { existing: board }).errors,
   }).catch((error: unknown) => {
     if (error instanceof NoSubmissionError) {
@@ -159,5 +194,5 @@ export async function draftBoard({
   });
   const { board: drafted, errors } = repairBoardDraft(draft, { existing: board });
   if (!drafted) throw new BoardDraftError(`The draft board is invalid: ${errors.join("; ")}`);
-  return drafted;
+  return { board: drafted, rationale: draft.rationale.trim() };
 }

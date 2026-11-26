@@ -6,12 +6,14 @@ import {
   draftBoard,
   NODE_SPACING,
   repairBoardDraft,
+  sceneRuleErrors,
 } from "./board-draft";
 import { boardDraftSystemPrompt, boardDraftUserPrompt } from "./board-draft-prompt";
 import { NoSubmissionError } from "./submit-tool-loop";
 
 const draft: BoardDraft = {
   brief: "Show the Main Agent booking a meeting.",
+  rationale: "One recording of the ask, between a hook and an end card. Left out the settings page.",
   nodes: [
     { id: "end", kind: "text", title: "End card", notes: "", duration: 2, words: "Cal.com", effect: "nope" },
     {
@@ -42,6 +44,20 @@ const draft: BoardDraft = {
 
 let counter = 0;
 const newId = () => `id-${++counter}`;
+
+describe("sceneRuleErrors", () => {
+  it("holds routes to app paths and effects to the catalogue", () => {
+    expect(sceneRuleErrors({ kind: "recording", route: "/home" }, "Ask")).toEqual([]);
+    expect(sceneRuleErrors({ kind: "recording", route: "https://x.dev" }, "Ask")[0]).toContain(
+      "isn't a path in the app"
+    );
+    expect(sceneRuleErrors({ kind: "text", effect: "typewriter" }, "Hook")).toEqual([]);
+    expect(sceneRuleErrors({ kind: "text", effect: "nope" }, "Hook")[0]).toContain(
+      'Scene "Hook" effect nope isn\'t a text effect; use one of'
+    );
+    expect(sceneRuleErrors({ kind: "text" }, "Hook")).toEqual([]);
+  });
+});
 
 describe("repairBoardDraft", () => {
   it("lays scenes out in story order, fixes what it can and keeps a valid board", () => {
@@ -135,22 +151,9 @@ describe("board draft prompts", () => {
     expect(prompt).not.toContain("position");
   });
 
-  it("scopes a revision to the focused scene", () => {
-    const node = {
-      id: "a",
-      kind: "text" as const,
-      title: "Opening",
-      notes: "",
-      duration: 2,
-      words: "Hi",
-      position: { x: 0, y: 0 },
-    };
-    const board = { brief: "b", edges: [], nodes: [node] };
-    expect(boardDraftUserPrompt({ prompt: "Punchier", board, focusNodeId: "a" })).toContain(
-      'one scene only: "a" (Opening)'
-    );
-    expect(boardDraftUserPrompt({ prompt: "Punchier", board, focusNodeId: "gone" })).not.toContain(
-      "one scene only"
+  it("asks for the reasons behind the scenes", () => {
+    expect(boardDraftSystemPrompt({ pages: [], effects: [], totalSeconds: 20 })).toContain(
+      "Set the rationale"
     );
   });
 });
@@ -165,8 +168,14 @@ describe("draftBoard", () => {
       expect(check(draft)).toEqual([]);
       return draft;
     };
-    const board = await draftBoard({ prompt: "Book Sandy", pages: [], totalSeconds: 20, planner });
+    const { board, rationale } = await draftBoard({
+      prompt: "Book Sandy",
+      pages: [],
+      totalSeconds: 20,
+      planner,
+    });
     expect(board.nodes).toHaveLength(3);
+    expect(rationale).toBe(draft.rationale);
   });
 
   it("says when no pages were found rather than listing none", () => {

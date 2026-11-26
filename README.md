@@ -41,7 +41,8 @@ environment (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `AI_GATEWAY_API_KEY`) take
 
 A new project asks for your app's address (`http://localhost:3000` by default), notes about the app for the AI, and
 an optional test login. With a login, the recorder signs in itself through the app's sign-in form; email links and
-SSO aren't supported. The login is saved beside the project in `app-login.json`, not in the project file.
+SSO aren't supported. The login is saved beside the project in `app-login.json`, not in the project file. The conversation with the agent is kept
+beside it too, in `agent-thread.json`.
 
 While exploring and recording, the app's writes (form posts, mutations and other API calls that change data) are
 answered in the page and never reach its server. Chat messages are the exception: when a scene sends a message to an

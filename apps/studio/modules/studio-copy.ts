@@ -569,6 +569,7 @@ export const STUDIO_COPY = {
       },
     },
     drafted: (summary: string) => `Drafted the storyboard: ${summary}`,
+    whyTheseScenes: "Why these scenes",
     themeSet: (theme: "light" | "dark") => `Recording in ${theme} mode`,
     undo: "Undo",
     undone: "Undone",
