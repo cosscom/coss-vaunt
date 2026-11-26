@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { computePeaks, PEAKS_SAMPLE_RATE, peaksFilePath } from "../audio/waveform-peaks";
+import { vauntTool } from "../setup/vaunt-bin";
 import { type AudioClip, audioClipSchema } from "../storyboard/storyboard-schema";
 import { type AudioProbe, probeAudio } from "./audio-probe";
 import { maxUploadBytes, mediaTypeOf } from "./media-types";
@@ -89,12 +90,14 @@ const pcmArgs = (input: string, output: string) => [
 ];
 
 async function ffmpeg(args: string[], signal: AbortSignal | undefined, failure: string): Promise<void> {
-  await runCommand("ffmpeg", args, { timeout: CONVERT_TIMEOUT_MS, signal }).catch((error: unknown) => {
-    throw new MediaUploadError(
-      "convert-failed",
-      `${failure}: ${error instanceof Error ? error.message : "ffmpeg failed"}`
-    );
-  });
+  await runCommand(vauntTool("ffmpeg"), args, { timeout: CONVERT_TIMEOUT_MS, signal }).catch(
+    (error: unknown) => {
+      throw new MediaUploadError(
+        "convert-failed",
+        `${failure}: ${error instanceof Error ? error.message : "ffmpeg failed"}`
+      );
+    }
+  );
 }
 
 /**

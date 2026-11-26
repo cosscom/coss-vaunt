@@ -1,3 +1,4 @@
+import { vauntTool } from "../setup/vaunt-bin";
 import { runCommand } from "./run-command";
 
 const PROBE_TIMEOUT_MS = 30 * 1000;
@@ -36,7 +37,7 @@ export function parseAudioProbe(output: string): AudioProbe | null {
 /** Reads the first audio stream's codec, sample rate and channels, and the file's duration, with the system ffprobe. */
 export async function probeAudio(file: string, signal?: AbortSignal): Promise<AudioProbe | null> {
   const output = await runCommand(
-    "ffprobe",
+    vauntTool("ffprobe"),
     [
       "-v",
       "error",

@@ -22,13 +22,14 @@ const { version } = JSON.parse(readFileSync(path.join(packageDir, "package.json"
 const HELP = `coss vaunt ${version}: product videos for web apps, made from the app itself.
 
 Usage
-  vaunt start [options]   Start the studio and open it in your browser
+  vaunt start [options]   Start the studio and open it in its own window
 
 Options
   --port <port>       Port for the studio (default ${DEFAULT_PORT}, or the next free one)
   --data <dir>        Where projects, recordings and exports are kept (default ~/.vaunt, or $VAUNT_HOME)
   --app-url <url>     The local app address new projects start with (default http://localhost:3000)
-  --no-open           Don't open the browser
+  --browser           Open the studio in your browser instead of its own window
+  --no-open           Don't open a window or the browser
   -h, --help          Show this help
   -v, --version       Show the version
 `;
@@ -62,14 +63,25 @@ async function freePort(start, { exact }) {
   );
 }
 
-function hasFfmpeg() {
-  return spawnSync("ffmpeg", ["-version"], { stdio: "ignore" }).status === 0;
+/** Whether `ffmpeg` runs with `env`: vaunt's own copy in the bin dir (first on its PATH, see envWithBin), else the PATH's. */
+function hasFfmpeg(env) {
+  return spawnSync("ffmpeg", ["-version"], { stdio: "ignore", env }).status === 0;
 }
 
 function ffmpegHint() {
   if (process.platform === "darwin") return "brew install ffmpeg";
-  if (process.platform === "win32") return "winget install ffmpeg";
+  if (process.platform === "win32") return 'winget install "FFmpeg (Essentials Build)"';
   return "your package manager, e.g. sudo apt install ffmpeg";
+}
+
+/**
+ * The environment with vaunt's bin dir (where the studio's first-run setup installs ffmpeg) first on the PATH, so
+ * the studio and the engine CLIs it starts pick up that copy. Windows spells the variable `Path`.
+ */
+function envWithBin(binDir) {
+  const key = Object.keys(process.env).find((name) => name.toUpperCase() === "PATH") ?? "PATH";
+  const rest = process.env[key] ? `${path.delimiter}${process.env[key]}` : "";
+  return { ...process.env, [key]: `${binDir}${rest}`, VAUNT_BIN_DIR: binDir };
 }
 
 /** Downloads Playwright's Chromium on first run; the recorder, exporter and AI explorer all drive it. */
@@ -114,6 +126,45 @@ function openBrowser(url) {
   child.unref();
 }
 
+/**
+ * The studio's desktop window (packages/vaunt-window), if there's one for this machine: $VAUNT_WINDOW, the platform
+ * package, or a cargo build next door in a checkout of the repo.
+ */
+function windowBinary() {
+  if (process.env.VAUNT_WINDOW) return process.env.VAUNT_WINDOW;
+  const exe = process.platform === "win32" ? "vaunt-window.exe" : "vaunt-window";
+  try {
+    return require.resolve(`@coss/vaunt-window-${process.platform}-${process.arch}/bin/${exe}`);
+  } catch {}
+  for (const profile of ["release", "debug"]) {
+    const local = path.join(packageDir, "../vaunt-window/target", profile, exe);
+    if (existsSync(local)) return local;
+  }
+  return null;
+}
+
+/**
+ * Opens the studio in its own window, falling back to the browser when there's no window for this machine or it
+ * won't start. Closing the window stops the studio.
+ */
+function openWindow(url, server) {
+  const binary = windowBinary();
+  if (!binary) return openBrowser(url);
+  const window = spawn(binary, [url], { stdio: ["ignore", "ignore", "inherit"] });
+  const fallBack = (reason) => {
+    console.warn(`vaunt: couldn't open the studio window (${reason}); opening your browser instead.`);
+    openBrowser(url);
+  };
+  window.on("error", (error) => fallBack(error.message));
+  window.on("exit", (code, signal) => {
+    if (server.exitCode !== null) return;
+    if (code === 0) server.kill("SIGTERM");
+    else if (!signal) fallBack(`it exited with code ${code}`);
+  });
+  // The launcher exits as soon as the server does (see start), so this is the last chance to close the window.
+  process.on("exit", () => window.kill());
+}
+
 async function waitUntilReady(url, server) {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -139,9 +190,10 @@ async function start(values) {
   const studioRoot = path.join(dataDir, "projects");
   mkdirSync(studioRoot, { recursive: true });
 
-  if (!hasFfmpeg())
+  const env = envWithBin(path.join(dataDir, "bin"));
+  if (!hasFfmpeg(env))
     console.warn(
-      `Warning: ffmpeg isn't on your PATH. Recording previews and export need it; install it with ${ffmpegHint()}.`
+      `Warning: ffmpeg isn't installed. Recording previews and export need it; install it from the studio's first-run setup, or with ${ffmpegHint()}.`
     );
   ensureChromium();
   linkExternals();
@@ -151,7 +203,7 @@ async function start(values) {
     cwd: dataDir,
     stdio: ["ignore", "ignore", "inherit"],
     env: {
-      ...process.env,
+      ...env,
       NODE_ENV: "production",
       NEXT_TELEMETRY_DISABLED: "1",
       HOSTNAME: HOST,
@@ -170,8 +222,13 @@ async function start(values) {
     fail("the studio didn't start");
   }
   const url = `http://localhost:${port}`;
-  console.log(`coss vaunt is running at ${url}\nProjects are kept in ${studioRoot}\nPress Ctrl+C to stop.`);
-  if (!values["no-open"]) openBrowser(url);
+  const inWindow = !values["no-open"] && !values.browser;
+  console.log(
+    `coss vaunt is running at ${url}\nProjects are kept in ${studioRoot}\n${inWindow ? "Close the window or press" : "Press"} Ctrl+C to stop.`
+  );
+  if (values["no-open"]) return;
+  if (values.browser) openBrowser(url);
+  else openWindow(url, server);
 }
 
 const [major] = process.versions.node.split(".").map(Number);
@@ -186,6 +243,7 @@ try {
       data: { type: "string" },
       "app-url": { type: "string" },
       "no-open": { type: "boolean" },
+      browser: { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },

@@ -1,3 +1,4 @@
+import { vauntTool } from "../setup/vaunt-bin";
 import { runCommand } from "./run-command";
 
 const PROBE_TIMEOUT_MS = 30 * 1000;
@@ -33,7 +34,7 @@ type FfprobeOutput = {
 /** Reads the first video stream (an image counts as one) and whether there is audio, with the system ffprobe. */
 export async function probeMedia(file: string, signal?: AbortSignal): Promise<MediaProbe | null> {
   const output = await runCommand(
-    "ffprobe",
+    vauntTool("ffprobe"),
     [
       "-v",
       "error",

@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { vauntTool } from "../setup/vaunt-bin";
 import type { Project } from "../storyboard/storyboard-schema";
 import type { ExportEvent } from "./export-events";
 import { type ExportSettings, exportSize, ffmpegExportArgs } from "./export-settings";
@@ -76,7 +77,7 @@ export async function exportVideo({
     // Written to a hidden name with the real extension's muxer, then renamed once complete.
     const args = ffmpegExportArgs({ settings, audioFile: withAudio ? audioFile : null, output: partial });
     args.splice(args.length - 1, 0, "-f", settings.format === "mp4" ? "mp4" : "mov");
-    const ffmpeg = spawn("ffmpeg", args, { stdio: ["pipe", "ignore", "pipe"] });
+    const ffmpeg = spawn(vauntTool("ffmpeg"), args, { stdio: ["pipe", "ignore", "pipe"] });
     let ffmpegError = "";
     ffmpeg.stderr.on("data", (chunk: Buffer) => {
       ffmpegError = (ffmpegError + chunk.toString()).slice(-2000);

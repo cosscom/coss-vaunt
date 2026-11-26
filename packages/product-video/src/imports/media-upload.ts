@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, rename, rm } from "node:fs/promises";
 import path from "node:path";
+import { vauntTool } from "../setup/vaunt-bin";
 import {
   type Clip,
   clipSchema,
@@ -218,7 +219,7 @@ export async function importUploadedMedia({
     let extension = type.extension;
     const conversion = type.kind === "video" ? planVideoConversion(probe, extension) : "none";
     if (conversion !== "none") {
-      await runCommand("ffmpeg", conversionArgs(conversion, partial, converted), {
+      await runCommand(vauntTool("ffmpeg"), conversionArgs(conversion, partial, converted), {
         timeout: CONVERT_TIMEOUT_MS,
         signal,
       }).catch((error: unknown) => {

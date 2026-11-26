@@ -9,6 +9,8 @@ import { audioClipFromProbe, importUploadedAudio, planAudioConversion } from "./
 import { ACCEPTED_AUDIO, ACCEPTED_MEDIA, MAX_AUDIO_BYTES, mediaTypeOf } from "./media-types";
 
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
+// The bare names, not a copy of ffmpeg this machine may have in ~/.vaunt/bin.
+vi.mock("../setup/vaunt-bin", () => ({ vauntTool: (name: string) => name }));
 
 type Callback = (error: Error | null, stdout: string, stderr: string) => void;
 

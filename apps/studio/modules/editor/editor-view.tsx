@@ -39,7 +39,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
   const { prompt, inspector, timeline } = layout.sizes;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div className="flex h-[calc(100dvh-var(--titlebar-inset,0px))] flex-col overflow-hidden bg-background">
       <ProjectBar
         canRedo={editor.canRedo}
         canUndo={editor.canUndo}

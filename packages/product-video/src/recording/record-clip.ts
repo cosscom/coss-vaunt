@@ -12,6 +12,7 @@ import {
 } from "playwright";
 import { readAppLogin } from "../project-store/file-project-store";
 import type { AppLogin } from "../project-store/project-store";
+import { vauntTool } from "../setup/vaunt-bin";
 import { MAX_RECORDING_SECONDS, type Project } from "../storyboard/storyboard-schema";
 import { type FrameInput, scheduleActions } from "./action-schedule";
 import {
@@ -648,7 +649,7 @@ async function writeProxies({ dir, dpr }: { dir: string; dpr: number }): Promise
   if (!(await ffmpegHasEncoder("libwebp"))) return null;
   await mkdir(path.join(dir, "proxy"), { recursive: true });
   const scale = PROXY_DPR / dpr;
-  await runFile("ffmpeg", [
+  await runFile(vauntTool("ffmpeg"), [
     "-hide_banner",
     "-loglevel",
     "error",

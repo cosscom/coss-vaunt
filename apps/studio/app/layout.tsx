@@ -37,7 +37,7 @@ export default function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: INTRO_GATE_STYLE }} />
       </head>
       <body
-        className={`${fontSans.variable} ${fontHeading.variable} bg-background font-sans text-foreground antialiased`}>
+        className={`${fontSans.variable} ${fontHeading.variable} bg-background pt-(--titlebar-inset) font-sans text-foreground antialiased`}>
         <AppThemeProvider>{children}</AppThemeProvider>
       </body>
     </html>

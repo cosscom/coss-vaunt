@@ -43,7 +43,9 @@
       "!!*.lock",
       "!!.agents",
       "!!packages/coss-ui/src",
-      "!!packages/vaunt/dist"
+      "!!packages/vaunt/dist",
+      "!!packages/vaunt-window/target",
+      "!!packages/vaunt-window/gen"
     ],
     "maxSize": 4194304
   },
