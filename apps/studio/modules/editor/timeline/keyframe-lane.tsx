@@ -32,7 +32,12 @@ export function KeyframeLane({
   toX,
   onPointerDown,
 }: KeyframeLaneProps): React.ReactElement {
-  const time = usePlaybackState(clock, (state) => state.time);
+  // The diamond under the playhead rather than the time, so playback re-renders a lane only as it crosses a keyframe.
+  const currentId = usePlaybackState(
+    clock,
+    (state) =>
+      keyframes.find((keyframe) => Math.abs(clip.start + keyframe.at - state.time) <= tolerance)?.id ?? null
+  );
   const first = keyframes[0];
   const last = keyframes[keyframes.length - 1];
   const label = PROPERTY_SPECS[propertyKey].label;
@@ -59,7 +64,7 @@ export function KeyframeLane({
       ) : null}
       {keyframes.map((keyframe) => {
         const absolute = clip.start + keyframe.at;
-        const current = Math.abs(absolute - time) <= tolerance;
+        const current = keyframe.id === currentId;
         const selected = selectedIds.has(keyframe.id);
         return (
           <button

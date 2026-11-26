@@ -9,7 +9,7 @@ import type { FileAsset } from "@coss/vaunt-engine/project-store/project-assets"
 import { type BoardIssue, boardIssues } from "@coss/vaunt-engine/storyboard/board-edits";
 import type { Board } from "@coss/vaunt-engine/storyboard/board-schema";
 import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { InspectorSection } from "../inspector/inspector-section";
 import { useMediaImport } from "../media/use-media-import";
 import { exampleBoard } from "./example-board";
@@ -114,7 +114,7 @@ export function StoryboardPanel({
   const media = useMediaImport(projectId);
   const [fullScreen, setFullScreen] = useState(false);
   const fitSignal = useReplacedSignal(actions.board);
-  const issues = boardIssues(actions.board);
+  const issues = useMemo(() => boardIssues(actions.board), [actions.board]);
   const scenes = actions.board.nodes.length;
 
   const upload = async (picked: File[]) => {

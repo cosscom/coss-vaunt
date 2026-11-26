@@ -70,6 +70,34 @@ export function activeTakeHash(
   }
 }
 
+type TakeCandidates = { key: string; hashes: string[] };
+
+/** The recording clips `clip` continues from, nearest first; null when the chain is broken or loops. */
+function startChain(videoTracks: Project["videoTracks"] | undefined, clip: Clip): Clip[] | null {
+  const chain: Clip[] = [];
+  const seen = new Set([clip.id]);
+  let next = clip.source.kind === "recording" ? clip.source.startFrom?.clipId : undefined;
+  while (next) {
+    if (seen.has(next) || !videoTracks) return null;
+    seen.add(next);
+    const id = next;
+    const previous = videoTracks.flatMap((track) => track.clips).find((candidate) => candidate.id === id);
+    if (!previous || previous.source.kind !== "recording") return null;
+    chain.push(previous);
+    next = previous.source.startFrom?.clipId;
+  }
+  return chain;
+}
+
+/**
+ * Hashing a script takes a while and edits keep unchanged clips as the same objects, so each clip's candidates
+ * are kept while it, the project settings and the clips it continues from stay the same.
+ */
+const candidatesCache = new WeakMap<
+  Clip,
+  { settings: Project["settings"]; chain: Clip[]; result: TakeCandidates | null }
+>();
+
 /**
  * The takes a recording clip can show, best first, and a key that ignores DPR: its pinned take, else its
  * script's capture hash at the DPR it needs and then at other DPRs. Null for clips that can't be recorded.
@@ -77,14 +105,27 @@ export function activeTakeHash(
 export function takeCandidates(
   project: Parameters<typeof captureHashForClip>[0]["project"],
   clip: Clip
-): { key: string; hashes: string[] } | null {
+): TakeCandidates | null {
   if (clip.source.kind !== "recording") return null;
   if (clip.source.take) return { key: `take:${clip.source.take}`, hashes: [clip.source.take] };
+  const chain = startChain(project.videoTracks, clip);
+  const cached = candidatesCache.get(clip);
+  if (
+    chain &&
+    cached &&
+    cached.settings === project.settings &&
+    cached.chain.length === chain.length &&
+    cached.chain.every((previous, index) => previous === chain[index])
+  )
+    return cached.result;
+  let result: TakeCandidates | null;
   try {
-    return { key: captureContentKey({ project, clip }), hashes: captureHashesForClip({ project, clip }) };
+    result = { key: captureContentKey({ project, clip }), hashes: captureHashesForClip({ project, clip }) };
   } catch {
-    return null;
+    result = null;
   }
+  if (chain) candidatesCache.set(clip, { settings: project.settings, chain, result });
+  return result;
 }
 
 /** The `take` to store when the author picks `hash`: none when it is the take the script already produces. */

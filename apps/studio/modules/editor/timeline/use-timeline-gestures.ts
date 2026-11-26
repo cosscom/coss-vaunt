@@ -149,8 +149,9 @@ export function useTimelineGestures({
       },
       () => {
         editor.selectClip(clip.id);
-        const time = clock.getState().time;
-        if (time < clip.start || time > clipEnd(clip)) clock.seek(clickTime);
+        // While playing, a click only selects: the preview keeps running, and the clip's keyframes show as it plays.
+        const { time, playing } = clock.getState();
+        if (!playing && (time < clip.start || time > clipEnd(clip))) clock.seek(clickTime);
       }
     );
   };
