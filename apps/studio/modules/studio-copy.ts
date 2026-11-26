@@ -497,8 +497,78 @@ export const STUDIO_COPY = {
       Editing: "Editing",
       Keyframes: "Keyframes",
       Timeline: "Timeline",
+      Agent: "Agent",
       Help: "Help",
     },
+  },
+  agent: {
+    title: "Agent",
+    show: "Show agent",
+    hide: "Hide agent",
+    close: "Close agent",
+    resize: "Resize agent",
+    newChat: "New chat",
+    inputLabel: "Message the agent",
+    placeholder: "Ask about this video…",
+    send: "Send",
+    stop: "Stop",
+    thinking: "Thinking…",
+    failed: "The agent didn't answer.",
+    removeContext: (label: string) => `Remove ${label} from context`,
+    emptyTitle: "What should we make?",
+    emptyDescription:
+      "Talk the video through. The agent sees your storyboard, timeline and whatever you select.",
+    clipTitle: "What about this clip?",
+    clipDescription: "Ask about the selected clip. The agent sees its settings and where it sits.",
+    starters: {
+      demo: {
+        title: "Plan a demo",
+        detail: "Structure a 30 s walkthrough",
+        prompt:
+          "How would you structure a 30-second product demo of this app? Give me the scenes in order with durations.",
+      },
+      hook: {
+        title: "Find a hook",
+        detail: "Three ways to open strong",
+        prompt: "Suggest three opening hooks for the first three seconds, each in one line.",
+      },
+      critique: {
+        title: "Critique the cut",
+        detail: "What to fix first",
+        prompt: "What's the weakest part of the current video, and what would you change first?",
+      },
+      pacing: {
+        title: "Tighten pacing",
+        detail: "Exact trims, in seconds",
+        prompt: "Where does this drag? Give me exact trims in seconds.",
+      },
+      captions: {
+        title: "Write captions",
+        detail: "On-screen copy per scene",
+        prompt: "Draft short on-screen captions for each scene.",
+      },
+    },
+    clipStarters: {
+      improve: {
+        title: "Improve this clip",
+        prompt: (name: string) => `What would make "${name}" land better?`,
+      },
+      length: {
+        title: "Right length?",
+        detail: "Trim or hold",
+        prompt: (name: string) => `Is "${name}" the right length? Suggest a duration.`,
+      },
+      caption: {
+        title: "Caption it",
+        detail: "One line of copy",
+        prompt: (name: string) => `Write one on-screen caption for "${name}".`,
+      },
+    },
+    model: (label: string) => `Model: ${label}`,
+    noKey: "No key",
+    openSettings: "AI settings…",
+    switchFailed: "Couldn't switch models",
+    providers: { anthropic: "Anthropic", openai: "OpenAI", gateway: "AI Gateway" },
   },
   layout: {
     promptSplit: "Resize storyboard panel",

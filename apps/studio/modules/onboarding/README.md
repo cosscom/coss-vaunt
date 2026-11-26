@@ -38,8 +38,9 @@ Explored at `/proto/onboarding` with three directions for the showcase, then ite
 - **Greens:** the border beam's success green (`#4ade80`) for success on the AI and setup cards and the copy chip.
 - **Finish:** the onboarding fades out (280 ms), the desktop window grows to 1920 × 1080 centred on its screen if the
   screen's usable area fits it (460 ms, in-out), then the studio fades in (560 ms, from 8 px below and 2 px blur).
-- **Window chrome:** no visible title bar on macOS; the content runs under the window buttons, a 28 px strip drags
-  the window, and studio pages leave `--titlebar-inset` of room.
+- **Window chrome:** no visible title bar on macOS; the content runs under the window buttons, a 48 px strip drags
+  the window, and studio pages leave `--titlebar-inset` of room. The editor's project bar is the title bar itself
+  (see `modules/agent/README.md`).
 
 ## Rejected
 

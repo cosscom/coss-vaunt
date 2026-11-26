@@ -26,7 +26,7 @@ import {
   DEFAULT_MODELS,
 } from "@coss/vaunt-engine/ai/ai-providers";
 import type * as React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type AiSettingsForm,
   aiSettingsRequest,
@@ -143,29 +143,56 @@ function AiSettingsFields({
   );
 }
 
-/** The header button that opens the AI provider, key and model settings. */
-export function AiSettingsButton(): React.ReactElement {
-  const [open, setOpen] = useState(false);
+/**
+ * The header button that opens the AI provider, key and model settings. Pass `open` and `onOpenChange` to open it
+ * from elsewhere too (⌘I, the agent's model picker).
+ */
+export function AiSettingsButton({
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+} = {}): React.ReactElement {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [view, setView] = useState<AiSettingsView | null>(null);
 
-  const openDialog = async () => {
+  // Read fresh each time it opens, so a key or model changed elsewhere shows.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setOpen is recreated each render
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
     setView(null);
-    setOpen(true);
-    try {
-      const response = await fetch(SETTINGS_URL);
-      if (!response.ok) throw new Error(response.statusText);
-      setView((await response.json()) as AiSettingsView);
-    } catch {
-      setOpen(false);
-      toastManager.add({ type: "error", title: copy.loadFailed });
-    }
-  };
+    fetch(SETTINGS_URL)
+      .then((response) => {
+        if (!response.ok) throw new Error(response.statusText);
+        return response.json() as Promise<AiSettingsView>;
+      })
+      .then((loaded) => {
+        if (!cancelled) setView(loaded);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setOpen(false);
+        toastManager.add({ type: "error", title: copy.loadFailed });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   return (
     <>
       <Tooltip>
         <TooltipTrigger
-          render={<Button aria-label={copy.open} onClick={openDialog} size="icon-sm" variant="ghost" />}>
+          render={
+            <Button aria-label={copy.open} onClick={() => setOpen(true)} size="icon-sm" variant="ghost" />
+          }>
           <SettingsIcon aria-hidden="true" />
         </TooltipTrigger>
         <TooltipPopup>{copy.open}</TooltipPopup>

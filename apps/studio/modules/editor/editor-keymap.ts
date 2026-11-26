@@ -29,9 +29,14 @@ export type EditorAction =
   | "zoom-in"
   | "zoom-out"
   | "zoom-to-fit"
+  | "toggle-agent"
+  | "open-ai-settings"
   | "show-shortcuts";
 
-export type ShortcutGroup = "Playback" | "Editing" | "Keyframes" | "Timeline" | "Help";
+export type ShortcutGroup = "Playback" | "Editing" | "Keyframes" | "Timeline" | "Agent" | "Help";
+
+/** Window-level shortcuts that work while typing too, so ⌘L can close the agent from its own composer. */
+export const GLOBAL_ACTIONS: readonly EditorAction[] = ["toggle-agent", "open-ai-settings"];
 
 type Binding = { action: EditorAction; label: string; group: ShortcutGroup; combos: KeyCombo[] };
 
@@ -109,6 +114,13 @@ export const KEYMAP: Binding[] = [
   { action: "zoom-in", label: "Zoom in", group: "Timeline", combos: [{ key: "+" }, { key: "=" }] },
   { action: "zoom-out", label: "Zoom out", group: "Timeline", combos: [{ key: "-" }] },
   { action: "zoom-to-fit", label: "Zoom to fit", group: "Timeline", combos: [{ code: "KeyZ", shift: true }] },
+  {
+    action: "toggle-agent",
+    label: "Show or hide the agent",
+    group: "Agent",
+    combos: [{ code: "KeyL", mod: true }],
+  },
+  { action: "open-ai-settings", label: "AI settings", group: "Agent", combos: [{ code: "KeyI", mod: true }] },
   {
     action: "show-shortcuts",
     label: "Keyboard shortcuts",

@@ -20,8 +20,10 @@ use tauri::{
 
 const DEFAULT_URL: &str = "http://localhost:3102";
 
-/// Height of the macOS title bar the content now runs under.
-const TITLE_BAR_INSET: u32 = 28;
+/// Height of the macOS title bar the content now runs under: the editor's project bar, 48 pt.
+const TITLE_BAR_INSET: u32 = 48;
+/// Where the window buttons sit, so they're centred in that bar beside its first control.
+const TRAFFIC_LIGHTS: (f64, f64) = (18.0, 26.0);
 
 /// Runs in every page before it loads. The window has no visible title bar on macOS, so the page learns how much
 /// room the window buttons take (`--titlebar-inset`, used by the studio's layout) and gets an invisible strip along
@@ -85,6 +87,7 @@ fn studio_window(
         .title("coss vaunt")
         .hidden_title(true)
         .title_bar_style(TitleBarStyle::Overlay)
+        .traffic_light_position(tauri::LogicalPosition::new(TRAFFIC_LIGHTS.0, TRAFFIC_LIGHTS.1))
         .initialization_script(title_bar_script())
         .inner_size(1440.0, 900.0)
         .min_inner_size(960.0, 600.0)

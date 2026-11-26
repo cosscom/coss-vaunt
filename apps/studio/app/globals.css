@@ -17,6 +17,31 @@
   }
 }
 
+/* The editor's window: cards sit on this recessed surface, and the agent's frame between the two. */
+:root {
+  --editor-shell: var(--color-neutral-100);
+  --agent-frame: color-mix(in srgb, var(--color-neutral-200) 72%, var(--color-neutral-100));
+  --agent-frame-ring: inset 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+.dark {
+  --editor-shell: var(--color-neutral-950);
+  --agent-frame: color-mix(in srgb, var(--color-neutral-800) 45%, var(--color-neutral-950));
+  --agent-frame-ring: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+[data-slot="agent-frame"] {
+  background: var(--agent-frame);
+  box-shadow: var(--agent-frame-ring);
+}
+
+/* In the desktop window the editor's project bar is the title bar: it runs up under the window buttons, so the
+   page leaves no inset above it and the bar itself drags the window instead of the strip. */
+html[data-vaunt-window] body:has([data-slot="editor-shell"]) {
+  padding-top: 0;
+}
+html[data-vaunt-window] body:has([data-slot="editor-shell"]) > [data-tauri-drag-region][aria-hidden="true"] {
+  display: none;
+}
+
 /* A dialog whose height changes while open keeps its top edge still and grows downward. */
 @media (min-width: 640px) {
   [data-slot="dialog-viewport"]:has([data-anchored-top]) {

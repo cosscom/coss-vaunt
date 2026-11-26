@@ -7,6 +7,7 @@ export const PANEL_SPECS = {
   prompt: { min: 220, max: 420, defaultSize: 272, collapsible: true },
   inspector: { min: 300, max: 520, defaultSize: 336, collapsible: true },
   timeline: { min: 160, max: 640, defaultSize: 320, collapsible: false },
+  agent: { min: 300, max: 520, defaultSize: 360, collapsible: true },
 } satisfies Record<string, PanelSpec>;
 
 export type PanelId = keyof typeof PANEL_SPECS;

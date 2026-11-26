@@ -2,7 +2,7 @@
 
 import type * as React from "react";
 import { useEffect } from "react";
-import { type EditorAction, matchShortcut } from "./editor-keymap";
+import { type EditorAction, GLOBAL_ACTIONS, matchShortcut } from "./editor-keymap";
 import { mediaFilesFromClipboard } from "./media/clipboard-media";
 import type { PlaybackClock } from "./player/playback-clock";
 import type { TimelineHandle } from "./timeline/timeline-panel";
@@ -38,11 +38,15 @@ export function useEditorShortcuts({
   clock,
   timeline,
   onShowShortcuts,
+  onToggleAgent,
+  onOpenAiSettings,
 }: {
   editor: EditorState;
   clock: PlaybackClock;
   timeline: React.RefObject<TimelineHandle | null>;
   onShowShortcuts: () => void;
+  onToggleAgent: () => void;
+  onOpenAiSettings: () => void;
 }): void {
   const { project } = editor;
 
@@ -79,6 +83,8 @@ export function useEditorShortcuts({
       "zoom-in": () => timeline.current?.zoom("in"),
       "zoom-out": () => timeline.current?.zoom("out"),
       "zoom-to-fit": () => timeline.current?.zoom("fit"),
+      "toggle-agent": onToggleAgent,
+      "open-ai-settings": onOpenAiSettings,
       "show-shortcuts": onShowShortcuts,
     };
     handlers[action]();
@@ -86,8 +92,13 @@ export function useEditorShortcuts({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (ownsKey(event)) return;
       const action = matchShortcut(event);
+      if (action && GLOBAL_ACTIONS.includes(action)) {
+        event.preventDefault();
+        run(action);
+        return;
+      }
+      if (ownsKey(event)) return;
       if (!action || CLIPBOARD_ACTIONS.includes(action)) return;
       if (inStoryboard(event.target) && !STORYBOARD_PASSTHROUGH.includes(action)) return;
       event.preventDefault();
