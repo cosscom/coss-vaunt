@@ -1,9 +1,11 @@
 "use client";
 
 import { Button } from "@coss/ui/components/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@coss/ui/components/collapsible";
 import {
   CaptionsIcon,
   CheckIcon,
+  ChevronDownIcon,
   ClockIcon,
   MessageCircleIcon,
   RotateCcwIcon,
@@ -177,12 +179,31 @@ function ChangeCard({
           </Button>
         )}
       </div>
+      {change.kind === "board" && change.rationale ? <Rationale text={change.rationale} /> : null}
       {showGenerate ? (
         <Button className="w-full" onClick={agent.generate} size="sm">
           {copy.generate}
         </Button>
       ) : null}
     </div>
+  );
+}
+
+/** The planner's reasons for a draft's scenes, closed until asked for. */
+function Rationale({ text }: { text: string }): React.ReactElement {
+  return (
+    <Collapsible className="-mx-1">
+      <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-start text-muted-foreground outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="size-3.5 shrink-0 -rotate-90 transition-transform duration-150 group-data-panel-open:rotate-0 motion-reduce:transition-none"
+        />
+        {copy.whyTheseScenes}
+      </CollapsibleTrigger>
+      <CollapsiblePanel className="motion-reduce:transition-none">
+        <p className="text-pretty pe-1 pt-1 ps-6 text-muted-foreground leading-relaxed">{text}</p>
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }
 
