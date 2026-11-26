@@ -16,6 +16,7 @@ import type * as React from "react";
 import { useRef, useState } from "react";
 import type { SelectedKeyframe } from "../editor-selection";
 import type { PlaybackClock } from "../player/playback-clock";
+import { dropTrackIndex, isClipLocked } from "../track-locks";
 import type { EditorState } from "../use-editor-state";
 import type { ClipDragMode } from "./timeline-clip";
 import { CONTENT_PADDING_PX } from "./timeline-metrics";
@@ -114,7 +115,7 @@ export function useTimelineGestures({
     trackIndex: number,
     mode: ClipDragMode
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isClipLocked(project, clip.id)) return;
     if (additive(event) && mode === "move") {
       event.preventDefault();
       editor.selectClip(clip.id, { additive: true });
@@ -133,7 +134,11 @@ export function useTimelineGestures({
           return trimClip(project, clip.id, "start", snapTime(clip.start + delta, options));
         if (mode === "trim-end")
           return trimClip(project, clip.id, "end", snapTime(clipEnd(clip) + delta, options));
-        target = trackIndexAt(move.clientX, move.clientY, target);
+        target = dropTrackIndex(
+          project.videoTracks,
+          trackIndexAt(move.clientX, move.clientY, target),
+          target
+        );
         const start = snapSpanStart(clip.start + delta, clip.duration, options);
         const base = ensureVideoTrack(project, target, copy.newTrackName(project.videoTracks.length + 1));
         if (group.length === 1) return moveClip(base, clip.id, { start, trackIndex: target });
@@ -153,7 +158,7 @@ export function useTimelineGestures({
     key: PropertyKey,
     keyframe: Keyframe
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isClipLocked(project, clip.id)) return;
     const ref: SelectedKeyframe = { clipId: clip.id, key, keyframeId: keyframe.id };
     if (additive(event)) {
       event.preventDefault();
@@ -225,7 +230,8 @@ export function useTimelineGestures({
           ),
         ]
           .filter((element) => intersects(element.getBoundingClientRect(), rect))
-          .map((element) => element.dataset);
+          .map((element) => element.dataset)
+          .filter((data) => !data.clipId || !editor.lockedClipIds.has(data.clipId));
         if (kind === "clips") {
           editor.selectClips(
             [...new Set([...baseClips, ...hits.flatMap((data) => data.clipId ?? [])])],

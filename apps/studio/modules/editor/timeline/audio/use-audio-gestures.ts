@@ -12,6 +12,7 @@ import {
   selectVolumeKeyframes,
 } from "../../audio/audio-selection";
 import type { PlaybackClock } from "../../player/playback-clock";
+import { dropTrackIndex, isClipLocked } from "../../track-locks";
 import type { EditorState } from "../../use-editor-state";
 import { SNAP_DISTANCE_PX, snapTargets } from "../timeline-snapping";
 import { usePointerDrag } from "../use-pointer-drag";
@@ -75,7 +76,11 @@ export function useAudioGestures({
           ids,
           seconds: dx / pxPerSecond,
           heightFraction: (clientY - originY) / height,
-          trackDelta: mode === "move" ? (trackIndexAt(clientX, clientY) ?? originTrack) - originTrack : 0,
+          trackDelta:
+            mode === "move"
+              ? dropTrackIndex(base.audioTracks, trackIndexAt(clientX, clientY) ?? originTrack, originTrack) -
+                originTrack
+              : 0,
           newTrackName: AUDIO_COPY.newTrackName(base.audioTracks.length + 1),
           snap: { targets, thresholdSeconds: SNAP_DISTANCE_PX / pxPerSecond, free: shiftKey },
           frameSeconds: 1 / base.settings.fps,
@@ -92,7 +97,7 @@ export function useAudioGestures({
   };
 
   const onClipPointerDown = (event: React.PointerEvent, clip: AudioClip, mode: AudioDragMode) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isClipLocked(editor.project, clip.id)) return;
     const additive = isAdditive(event);
     const selected = selection.clipIds.includes(clip.id);
     if (!additive && !selected) select(selectAudioClip(selection, clip.id, false));
@@ -102,7 +107,7 @@ export function useAudioGestures({
   };
 
   const onKeyframePointerDown = (event: React.PointerEvent, clip: AudioClip, keyframe: Keyframe) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isClipLocked(editor.project, clip.id)) return;
     const additive = isAdditive(event);
     const selected = selection.keyframeIds.includes(keyframe.id);
     const next =

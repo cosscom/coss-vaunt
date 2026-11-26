@@ -322,6 +322,7 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
                 onSelectClip={(clipId) => editor.selectClip(clipId)}
                 onSelectTransition={(clipId) => editor.selectClip(clipId, { transition: true })}
                 onToggleHidden={() => editor.setTrackHidden(trackIndex, !track.hidden)}
+                onToggleLocked={() => editor.setTrackLocked(trackIndex, !track.locked)}
                 onToggleLanes={() => toggleLanes(track.id)}
                 primaryClipId={primaryId}
                 pxPerSecond={pxPerSecond}
