@@ -23,10 +23,14 @@ function defaults(): PanelSizes {
   return Object.fromEntries(PANEL_IDS.map((id) => [id, restorePanel(PANEL_SPECS[id], null)])) as PanelSizes;
 }
 
-/** Panel sizes are per person, so they live in localStorage rather than in the project. */
+/**
+ * Panel sizes are per person, so they live in localStorage rather than in the project. `animating` marks the panels
+ * a toggle is opening or closing, so their push eases; a drag or reset moves them without easing.
+ */
 export function usePanelLayout() {
   const [sizes, setSizes] = useState<PanelSizes>(defaults);
   const [loaded, setLoaded] = useState(false);
+  const [animating, setAnimating] = useState<Partial<Record<PanelId, boolean>>>({});
 
   useEffect(() => {
     try {
@@ -50,13 +54,28 @@ export function usePanelLayout() {
     if (loaded) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sizes));
   }, [loaded, sizes]);
 
-  const set = (id: PanelId, size: PanelSize) => setSizes((current) => ({ ...current, [id]: size }));
+  const settle = (id: PanelId) => setAnimating((current) => ({ ...current, [id]: false }));
+  const set = (id: PanelId, size: PanelSize) => {
+    settle(id);
+    setSizes((current) => ({ ...current, [id]: size }));
+  };
 
   return {
     sizes,
+    animating: (id: PanelId) => animating[id] === true,
+    /** Called when a panel's push finishes. */
+    settle,
+    /** Resizes without easing, as a drag does. */
     set,
     /** Back to the default size; a reset comes from a visible splitter, so the panel stays open. */
     reset: (id: PanelId) => set(id, { size: PANEL_SPECS[id].defaultSize, collapsed: false }),
-    toggle: (id: PanelId) => set(id, { ...sizes[id], collapsed: !sizes[id].collapsed }),
+    /** Opens or closes a panel, easing the push unless the user prefers reduced motion. */
+    toggle: (id: PanelId) => {
+      setAnimating((current) => ({
+        ...current,
+        [id]: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      }));
+      setSizes((current) => ({ ...current, [id]: { ...current[id], collapsed: !current[id].collapsed } }));
+    },
   };
 }

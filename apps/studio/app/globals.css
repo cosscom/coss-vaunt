@@ -19,12 +19,13 @@
 
 /* The editor's window: cards sit on this recessed surface, and the agent's frame between the two. */
 :root {
-  --editor-shell: var(--color-neutral-100);
+  --editor-shell-color: var(--color-neutral-100);
+  --editor-shell: var(--editor-shell-color);
   --agent-frame: color-mix(in srgb, var(--color-neutral-200) 72%, var(--color-neutral-100));
   --agent-frame-ring: inset 0 0 0 1px rgb(0 0 0 / 0.04);
 }
 .dark {
-  --editor-shell: var(--color-neutral-950);
+  --editor-shell-color: var(--color-neutral-950);
   --agent-frame: color-mix(in srgb, var(--color-neutral-800) 45%, var(--color-neutral-950));
   --agent-frame-ring: inset 0 0 0 1px rgb(255 255 255 / 0.06);
 }
@@ -40,6 +41,16 @@ html[data-vaunt-window] body:has([data-slot="editor-shell"]) {
 }
 html[data-vaunt-window] body:has([data-slot="editor-shell"]) > [data-tauri-drag-region][aria-hidden="true"] {
   display: none;
+}
+
+/* Glass (Settings › Appearance, desktop window on macOS): the window's vibrancy shows through the editor's shell,
+   tinted with the shell's own color at `--glass-tint`; the cards stay opaque. The page itself goes transparent. */
+html[data-glass] {
+  --editor-shell: color-mix(in srgb, var(--editor-shell-color) var(--glass-tint, 64%), transparent);
+}
+html[data-glass]:has([data-slot="editor-shell"]),
+html[data-glass] body:has([data-slot="editor-shell"]) {
+  background: transparent;
 }
 
 /* A dialog whose height changes while open keeps its top edge still and grows downward. */

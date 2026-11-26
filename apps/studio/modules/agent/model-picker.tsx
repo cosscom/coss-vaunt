@@ -15,32 +15,27 @@ import {
 } from "@coss/ui/components/menu";
 import { toastManager } from "@coss/ui/components/toast";
 import { ChevronDownIcon, SparklesIcon } from "@coss/ui/icons";
-import {
-  AI_PROVIDERS,
-  type AiProvider,
-  type AiSettingsView,
-  MODEL_CHOICES,
-} from "@coss/vaunt-engine/ai/ai-providers";
+import type { AiSettingsView } from "@coss/vaunt-engine/ai/ai-providers";
 import type * as React from "react";
 import { useEffect, useState } from "react";
+import { shortcutKeys } from "@/modules/editor/editor-keymap";
 import { useIsMac } from "@/modules/editor/use-is-mac";
+import {
+  activeModel,
+  activeModelLabel,
+  choiceValue,
+  modelGroups,
+  parseChoice,
+} from "@/modules/settings/ai-connections";
+import { AI_SETTINGS_URL, saveAiSettings } from "@/modules/settings/ai-section";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.agent;
-const SETTINGS_URL = "/api/settings/ai";
-
-/** `provider:model`, the radio value for a choice. */
-const choiceValue = (provider: AiProvider, model: string) => `${provider}:${model}`;
-
-function activeLabel(view: AiSettingsView | null): string {
-  if (!view) return "";
-  const model = view.model || view.defaultModel;
-  return MODEL_CHOICES[view.provider].find((choice) => choice.id === model)?.label ?? model;
-}
+const providerNames = STUDIO_COPY.settings.ai.providers;
 
 /**
- * The composer's model switch. It writes the studio's one AI setting, the same one AI settings edits, so a model
- * picked here is the one that plans boards too. Providers without a key can't be picked.
+ * The composer's model switch. It writes the studio's one AI setting, the same one Settings › AI edits, so a model
+ * picked here is the one that plans boards too. It lists the models of each connected provider.
  */
 export function ModelPicker({ onOpenSettings }: { onOpenSettings: () => void }): React.ReactElement {
   const mac = useIsMac();
@@ -48,7 +43,7 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings: () => void }):
 
   const load = async () => {
     try {
-      const response = await fetch(SETTINGS_URL);
+      const response = await fetch(AI_SETTINGS_URL);
       if (response.ok) setView((await response.json()) as AiSettingsView);
     } catch {
       // The picker just keeps its last label; AI settings reports load failures.
@@ -57,25 +52,21 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings: () => void }):
   useEffect(() => void load(), []);
 
   const choose = async (value: string) => {
-    const [provider, ...rest] = value.split(":") as [AiProvider, ...string[]];
+    const choice = parseChoice(value);
+    if (!choice) return;
     const previous = view;
     // Optimistic: the label switches at once and goes back if the save fails.
-    if (view) setView({ ...view, provider, model: rest.join(":") });
+    if (view) setView({ ...view, ...choice });
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, model: rest.join(":") }),
-      });
-      if (!response.ok) throw new Error(response.statusText);
-      setView((await response.json()) as AiSettingsView);
+      setView(await saveAiSettings(choice));
     } catch {
       setView(previous);
       toastManager.add({ type: "error", title: copy.switchFailed });
     }
   };
 
-  const label = activeLabel(view);
+  const label = view ? activeModelLabel(view) : "";
+  const groups = view ? modelGroups(view) : [];
   return (
     <Menu onOpenChange={(open) => open && void load()}>
       <MenuTrigger
@@ -93,30 +84,25 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings: () => void }):
         <ChevronDownIcon aria-hidden="true" className="opacity-64" />
       </MenuTrigger>
       <MenuPopup align="start" className="min-w-56" side="top">
+        {groups.length === 0 ? <MenuGroupLabel>{copy.noProviders}</MenuGroupLabel> : null}
         <MenuRadioGroup
           onValueChange={(value: string) => void choose(value)}
-          value={view ? choiceValue(view.provider, view.model || view.defaultModel) : ""}>
-          {AI_PROVIDERS.map((provider) => {
-            const keyed = view?.keys[provider] != null;
-            return (
-              <MenuGroup key={provider}>
-                <MenuGroupLabel className="flex items-center justify-between gap-4">
-                  {copy.providers[provider]}
-                  {keyed ? null : <span className="font-normal opacity-72">{copy.noKey}</span>}
-                </MenuGroupLabel>
-                {MODEL_CHOICES[provider].map((choice) => (
-                  <MenuRadioItem disabled={!keyed} key={choice.id} value={choiceValue(provider, choice.id)}>
-                    {choice.label}
-                  </MenuRadioItem>
-                ))}
-              </MenuGroup>
-            );
-          })}
+          value={view ? choiceValue(view.provider, activeModel(view)) : ""}>
+          {groups.map((group) => (
+            <MenuGroup key={group.provider}>
+              <MenuGroupLabel>{providerNames[group.provider]}</MenuGroupLabel>
+              {group.models.map((model) => (
+                <MenuRadioItem key={model.id} value={choiceValue(group.provider, model.id)}>
+                  {model.label}
+                </MenuRadioItem>
+              ))}
+            </MenuGroup>
+          ))}
         </MenuRadioGroup>
         <MenuSeparator />
         <MenuItem onClick={onOpenSettings}>
           {copy.openSettings}
-          <MenuShortcut>{mac ? "⌘I" : "Ctrl+I"}</MenuShortcut>
+          <MenuShortcut>{shortcutKeys("open-settings", mac).join(mac ? "" : "+")}</MenuShortcut>
         </MenuItem>
       </MenuPopup>
     </Menu>

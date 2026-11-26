@@ -14,7 +14,9 @@ use std::{
 };
 
 use tauri::{
+    utils::config::WindowEffectsConfig,
     webview::{DownloadEvent, NewWindowFeatures, NewWindowResponse},
+    window::{Effect, EffectState, EffectsBuilder},
     AppHandle, TitleBarStyle, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 
@@ -25,17 +27,70 @@ const TITLE_BAR_INSET: u32 = 48;
 /// Where the window buttons sit, so they're centred in that bar beside its first control.
 const TRAFFIC_LIGHTS: (f64, f64) = (18.0, 26.0);
 
+/// The glass setting (Settings › Appearance), as saved in the studio's settings file when the window opens:
+/// `appearance.glass` and `appearance.tint` in `$XDG_CONFIG_HOME/coss-vaunt/settings.json`. The page applies the
+/// current value once it loads; reading it here lets a window open with its glass already on.
+#[derive(Clone, Copy)]
+struct Glass {
+    enabled: bool,
+    tint: f64,
+}
+
+fn saved_glass() -> Glass {
+    let config_home = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")));
+    let appearance = config_home
+        .and_then(|dir| std::fs::read_to_string(dir.join("coss-vaunt").join("settings.json")).ok())
+        .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+        .and_then(|settings| settings.get("appearance").cloned());
+    Glass {
+        enabled: appearance
+            .as_ref()
+            .and_then(|value| value.get("glass")?.as_bool())
+            .unwrap_or(false),
+        tint: appearance
+            .as_ref()
+            .and_then(|value| value.get("tint")?.as_f64())
+            .unwrap_or(64.0)
+            .clamp(0.0, 100.0),
+    }
+}
+
+/// The vibrancy behind the page: the material of a macOS sidebar, dimmed while the window isn't focused.
+fn glass_effects() -> WindowEffectsConfig {
+    EffectsBuilder::new()
+        .effect(Effect::Sidebar)
+        .state(EffectState::FollowsWindowActiveState)
+        .build()
+}
+
+/// Turns the window's glass on or off; the page sends this when the setting changes or a page loads.
+#[tauri::command]
+fn set_glass(window: tauri::Window, enabled: bool) -> Result<(), String> {
+    let effects = if enabled { Some(glass_effects()) } else { None };
+    window.set_effects(effects).map_err(|error| error.to_string())
+}
+
 /// Runs in every page before it loads. The window has no visible title bar on macOS, so the page learns how much
 /// room the window buttons take (`--titlebar-inset`, used by the studio's layout) and gets an invisible strip along
-/// the top to drag the window by (Tauri's `data-tauri-drag-region`; double-click zooms).
-fn title_bar_script() -> String {
+/// the top to drag the window by (Tauri's `data-tauri-drag-region`; double-click zooms). `data-vaunt-glass` tells
+/// it the window can show glass, and `data-glass` that it's on, so the editor's shell is see-through from the first
+/// frame.
+fn title_bar_script(glass: Glass) -> String {
     format!(
         r#"(() => {{
   if (!/Mac/.test(navigator.platform)) return;
   const root = document.documentElement;
   root.dataset.vauntWindow = "";
+  root.dataset.vauntGlass = "";
+  if ({glass}) root.setAttribute("data-glass", "");
+  root.style.setProperty("--glass-tint", "{tint}%");
   const style = document.createElement("style");
-  style.textContent = ":root {{ --titlebar-inset: {inset}px; }}";
+  // The window is transparent for the glass: until the page's own background paints, the system's keeps the
+  // desktop from showing through.
+  style.textContent = ":root {{ --titlebar-inset: {inset}px; color-scheme: light dark; }} html:not([data-glass]) {{ background: Canvas; }}";
   root.appendChild(style);
   const addStrip = () => {{
     const strip = document.createElement("div");
@@ -47,7 +102,9 @@ fn title_bar_script() -> String {
   if (document.readyState === "complete") addStrip();
   else addEventListener("load", addStrip, {{ once: true }});
 }})();"#,
-        inset = TITLE_BAR_INSET
+        inset = TITLE_BAR_INSET,
+        glass = glass.enabled,
+        tint = glass.tint.round()
     )
 }
 
@@ -80,6 +137,7 @@ fn studio_window(
     // Where each download is being saved, so it can be shown in Finder once it's done.
     let downloads: Arc<Mutex<HashMap<Url, PathBuf>>> = Default::default();
     let new_window_app = app.clone();
+    let glass = saved_glass();
 
     let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::External(url))
         // The window's name stays "coss vaunt" for the Dock, the Window menu and screen readers; it just isn't
@@ -88,7 +146,10 @@ fn studio_window(
         .hidden_title(true)
         .title_bar_style(TitleBarStyle::Overlay)
         .traffic_light_position(tauri::LogicalPosition::new(TRAFFIC_LIGHTS.0, TRAFFIC_LIGHTS.1))
-        .initialization_script(title_bar_script())
+        .initialization_script(title_bar_script(glass))
+        // Transparent so the glass can show through where the page is; the page paints its own background
+        // everywhere else.
+        .transparent(true)
         .inner_size(1440.0, 900.0)
         .min_inner_size(960.0, 600.0)
         // The timeline and media panel take OS file drops through HTML5 drag-and-drop; Tauri's own handler would
@@ -140,6 +201,9 @@ fn studio_window(
             }
             true
         });
+    if glass.enabled {
+        builder = builder.effects(glass_effects());
+    }
     if let Some(features) = features {
         builder = builder.window_features(features);
     }
@@ -161,6 +225,7 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![set_glass])
         .setup(move |app| {
             studio_window(app.handle(), url.clone(), None)?;
             Ok(())

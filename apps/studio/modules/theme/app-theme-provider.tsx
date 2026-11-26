@@ -4,7 +4,9 @@ import { AnchoredToastProvider, ToastProvider } from "@coss/ui/components/toast"
 import { TooltipProvider } from "@coss/ui/components/tooltip";
 import { ThemeProvider } from "next-themes";
 import type * as React from "react";
+import { SettingsProvider } from "@/modules/settings/settings-provider";
 
+/** The app-wide providers: theme, tooltips, toasts and Settings. */
 export function AppThemeProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
     <ThemeProvider
@@ -19,7 +21,9 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }): R
       scriptProps={{ type: typeof window === "undefined" ? "text/javascript" : "text/plain" }}>
       <TooltipProvider delay={300}>
         <ToastProvider position="bottom-right">
-          <AnchoredToastProvider>{children}</AnchoredToastProvider>
+          <AnchoredToastProvider>
+            <SettingsProvider>{children}</SettingsProvider>
+          </AnchoredToastProvider>
         </ToastProvider>
       </TooltipProvider>
     </ThemeProvider>

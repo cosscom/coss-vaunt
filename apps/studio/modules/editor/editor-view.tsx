@@ -8,6 +8,7 @@ import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { InspectorPanel } from "./inspector/inspector-panel";
 import { EDITOR_CARD_ATTRIBUTE, MirrorSplit } from "./layout/mirror-split";
+import { PushPanel } from "./layout/push-panel";
 import { PANEL_SPECS, usePanelLayout } from "./layout/use-panel-layout";
 import { LeftSidebar } from "./left-sidebar";
 import { createPlaybackClock } from "./player/playback-clock";
@@ -26,6 +27,7 @@ import { useProjectAutosave } from "./use-project-autosave";
 import { AgentSidecar } from "@/modules/agent/agent-sidecar";
 import { useAgent } from "@/modules/agent/use-agent";
 import { focusAgentComposerInput } from "@/modules/agent-ui/composer-focus";
+import { useSettings } from "@/modules/settings/settings-provider";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.layout;
@@ -41,10 +43,9 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
   const layout = usePanelLayout();
   const timelineRef = useRef<TimelineHandle>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [blurEditing, setBlurEditing] = useState(false);
-  // Only a toggle animates the agent open or closed; dragging its splitter tracks the pointer.
-  const [agentAnimating, setAgentAnimating] = useState(false);
+  const settings = useSettings();
+  const openAiSettings = () => settings.open("ai");
   const saveStatus = useProjectAutosave(project);
   const storyboard = useStoryboardActions(editor);
   const generation = useBoardGeneration(project, editor.applyGeneratedClips);
@@ -60,10 +61,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
 
   useEffect(() => clock.setDuration(projectDuration(project)), [clock, project]);
 
-  const toggleAgent = () => {
-    setAgentAnimating(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    layout.toggle("agent");
-  };
+  const toggleAgent = () => layout.toggle("agent");
   // Opens the agent if it's closed and puts the cursor in it, once it's no longer inert.
   const [focusAgent, setFocusAgent] = useState(false);
   const planWithAgent = () => {
@@ -82,7 +80,6 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
     timeline: timelineRef,
     onShowShortcuts: () => setShortcutsOpen(true),
     onToggleAgent: toggleAgent,
-    onOpenAiSettings: () => setAiSettingsOpen(true),
   });
 
   const { prompt, inspector, timeline, agent: agentPanel } = layout.sizes;
@@ -94,11 +91,9 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
       style={{ padding: `0 ${GAP}px ${GAP}px` }}>
       <ProjectBar
         agentOpen={!agentPanel.collapsed}
-        aiSettingsOpen={aiSettingsOpen}
         canRedo={editor.canRedo}
         canUndo={editor.canUndo}
         inspectorOpen={!inspector.collapsed}
-        onAiSettingsOpenChange={setAiSettingsOpen}
         onRedo={editor.redo}
         onRename={editor.rename}
         onSettingsChange={editor.updateSettings}
@@ -113,19 +108,14 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1">
-            {prompt.collapsed ? null : (
-              <>
-                <div {...card} className={cn(CARD, "shrink-0")} style={{ width: prompt.size }}>
-                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                    <LeftSidebar
-                      clock={clock}
-                      editor={editor}
-                      generation={generation}
-                      onPlanWithAgent={planWithAgent}
-                      storyboard={storyboard}
-                    />
-                  </div>
-                </div>
+            <PushPanel
+              animating={layout.animating("prompt")}
+              edge="start"
+              gap={GAP}
+              onAnimationEnd={() => layout.settle("prompt")}
+              open={!prompt.collapsed}
+              size={prompt.size}
+              splitter={
                 <MirrorSplit
                   direction={1}
                   gap={GAP}
@@ -136,8 +126,19 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
                   spec={PANEL_SPECS.prompt}
                   value={prompt}
                 />
-              </>
-            )}
+              }>
+              <div {...card} className={cn(CARD, "flex-1")}>
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                  <LeftSidebar
+                    clock={clock}
+                    editor={editor}
+                    generation={generation}
+                    onPlanWithAgent={planWithAgent}
+                    storyboard={storyboard}
+                  />
+                </div>
+              </div>
+            </PushPanel>
             <StageContextMenu clipId={editor.primaryClip?.id ?? null} editor={editor}>
               <section
                 {...card}
@@ -160,8 +161,14 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
                 />
               </section>
             </StageContextMenu>
-            {inspector.collapsed ? null : (
-              <>
+            <PushPanel
+              animating={layout.animating("inspector")}
+              edge="end"
+              gap={GAP}
+              onAnimationEnd={() => layout.settle("inspector")}
+              open={!inspector.collapsed}
+              size={inspector.size}
+              splitter={
                 <MirrorSplit
                   direction={-1}
                   gap={GAP}
@@ -172,11 +179,11 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
                   spec={PANEL_SPECS.inspector}
                   value={inspector}
                 />
-                <div {...card} className={cn(CARD, "shrink-0")} style={{ width: inspector.size }}>
-                  <InspectorPanel clock={clock} editor={editor} onBlurEditingChange={setBlurEditing} />
-                </div>
-              </>
-            )}
+              }>
+              <div {...card} className={cn(CARD, "flex-1")}>
+                <InspectorPanel clock={clock} editor={editor} onBlurEditingChange={setBlurEditing} />
+              </div>
+            </PushPanel>
           </div>
           <MirrorSplit
             direction={-1}
@@ -194,17 +201,14 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
         </div>
         <AgentSidecar
           agent={agent}
-          animating={agentAnimating}
-          gap={GAP}
+          animating={layout.animating("agent")}
           frameRef={agentFrame}
-          onAnimationEnd={() => setAgentAnimating(false)}
+          gap={GAP}
+          onAnimationEnd={() => layout.settle("agent")}
           onClose={toggleAgent}
-          onOpenSettings={() => setAiSettingsOpen(true)}
+          onOpenSettings={openAiSettings}
           onReset={() => layout.reset("agent")}
-          onSizeChange={(size) => {
-            setAgentAnimating(false);
-            layout.set("agent", size);
-          }}
+          onSizeChange={(size) => layout.set("agent", size)}
           size={agentPanel}
         />
       </div>

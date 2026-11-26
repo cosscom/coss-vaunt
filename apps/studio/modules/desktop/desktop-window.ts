@@ -88,3 +88,23 @@ export async function growWindowTo(width: number, height: number, durationMs = 4
     return false;
   }
 }
+
+/**
+ * Whether the window can show glass: the desktop window on macOS marks `<html data-vaunt-glass>` before the page
+ * loads (an older window binary doesn't, and a browser never does).
+ */
+export function canUseGlass(): boolean {
+  return tauri() !== null && document.documentElement.dataset.vauntGlass !== undefined;
+}
+
+/** Turns the window's macOS vibrancy on or off behind the page's transparent areas. Resolves to whether it applied. */
+export async function setWindowGlass(enabled: boolean): Promise<boolean> {
+  const bridge = tauri();
+  if (!bridge) return false;
+  try {
+    await bridge.invoke("set_glass", { enabled });
+    return true;
+  } catch {
+    return false;
+  }
+}
