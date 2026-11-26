@@ -1,5 +1,6 @@
 import type { KeyframeRef } from "@coss/vaunt-engine/storyboard/storyboard-edits";
 import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import { lockedClipIds } from "./track-locks";
 
 export type SelectedKeyframe = KeyframeRef & { clipId: string };
 
@@ -51,10 +52,13 @@ export function selectKeyframes(
   return { clipIds, keyframes: [...kept, ...toggled] };
 }
 
-/** Drops ids that no longer exist, e.g. after undo or delete. */
+/** Drops ids that no longer exist, e.g. after undo or delete, and clips on locked tracks. */
 export function pruneSelection(selection: EditorSelection, project: Project): EditorSelection {
+  const locked = lockedClipIds(project);
   const clips = new Map(
-    project.videoTracks.flatMap((track) => track.clips.map((clip) => [clip.id, clip] as const))
+    project.videoTracks.flatMap((track) =>
+      track.clips.filter((clip) => !locked.has(clip.id)).map((clip) => [clip.id, clip] as const)
+    )
   );
   const clipIds = selection.clipIds.filter((id) => clips.has(id));
   const keyframes = selection.keyframes.filter((keyframe) =>

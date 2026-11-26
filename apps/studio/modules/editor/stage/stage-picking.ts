@@ -2,6 +2,7 @@ import type { LayerGeometry } from "@coss/vaunt-engine/stage/camera-projection";
 import { videoClipAt } from "@coss/vaunt-engine/stage/clip-picking";
 import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { activeClipsAt } from "@coss/vaunt-engine/storyboard/track-resolution";
+import { lockedClipIds } from "../track-locks";
 
 export type FrameRect = { x: number; y: number; width: number; height: number };
 
@@ -24,7 +25,10 @@ export function textRectFor(frameElement: HTMLElement, clipId: string): FrameRec
   return textLayers(frameElement).find((layer) => layer.clipId === clipId)?.rect ?? null;
 }
 
-/** The clip drawn under a frame point (CSS px): text first, as it sits above every device. */
+/**
+ * The clip drawn under a frame point (CSS px): text first, as it sits above every device. Clips on locked
+ * tracks are clicked through, to whatever is under them.
+ */
 export function clipAtPoint({
   frameElement,
   project,
@@ -40,8 +44,15 @@ export function clipAtPoint({
   x: number;
   y: number;
 }): string | null {
+  const locked = lockedClipIds(project);
   const text = textLayers(frameElement).find(
-    ({ rect }) => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
+    ({ clipId, rect }) =>
+      !locked.has(clipId) &&
+      x >= rect.x &&
+      x <= rect.x + rect.width &&
+      y >= rect.y &&
+      y <= rect.y + rect.height
   );
-  return text?.clipId ?? videoClipAt(activeClipsAt(project, time), layerAt, x, y);
+  const active = activeClipsAt(project, time).filter((entry) => !locked.has(entry.clip.id));
+  return text?.clipId ?? videoClipAt(active, layerAt, x, y);
 }

@@ -21,6 +21,7 @@ import { PROPERTY_GROUP_TONE } from "./property-group-tone";
 import { type ClipDragMode, TimelineClip } from "./timeline-clip";
 import { KEYFRAME_LANE_HEIGHT_PX, VIDEO_TRACK_HEIGHT_PX } from "./timeline-metrics";
 import { TimelineRow } from "./timeline-row";
+import { TrackLockToggle } from "./track-lock-toggle";
 import { TransitionBand } from "./transition-band";
 import { transitionRegions } from "./transition-regions";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -47,6 +48,7 @@ type VideoTrackRowProps = {
   emptyHint: boolean;
   onToggleLanes: () => void;
   onToggleHidden: () => void;
+  onToggleLocked: () => void;
   onSelectTransition: (clipId: string) => void;
   onSelectClip: (clipId: string) => void;
   onClipPointerDown: (event: React.PointerEvent, clip: Clip, mode: ClipDragMode) => void;
@@ -98,6 +100,7 @@ export function VideoTrackRow({
   emptyHint,
   onToggleLanes,
   onToggleHidden,
+  onToggleLocked,
   onSelectTransition,
   onSelectClip,
   onClipPointerDown,
@@ -120,8 +123,10 @@ export function VideoTrackRow({
     const region = regions.find((candidate) => candidate[side] === clipId);
     return region ? (region.end - region.start) * pxPerSecond : 0;
   };
+  const locked = Boolean(track.locked);
+  // A locked track refuses drops: without preventDefault the browser shows the no-drop cursor.
   const hasFiles = (event: React.DragEvent) =>
-    event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer);
+    !locked && (event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer));
 
   return (
     <div data-testid="video-track">
@@ -161,6 +166,7 @@ export function VideoTrackRow({
               )}>
               {track.name}
             </span>
+            <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
             {laneClip ? <AddLaneMenu onShowLane={onShowLane} shown={lanes.map((lane) => lane.key)} /> : null}
             <HeaderButton
               aria-expanded={showLanes}
@@ -203,6 +209,7 @@ export function VideoTrackRow({
               insetStart={overlapPx(clip.id, "clipId")}
               key={clip.id}
               left={toX(clip.start)}
+              locked={locked}
               onPointerDown={(event, mode) => onClipPointerDown(event, clip, mode)}
               onMotionDrop={(drop) => onMotionDrop(clip.id, drop)}
               onSelect={() => onSelectClip(clip.id)}
@@ -215,6 +222,7 @@ export function VideoTrackRow({
           <TransitionBand
             key={region.clipId}
             left={toX(region.start)}
+            locked={locked}
             onSelect={() => onSelectTransition(region.clipId)}
             region={region}
             selected={selectedClipIds.has(region.clipId)}

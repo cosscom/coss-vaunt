@@ -100,6 +100,7 @@ export function AudioTracks({
               importTrack.current = trackIndex;
               fileInputRef.current?.click();
             }}
+            onToggleLocked={() => editor.setAudioTrackLocked(trackIndex, !track.locked)}
             onSelectClip={(clipId) => gestures.select({ clipIds: [clipId], keyframeIds: [] })}
             projectId={project.id}
             pxPerSecond={pxPerSecond}

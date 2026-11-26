@@ -1,5 +1,6 @@
 "use client";
 
+import { LockIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { audioClipGainAt } from "@coss/vaunt-engine/audio/audio-volume";
 import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
@@ -24,6 +25,8 @@ type AudioClipBlockProps = {
   pxPerSecond: number;
   selected: boolean;
   muted: boolean;
+  /** On a locked track: drawn muted and out of reach of the pointer, keyboard and menus. */
+  locked?: boolean;
   clock: PlaybackClock;
   onPointerDown: (event: React.PointerEvent, mode: AudioDragMode) => void;
   onSelect: () => void;
@@ -80,6 +83,7 @@ export function AudioClipBlock({
   pxPerSecond,
   selected,
   muted,
+  locked = false,
   clock,
   onPointerDown,
   onSelect,
@@ -97,8 +101,10 @@ export function AudioClipBlock({
 
   return (
     <div
-      className="group/audio absolute inset-y-1.5"
+      className={cn("group/audio absolute inset-y-1.5", locked && "pointer-events-none")}
       data-audio-clip-id={clip.id}
+      data-locked={locked ? "" : undefined}
+      inert={locked}
       data-selected={selected ? "" : undefined}
       data-testid="audio-clip"
       style={{ left, width }}>
@@ -108,7 +114,8 @@ export function AudioClipBlock({
         className={cn(
           "relative flex size-full cursor-grab touch-none select-none items-start overflow-hidden rounded-md border border-(--studio-audio)/40 bg-(--studio-audio)/14 px-2 py-1 text-start outline-none transition-colors hover:bg-(--studio-audio)/20 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
           selected && "border-(--studio-audio) bg-(--studio-audio)/22 ring-(--studio-audio) ring-1",
-          muted && "opacity-48"
+          muted && "opacity-48",
+          locked && "cursor-default opacity-72 saturate-50"
         )}
         onClick={(event) => {
           if (event.detail === 0) onSelect();
@@ -131,11 +138,18 @@ export function AudioClipBlock({
           <span className="shrink-0 text-[0.625rem] text-muted-foreground tabular-nums">
             {copy.seconds(clip.duration)}
           </span>
+          {locked ? (
+            <LockIcon aria-hidden="true" className="size-3 shrink-0 self-center text-muted-foreground" />
+          ) : null}
         </span>
       </button>
-      <EdgeHandle edge="start" onPointerDown={(event) => onPointerDown(event, "trim-start")} />
-      <EdgeHandle edge="end" onPointerDown={(event) => onPointerDown(event, "trim-end")} />
-      {width >= MIN_FADE_HANDLES_WIDTH_PX ? (
+      {locked ? null : (
+        <>
+          <EdgeHandle edge="start" onPointerDown={(event) => onPointerDown(event, "trim-start")} />
+          <EdgeHandle edge="end" onPointerDown={(event) => onPointerDown(event, "trim-end")} />
+        </>
+      )}
+      {!locked && width >= MIN_FADE_HANDLES_WIDTH_PX ? (
         <>
           <FadeHandle
             offset={clip.fadeIn * pxPerSecond}
