@@ -211,6 +211,8 @@ async function start(values) {
       VAUNT_LOCAL_ONLY: "1",
       VAUNT_STUDIO_ROOT: studioRoot,
       VAUNT_ENGINE_DIR: engineDir,
+      // Settings › About shows it.
+      VAUNT_VERSION: version,
       ...(values["app-url"] ? { STUDIO_APP_URL: values["app-url"] } : {}),
     },
   });

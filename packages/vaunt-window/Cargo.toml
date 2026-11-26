@@ -13,8 +13,10 @@ path = "src/main.rs"
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
-tauri = { version = "2.12", features = [] }
+# macos-private-api: a transparent window on macOS, so the glass setting's vibrancy shows through the page.
+tauri = { version = "2.12", features = ["macos-private-api"] }
 tauri-plugin-opener = "2.7"
+serde_json = "1"
 
 [profile.release]
 codegen-units = 1

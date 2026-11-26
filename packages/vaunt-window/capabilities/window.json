@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "studio-window",
-  "description": "What the studio's pages may do with their window, since its title bar is hidden: drag and zoom it from the strip along the top, and grow it to fit the screen once onboarding finishes (reading its size, position and monitor, then setting size and position). Only for the studio on loopback; nothing else.",
+  "description": "What the studio's pages may do with their window, since its title bar is hidden: drag and zoom it from the strip along the top, and grow it to fit the screen once onboarding finishes (reading its size, position and monitor, then setting size and position). Turn the window's glass (macOS vibrancy) on and off from Settings. Only for the studio on loopback; nothing else.",
   "windows": ["studio-*"],
   "remote": { "urls": ["http://localhost:*", "http://127.0.0.1:*"] },
   "permissions": [
@@ -12,6 +12,7 @@
     "core:window:allow-outer-position",
     "core:window:allow-current-monitor",
     "core:window:allow-set-size",
-    "core:window:allow-set-position"
+    "core:window:allow-set-position",
+    "allow-set-glass"
   ]
 }
