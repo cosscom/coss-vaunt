@@ -115,18 +115,58 @@ function layOut(
   return null;
 }
 
+/** Keyframes past `duration` are dropped; a property left with none keeps the value it last held. */
+function propertiesWithin(properties: Clip["properties"], duration: number): Clip["properties"] {
+  return Object.fromEntries(
+    Object.entries(properties).map(([key, property]) => {
+      const keyframes = property.keyframes.filter((keyframe) => keyframe.at <= duration + EPSILON);
+      const dropped = property.keyframes.length > 0 && keyframes.length === 0;
+      const value = dropped ? (property.keyframes.at(-1)?.value ?? property.value) : property.value;
+      return [key, keyframes.length === property.keyframes.length ? property : { value, keyframes }];
+    })
+  );
+}
+
+/**
+ * What the author added to a scene's clip that generation doesn't make: its animated properties, depth of field,
+ * drifting close-up and focus. Carried from the node's old clips onto the new ones in order, so regenerating a
+ * scene (or the whole board) keeps the animation on it.
+ */
+function withAuthorEdits(generated: Clip[], replaced: Clip[]): Clip[] {
+  const old = [...replaced].sort((a, b) => a.start - b.start);
+  return generated.map((clip, index) => {
+    const from = old[index];
+    if (!from) return clip;
+    const properties = { ...clip.properties, ...propertiesWithin(from.properties, clip.duration) };
+    const focus =
+      clip.source.kind === "recording" && from.source.kind === "recording" ? from.focus : undefined;
+    return {
+      ...clip,
+      properties,
+      ...(from.blur && !clip.blur ? { blur: from.blur } : {}),
+      ...(from.drift && !clip.drift ? { drift: from.drift } : {}),
+      ...(focus && !clip.focus ? { focus } : {}),
+    };
+  });
+}
+
 /**
  * Puts a node's generated clips on the timeline, keeping a board's clips on one visible track in story order:
  * over the node's existing clips, otherwise after the clips of the node before it. The incoming edge's transition becomes an overlap with the clip before, and
- * later clips on the track move right by as much as they need to stay valid.
+ * later clips on the track move right by as much as they need to stay valid. The author's animation on the clips
+ * being replaced carries over to the new ones.
  */
 export function applyGeneratedClips(
   project: Project,
   nodeId: string,
-  clips: Clip[],
+  generated: Clip[],
   board: Board | undefined = project.storyboard
 ): Project {
-  if (clips.length === 0) return project;
+  if (generated.length === 0) return project;
+  const replaced = project.videoTracks.flatMap((track) =>
+    track.clips.filter((clip) => clip.storyboardNodeId === nodeId)
+  );
+  const clips = withAuthorEdits(generated, replaced);
   const length = clips.reduce((sum, clip) => sum + clip.duration, 0);
   const placement = placementFor(project, board ?? { nodes: [], edges: [], brief: "" }, nodeId, length);
   const videoTracks =

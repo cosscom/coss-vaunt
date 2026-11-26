@@ -200,10 +200,18 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     return APPLIED;
   };
 
-  const commit = (proposed: Project, { group, selection: nextSelection }: EditOptions = {}) => {
-    const next = quantiseProjectKeyframes(synced(project, proposed).project);
-    if (next === project || !isValid(next)) return false;
-    if (changesLockedTracks(project, next)) {
+  /**
+   * A discrete edit with a toast when it touches a locked track. `update` gets the latest project, not this render's,
+   * so an edit that lands after an await (an upload) or right after another edit doesn't undo what came before it.
+   */
+  const commit = (
+    update: (current: Project) => Project,
+    { group, selection: nextSelection }: EditOptions = {}
+  ) => {
+    const present = latest.current.present;
+    const next = quantiseProjectKeyframes(synced(present, update(present)).project);
+    if (next === present || !isValid(next)) return false;
+    if (changesLockedTracks(present, next)) {
       toastManager.add({ type: "info", title: copy.trackLockedRefused });
       return false;
     }
@@ -213,6 +221,12 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       setFocusTransition(false);
     }
     return true;
+  };
+
+  /** Selects clips an edit just made, whose ids are only known once it ran. */
+  const selectNew = (clipIds: string[]) => {
+    setSelection({ clipIds, keyframes: [] });
+    setFocusTransition(false);
   };
 
   const editClip = (clipId: string, update: (clip: Clip) => Clip, group?: string) =>
@@ -257,13 +271,14 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       .flatMap((track) => (track.locked ? [] : track.clips))
       .filter((clip) => playhead() > clip.start && playhead() < clipEnd(clip));
 
-  const withTrack = (trackIndex: number) =>
-    ensureVideoTrack(project, trackIndex, copy.newTrackName(project.videoTracks.length + 1));
+  const withTrack = (current: Project, trackIndex: number) =>
+    ensureVideoTrack(current, trackIndex, copy.newTrackName(current.videoTracks.length + 1));
 
   const placeNew = (clip: Clip, trackIndex: number, nearest: boolean) =>
-    commit((nearest ? placeClipNearest : placeClip)(withTrack(trackIndex), trackIndex, clip), {
-      selection: { clipIds: [clip.id], keyframes: [] },
-    });
+    commit(
+      (current) => (nearest ? placeClipNearest : placeClip)(withTrack(current, trackIndex), trackIndex, clip),
+      { selection: { clipIds: [clip.id], keyframes: [] } }
+    );
 
   const newClip = (kind: NewClipKind, start: number) =>
     kind === "recording"
@@ -274,15 +289,19 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
         })
       : createTextClip({ text: copy.newTextWords, start });
 
-  const placeSequentially = (clips: Clip[], trackIndex: number, start: number) => {
-    let next = withTrack(trackIndex);
-    let cursor = start;
-    for (const clip of clips) {
-      next = placeClipNearest(next, trackIndex, { ...clip, start: cursor });
-      cursor = clipEnd(findClip(next, clip.id) ?? clip);
-    }
-    commit(next, { selection: { clipIds: clips.map((clip) => clip.id), keyframes: [] } });
-  };
+  const placeSequentially = (clips: Clip[], trackIndex: number, start: number) =>
+    commit(
+      (current) => {
+        let next = withTrack(current, trackIndex);
+        let cursor = start;
+        for (const clip of clips) {
+          next = placeClipNearest(next, trackIndex, { ...clip, start: cursor });
+          cursor = clipEnd(findClip(next, clip.id) ?? clip);
+        }
+        return next;
+      },
+      { selection: { clipIds: clips.map((clip) => clip.id), keyframes: [] } }
+    );
 
   const selectedOrUnderPlayhead = () =>
     selection.clipIds.length > 0
@@ -336,31 +355,37 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     deleteSelection: () => {
       if (selection.keyframes.length > 0 && primaryClip) {
         commit(
-          updateClip(project, primaryClip.id, (clip) => removeKeyframes(clip, selection.keyframes)),
+          (current) =>
+            updateClip(current, primaryClip.id, (clip) => removeKeyframes(clip, selection.keyframes)),
           { selection: { ...selection, keyframes: [] } }
         );
         return;
       }
       if (lanes.selected.length > 0 && primaryClip) {
         const removed = lanes.selected;
-        commit(updateClip(project, primaryClip.id, (clip) => removeLanes(clip, removed)));
+        commit((current) => updateClip(current, primaryClip.id, (clip) => removeLanes(clip, removed)));
         setLanes((current) => ({
           selected: [],
           shown: current.shown.filter((key) => !removed.includes(key)),
         }));
         return;
       }
-      commit(removeClips(project, selection.clipIds), { selection: EMPTY_SELECTION });
+      commit((current) => removeClips(current, selection.clipIds), { selection: EMPTY_SELECTION });
     },
     duplicateSelection: () => {
-      const result = duplicateClips(project, selection.clipIds);
-      commit(result.project, { selection: { clipIds: result.clipIds, keyframes: [] } });
+      let clipIds: string[] = [];
+      const duplicated = commit((current) => {
+        const result = duplicateClips(current, selection.clipIds);
+        clipIds = result.clipIds;
+        return result.project;
+      });
+      if (duplicated) selectNew(clipIds);
     },
     splitAtPlayhead: () => {
-      let next = project;
-      for (const clipId of selectedOrUnderPlayhead())
-        next = splitClip(next, clipId, playhead())?.project ?? next;
-      commit(next);
+      const clipIds = selectedOrUnderPlayhead();
+      commit((current) =>
+        clipIds.reduce((next, clipId) => splitClip(next, clipId, playhead())?.project ?? next, current)
+      );
     },
     /** Copies selected keyframes when there are any, otherwise clips; returns a file URL for the system clipboard. */
     copySelection: () => {
@@ -377,8 +402,13 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       if (!clipboard) return;
       const entries =
         trackIndex === undefined ? clipboard : clipboard.map((entry) => ({ ...entry, trackIndex }));
-      const result = pasteClips(project, entries, time);
-      commit(result.project, { selection: { clipIds: result.clipIds, keyframes: [] } });
+      let clipIds: string[] = [];
+      const pasted = commit((current) => {
+        const result = pasteClips(current, entries, time);
+        clipIds = result.clipIds;
+        return result.project;
+      });
+      if (pasted) selectNew(clipIds);
     },
 
     addClip: (kind: NewClipKind) =>
@@ -421,8 +451,10 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     },
 
     moveClipToTrack: (clipId: string, trackIndex: number) => {
-      const clip = findClip(project, clipId);
-      if (clip) commit(moveClip(project, clipId, { start: clip.start, trackIndex }));
+      commit((current) => {
+        const clip = findClip(current, clipId);
+        return clip ? moveClip(current, clipId, { start: clip.start, trackIndex }) : current;
+      });
     },
     nudge: (direction: 1 | -1) => {
       if (selection.keyframes.length > 0 && primaryClip) {
@@ -433,15 +465,16 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
         );
         return;
       }
-      const next = moveClips(project, selection.clipIds, direction * frame);
-      if (next) commit(next, { group: "nudge" });
+      commit((current) => moveClips(current, selection.clipIds, direction * frame) ?? current, {
+        group: "nudge",
+      });
     },
 
     setTransition: (clipId: string, transitionIn: TransitionKind) =>
       editClip(clipId, (clip) => ({ ...clip, transitionIn })),
     setTransitionLength: (clipId: string, seconds: number) =>
-      commit(setTransitionLength(project, clipId, seconds)),
-    removeTransition: (clipId: string) => commit(removeTransition(project, clipId)),
+      commit((current) => setTransitionLength(current, clipId, seconds)),
+    removeTransition: (clipId: string) => commit((current) => removeTransition(current, clipId)),
 
     touchProperty: setLastProperty,
     /** `group` merges a continuous gesture (slider, sphere, canvas drag) into one undo step. */
@@ -512,15 +545,12 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       // Keyframes copied from one property go to the lane they're pasted on; mixed ones keep their own.
       const single = new Set(keyframeClipboard.map((keyframe) => keyframe.key)).size === 1;
       const result = pasteKeyframes(primaryClip, keyframeClipboard, at, single ? options.lane : undefined);
-      commit(
-        updateClip(project, primaryClip.id, () => result.clip),
-        {
-          selection: {
-            clipIds: selection.clipIds,
-            keyframes: result.refs.map((ref) => ({ ...ref, clipId: primaryClip.id })),
-          },
-        }
-      );
+      commit((current) => updateClip(current, primaryClip.id, () => result.clip), {
+        selection: {
+          clipIds: selection.clipIds,
+          keyframes: result.refs.map((ref) => ({ ...ref, clipId: primaryClip.id })),
+        },
+      });
     },
     pasteTimeAfter: (at: number) => keyframePasteTime(at, project.settings.fps),
     selectLane: (key: PropertyKey, additive: boolean) =>
@@ -535,7 +565,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       const preset = findMotionPreset(presetId);
       if (!preset) return;
       const applied = commit(
-        updateClip(project, clipId, (clip) => applyMotionPreset(clip, preset, placement)),
+        (current) => updateClip(current, clipId, (clip) => applyMotionPreset(clip, preset, placement)),
         { selection: { clipIds: [clipId], keyframes: [] } }
       );
       if (!applied) return;
@@ -586,30 +616,34 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     },
 
     insertTrack: (index: number) =>
-      commit(insertVideoTrack(project, index, copy.newTrackName(project.videoTracks.length + 1))),
+      commit((current) =>
+        insertVideoTrack(current, index, copy.newTrackName(current.videoTracks.length + 1))
+      ),
     addTrack: () =>
-      commit(
+      commit((current) =>
         insertVideoTrack(
-          project,
-          project.videoTracks.length,
-          copy.newTrackName(project.videoTracks.length + 1)
+          current,
+          current.videoTracks.length,
+          copy.newTrackName(current.videoTracks.length + 1)
         )
       ),
     duplicateTrack: (trackIndex: number) =>
-      commit(duplicateVideoTrack(project, trackIndex, copy.newTrackName(project.videoTracks.length + 1))),
-    deleteTrack: (trackIndex: number) => commit(removeVideoTrack(project, trackIndex)),
+      commit((current) =>
+        duplicateVideoTrack(current, trackIndex, copy.newTrackName(current.videoTracks.length + 1))
+      ),
+    deleteTrack: (trackIndex: number) => commit((current) => removeVideoTrack(current, trackIndex)),
     renameTrack: (trackIndex: number, name: string) =>
-      commit(updateVideoTrack(project, trackIndex, (track) => ({ ...track, name }))),
+      commit((current) => updateVideoTrack(current, trackIndex, (track) => ({ ...track, name }))),
     setTrackHidden: (trackIndex: number, hidden: boolean) =>
-      commit(updateVideoTrack(project, trackIndex, (track) => ({ ...track, hidden: hidden || undefined }))),
+      commit((current) =>
+        updateVideoTrack(current, trackIndex, (track) => ({ ...track, hidden: hidden || undefined }))
+      ),
     /** One undo step; locking drops the track's clips from the selection. */
     setTrackLocked: (trackIndex: number, locked: boolean) => {
-      const next = updateVideoTrack(project, trackIndex, (track) => ({
-        ...track,
-        locked: locked || undefined,
-      }));
-      const keep = new Set(withoutLockedClips(selection.clipIds, next));
-      commit(next, {
+      const lock = (current: Project) =>
+        updateVideoTrack(current, trackIndex, (track) => ({ ...track, locked: locked || undefined }));
+      const keep = new Set(withoutLockedClips(selection.clipIds, lock(project)));
+      commit(lock, {
         selection: {
           clipIds: selection.clipIds.filter((id) => keep.has(id)),
           keyframes: selection.keyframes.filter((keyframe) => keep.has(keyframe.clipId)),
@@ -618,9 +652,12 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     },
     /** The audio selection lives with the audio tracks and drops locked clips itself. */
     setAudioTrackLocked: (trackIndex: number, locked: boolean) =>
-      commit(updateAudioTrack(project, trackIndex, (track) => ({ ...track, locked: locked || undefined }))),
+      commit((current) =>
+        updateAudioTrack(current, trackIndex, (track) => ({ ...track, locked: locked || undefined }))
+      ),
     lockedClipIds: lockedClipIds(project),
-    moveSelection: (next: Project) => commit(next),
+    /** A timeline drag's result, built from the project as the drag started. */
+    moveSelection: (next: Project) => commit(() => next),
 
     board: project.storyboard ?? EMPTY_BOARD,
     /**
