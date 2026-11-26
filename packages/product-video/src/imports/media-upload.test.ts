@@ -14,6 +14,8 @@ import {
 } from "./media-upload";
 
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
+// The bare names, not a copy of ffmpeg this machine may have in ~/.vaunt/bin.
+vi.mock("../setup/vaunt-bin", () => ({ vauntTool: (name: string) => name }));
 
 type Callback = (error: Error | null, stdout: string, stderr: string) => void;
 

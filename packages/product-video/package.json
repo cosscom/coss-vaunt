@@ -75,7 +75,10 @@
     "./discovery/page-discovery": "./src/discovery/page-discovery.ts",
     "./recording/app-path": "./src/recording/app-path.ts",
     "./ai/ai-providers": "./src/ai/ai-providers.ts",
-    "./ai/studio-model": "./src/ai/studio-model.ts"
+    "./ai/studio-model": "./src/ai/studio-model.ts",
+    "./setup/tools-status": "./src/setup/tools-status.ts",
+    "./setup/ffmpeg-install": "./src/setup/ffmpeg-install.ts",
+    "./setup/vaunt-bin": "./src/setup/vaunt-bin.ts"
   },
   "typesVersions": {
     "*": {
@@ -291,6 +294,15 @@
       ],
       "ai/studio-model": [
         "./src/ai/studio-model.ts"
+      ],
+      "setup/tools-status": [
+        "./src/setup/tools-status.ts"
+      ],
+      "setup/ffmpeg-install": [
+        "./src/setup/ffmpeg-install.ts"
+      ],
+      "setup/vaunt-bin": [
+        "./src/setup/vaunt-bin.ts"
       ]
     }
   },

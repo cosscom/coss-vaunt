@@ -94,6 +94,10 @@
         "typescript": "7.0.2",
       },
     },
+    "packages/vaunt-window": {
+      "name": "@coss/vaunt-window",
+      "version": "0.1.0",
+    },
   },
   "packages": {
     "@agent-browser/cli-darwin-arm64": ["@agent-browser/cli-darwin-arm64@0.43.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-HV6GP59IjNnowlrXR/5rVM8msPWwQDEONt/tWC8STzUfKZQHKZI/Iv9sf2h2ZhwK8xwoqLhxpf+KxcFgJ0sExQ=="],
@@ -151,6 +155,8 @@
     "@coss/vaunt": ["@coss/vaunt@workspace:apps/studio"],
 
     "@coss/vaunt-engine": ["@coss/vaunt-engine@workspace:packages/product-video"],
+
+    "@coss/vaunt-window": ["@coss/vaunt-window@workspace:packages/vaunt-window"],
 
     "@dimforge/rapier3d-compat": ["@dimforge/rapier3d-compat@0.12.0", "", {}, "sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow=="],
 

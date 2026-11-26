@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "studio-window",
+  "description": "What the studio's pages may do with their window, since its title bar is hidden: drag and zoom it from the strip along the top, and grow it to fit the screen once onboarding finishes (reading its size, position and monitor, then setting size and position). Only for the studio on loopback; nothing else.",
+  "windows": ["studio-*"],
+  "remote": { "urls": ["http://localhost:*", "http://127.0.0.1:*"] },
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-scale-factor",
+    "core:window:allow-inner-size",
+    "core:window:allow-outer-position",
+    "core:window:allow-current-monitor",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position"
+  ]
+}

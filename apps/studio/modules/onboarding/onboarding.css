@@ -1,0 +1,59 @@
+/* Onboarding motion: slides arriving and leaving. */
+
+/*
+ * Moving between slides. --dir is +1 going forward, -1 going back.
+ * Leaving: the copy accelerates away (ease-in), up and out of focus along the direction of travel, quick and
+ * quiet, the badge first and each line 20ms after.
+ * Arriving: the new copy starts as the old one is mostly gone (--enter-delay), rising in from the other side and
+ * settling (strong ease-out), 50ms apart, so the badge and title land in the same place one after the other.
+ */
+.onb-in {
+  animation: onb-in 560ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--d, 0ms) + var(--enter-delay, 0ms)) both;
+}
+[data-entering] {
+  --enter-delay: 150ms;
+}
+@keyframes onb-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--dir, 1) * 14px));
+    filter: blur(6px);
+  }
+}
+
+[data-leaving] :is(.onb-in, .onb-leave) {
+  animation: onb-out 220ms cubic-bezier(0.4, 0, 1, 1) calc(var(--d, 0ms) * 0.4) forwards;
+}
+@keyframes onb-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--dir, 1) * -10px));
+    filter: blur(6px);
+  }
+}
+
+/* The visual side is big (a wall of live cards, a canvas): it only fades, no blur or travel to pay for. */
+.onb-visual {
+  animation-name: onb-in-visual;
+}
+@keyframes onb-in-visual {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--dir, 1) * 8px));
+  }
+}
+[data-leaving] .onb-visual {
+  animation: onb-fade-out 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes onb-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-in,
+  [data-leaving] :is(.onb-in, .onb-leave, .onb-visual) {
+    animation: none;
+  }
+}

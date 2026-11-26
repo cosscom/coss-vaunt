@@ -1,0 +1,10 @@
+{
+  "name": "@coss/vaunt-window",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The desktop window `npx vaunt start` opens the studio in (Tauri)",
+  "scripts": {
+    "dev": "cargo run -- http://localhost:3102",
+    "build": "cargo build --release"
+  }
+}

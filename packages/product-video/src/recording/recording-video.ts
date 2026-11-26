@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { vauntTool } from "../setup/vaunt-bin";
 import { ffmpegHasEncoder } from "./ffmpeg";
 import { RECORDING_MANIFEST_FILE, RECORDING_VIDEO_FILE, type RecordingManifest } from "./recording-manifest";
 
@@ -93,7 +94,7 @@ export async function writeRecordingVideo({
   const partial = path.join(dir, `${RECORDING_VIDEO_FILE}.partial-${process.pid}`);
   try {
     await runFile(
-      "ffmpeg",
+      vauntTool("ffmpeg"),
       recordingVideoArgs({
         framesPattern: path.join(dir, "frames", "%06d.png"),
         output: partial,
