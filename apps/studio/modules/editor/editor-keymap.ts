@@ -30,13 +30,16 @@ export type EditorAction =
   | "zoom-out"
   | "zoom-to-fit"
   | "toggle-agent"
-  | "open-ai-settings"
+  | "open-settings"
   | "show-shortcuts";
 
 export type ShortcutGroup = "Playback" | "Editing" | "Keyframes" | "Timeline" | "Agent" | "Help";
 
-/** Window-level shortcuts that work while typing too, so ⌘L can close the agent from its own composer. */
-export const GLOBAL_ACTIONS: readonly EditorAction[] = ["toggle-agent", "open-ai-settings"];
+/**
+ * Window-level shortcuts that work while typing too, so ⌘L can close the agent from its own composer. ⌘, is
+ * listed for the shortcuts list, but Settings opens it on every page (settings-provider.tsx).
+ */
+export const GLOBAL_ACTIONS: readonly EditorAction[] = ["toggle-agent"];
 
 type Binding = { action: EditorAction; label: string; group: ShortcutGroup; combos: KeyCombo[] };
 
@@ -120,7 +123,7 @@ export const KEYMAP: Binding[] = [
     group: "Agent",
     combos: [{ code: "KeyL", mod: true }],
   },
-  { action: "open-ai-settings", label: "AI settings", group: "Agent", combos: [{ code: "KeyI", mod: true }] },
+  { action: "open-settings", label: "Settings", group: "Help", combos: [{ key: ",", mod: true }] },
   {
     action: "show-shortcuts",
     label: "Keyboard shortcuts",

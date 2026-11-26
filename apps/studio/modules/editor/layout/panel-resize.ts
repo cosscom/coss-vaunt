@@ -5,6 +5,8 @@ export type PanelSpec = {
   collapsible: boolean;
   /** Starts hidden until someone opens it. */
   defaultCollapsed?: boolean;
+  /** Sized to its content until someone resizes it. */
+  fitsContent?: boolean;
 };
 export type PanelSize = { size: number; collapsed: boolean };
 

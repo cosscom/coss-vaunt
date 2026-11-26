@@ -66,7 +66,9 @@ function AddHereItems({
 }): React.ReactElement {
   return (
     <ContextMenuSub>
-      <ContextMenuSubTrigger>{copy.addHere}</ContextMenuSubTrigger>
+      <ContextMenuSubTrigger disabled={Boolean(editor.project.videoTracks[trackIndex]?.locked)}>
+        {copy.addHere}
+      </ContextMenuSubTrigger>
       <ContextMenuSubPopup>
         <ContextMenuItem onClick={() => editor.addClipAt("recording", time, trackIndex)}>
           {copy.recordingClip}
@@ -113,7 +115,7 @@ function ClipItems({ editor, clipId }: { editor: EditorState; clipId: string }):
             .reverse()
             .map(({ track, index }) => (
               <ContextMenuItem
-                disabled={index === location.trackIndex}
+                disabled={index === location.trackIndex || Boolean(track.locked)}
                 key={track.id}
                 onClick={() => editor.moveClipToTrack(clipId, index)}>
                 {track.name}
@@ -324,7 +326,9 @@ function TrackItems({
   if (!track) return null;
   return (
     <>
-      <ContextMenuItem disabled={track.clips.length === 0} onClick={() => editor.selectAllClips(trackIndex)}>
+      <ContextMenuItem
+        disabled={track.clips.length === 0 || Boolean(track.locked)}
+        onClick={() => editor.selectAllClips(trackIndex)}>
         {copy.selectAll}
       </ContextMenuItem>
       <ContextMenuItem onClick={() => editor.duplicateTrack(trackIndex)}>
@@ -338,12 +342,40 @@ function TrackItems({
       <ContextMenuItem onClick={() => editor.setTrackHidden(trackIndex, !track.hidden)}>
         {track.hidden ? copy.showTrack : copy.hideTrack}
       </ContextMenuItem>
+      <ContextMenuItem onClick={() => editor.setTrackLocked(trackIndex, !track.locked)}>
+        {track.locked ? copy.unlockTrack : copy.lockTrack}
+      </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
         disabled={editor.project.videoTracks.length <= 1}
         onClick={() => onDeleteTrack(trackIndex)}
         variant="destructive">
         {copy.deleteTrack}
+      </ContextMenuItem>
+    </>
+  );
+}
+
+function AudioLaneItems({
+  editor,
+  trackIndex,
+}: {
+  editor: EditorState;
+  trackIndex: number;
+}): React.ReactElement | null {
+  const track = editor.project.audioTracks[trackIndex];
+  if (!track) return null;
+  return (
+    <>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger>{copy.addHere}</ContextMenuSubTrigger>
+        <ContextMenuSubPopup>
+          <ContextMenuItem disabled>{copy.importAudio}</ContextMenuItem>
+        </ContextMenuSubPopup>
+      </ContextMenuSub>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={() => editor.setAudioTrackLocked(trackIndex, !track.locked)}>
+        {track.locked ? copy.unlockTrack : copy.lockTrack}
       </ContextMenuItem>
     </>
   );
@@ -431,12 +463,7 @@ export function TimelineContextMenu({
         </>
       ) : null}
       {target.kind === "audio-lane" ? (
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>{copy.addHere}</ContextMenuSubTrigger>
-          <ContextMenuSubPopup>
-            <ContextMenuItem disabled>{copy.importAudio}</ContextMenuItem>
-          </ContextMenuSubPopup>
-        </ContextMenuSub>
+        <AudioLaneItems editor={editor} trackIndex={target.trackIndex} />
       ) : null}
       {target.kind === "empty" ? (
         <>

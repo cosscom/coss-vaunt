@@ -9,6 +9,11 @@ On macOS it renders with WKWebView, the same engine as Safari.
 - OS file drops reach the page: Tauri's own drop handler is off, so the timeline and media panel get them.
 - Downloads (the export dialog's link) save to `~/Downloads` and are shown in Finder once they finish.
 - Links outside the studio open in the system browser. `window.open` to a studio page opens another window.
+- Glass (Settings › Appearance): the window is transparent, and the `set_glass` command turns macOS vibrancy (the
+  sidebar material) on and off behind it; the page makes the editor's shell see-through to match. A window opens
+  with the glass the settings file has (`appearance.glass` in `~/.config/coss-vaunt/settings.json`), and the page
+  marks `<html data-vaunt-glass>` so Settings knows the window can do it. Transparency needs Tauri's
+  `macos-private-api` feature, so this build can't go on the Mac App Store.
 
 ## Develop
 

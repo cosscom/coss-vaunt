@@ -59,6 +59,7 @@
     "./project-store/import-templates": "./src/project-store/import-templates.ts",
     "./project-store/scan-project-assets": "./src/project-store/scan-project-assets.ts",
     "./storyboard/board-generation": "./src/storyboard/board-generation.ts",
+    "./storyboard/board-sync": "./src/storyboard/board-sync.ts",
     "./storyboard/board-order": "./src/storyboard/board-order.ts",
     "./ai/board-draft": "./src/ai/board-draft.ts",
     "./ai/generation-events": "./src/ai/generation-events.ts",
@@ -76,10 +77,15 @@
     "./recording/app-path": "./src/recording/app-path.ts",
     "./ai/ai-providers": "./src/ai/ai-providers.ts",
     "./ai/agent-chat": "./src/ai/agent-chat.ts",
+    "./ai/agent-thread": "./src/ai/agent-thread.ts",
+    "./project-store/agent-thread-store": "./src/project-store/agent-thread-store.ts",
     "./ai/studio-model": "./src/ai/studio-model.ts",
     "./setup/tools-status": "./src/setup/tools-status.ts",
     "./setup/ffmpeg-install": "./src/setup/ffmpeg-install.ts",
-    "./setup/vaunt-bin": "./src/setup/vaunt-bin.ts"
+    "./setup/vaunt-bin": "./src/setup/vaunt-bin.ts",
+    "./settings/studio-settings": "./src/settings/studio-settings.ts",
+    "./settings/appearance": "./src/settings/appearance.ts",
+    "./settings/editor-preferences": "./src/settings/editor-preferences.ts"
   },
   "typesVersions": {
     "*": {
@@ -233,6 +239,9 @@
       "storyboard/board-generation": [
         "./src/storyboard/board-generation.ts"
       ],
+      "storyboard/board-sync": [
+        "./src/storyboard/board-sync.ts"
+      ],
       "storyboard/board-order": [
         "./src/storyboard/board-order.ts"
       ],
@@ -296,6 +305,12 @@
       "ai/agent-chat": [
         "./src/ai/agent-chat.ts"
       ],
+      "ai/agent-thread": [
+        "./src/ai/agent-thread.ts"
+      ],
+      "project-store/agent-thread-store": [
+        "./src/project-store/agent-thread-store.ts"
+      ],
       "ai/studio-model": [
         "./src/ai/studio-model.ts"
       ],
@@ -307,6 +322,15 @@
       ],
       "setup/vaunt-bin": [
         "./src/setup/vaunt-bin.ts"
+      ],
+      "settings/studio-settings": [
+        "./src/settings/studio-settings.ts"
+      ],
+      "settings/appearance": [
+        "./src/settings/appearance.ts"
+      ],
+      "settings/editor-preferences": [
+        "./src/settings/editor-preferences.ts"
       ]
     }
   },
@@ -321,7 +345,13 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.116",
+    "@ai-sdk/google": "3.0.121",
+    "@ai-sdk/groq": "3.0.64",
+    "@ai-sdk/mistral": "3.0.63",
     "@ai-sdk/openai": "3.0.109",
+    "@ai-sdk/openai-compatible": "2.0.74",
+    "@ai-sdk/xai": "3.0.130",
+    "@openrouter/ai-sdk-provider": "2.10.0",
     "agent-browser": "0.43.0",
     "ai": "6.0.277",
     "playwright": "1.64.1",

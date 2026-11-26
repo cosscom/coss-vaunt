@@ -45,7 +45,7 @@ function EasePreview({
         disabled={disabled}
         onClick={onPlay}
         size="xs"
-        variant="outline">
+        variant="secondary">
         <PlayIcon aria-hidden="true" />
         <span className="truncate">{label}</span>
       </Button>

@@ -5,7 +5,8 @@
   "version": "0.1.0",
   "app": {
     "windows": [],
-    "security": { "csp": null }
+    "security": { "csp": null },
+    "macOSPrivateApi": true
   },
   "bundle": { "active": false, "icon": ["icons/icon.png"] }
 }

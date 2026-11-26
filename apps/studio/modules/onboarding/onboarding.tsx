@@ -727,7 +727,7 @@ export function Onboarding({ onFinish }: { onFinish: () => void }): React.ReactE
           disabled={step === 0}
           onClick={() => go(step - 1)}
           size="icon-lg"
-          variant="outline">
+          variant="secondary">
           <ArrowLeftIcon />
         </Button>
         <nav aria-label="Onboarding steps" className="flex items-center gap-1">

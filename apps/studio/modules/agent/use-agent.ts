@@ -4,22 +4,13 @@ import type { AgentEvent } from "@coss/vaunt-engine/ai/agent-chat";
 import type { Board, BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type ContextChip, contextChips, describeProject } from "./agent-context";
-import { type AgentChange, type AgentMessage, historyContent, takeEvents } from "./agent-events";
+import { type AgentChange, type AgentMessage, boardAfter, historyContent, takeEvents } from "./agent-events";
+import { loadThread, saveThread } from "./thread-storage";
 import type { PlaybackClock } from "@/modules/editor/player/playback-clock";
 import type { EditorState } from "@/modules/editor/use-editor-state";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.agent;
-const storageKey = (projectId: string) => `studio.agent-thread.v2.${projectId}`;
-
-function readThread(projectId: string): AgentMessage[] {
-  try {
-    const stored: unknown = JSON.parse(window.localStorage.getItem(storageKey(projectId)) ?? "[]");
-    return Array.isArray(stored) ? (stored as AgentMessage[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 /** What the agent can change in the editor, each step undoable from its card and with ⌘Z. */
 type AgentEffects = {
@@ -29,26 +20,51 @@ type AgentEffects = {
   setTheme: (theme: "light" | "dark") => void;
 };
 
-/** The conversation for a project, kept in localStorage per person, and the agent's turn streaming into it. */
+/**
+ * The conversation for a project, kept beside it (`agent-thread.json`) and saved after each turn and undo, and the
+ * agent's turn streaming into it.
+ */
 function useThread(projectId: string, effects: AgentEffects) {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   /** What a running tool is doing, like "Drafting the storyboard…". */
   const [status, setStatus] = useState<string | null>(null);
-  // Which project's thread `messages` holds, so the empty first render never overwrites the saved one.
+  // Which project's thread `messages` holds, so the empty first render (or a failed load) never overwrites the
+  // saved one.
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const effectsRef = useRef(effects);
   effectsRef.current = effects;
+  /** What was last saved, so loading a thread doesn't save it straight back. */
+  const saved = useRef("");
+  /** Saves in order, so an older thread never lands after a newer one. */
+  const saving = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    setMessages(readThread(projectId));
-    setLoadedFor(projectId);
+    let cancelled = false;
+    setMessages([]);
+    setLoadedFor(null);
+    loadThread(projectId, { storage: window.localStorage })
+      .then((thread) => {
+        if (cancelled) return;
+        saved.current = JSON.stringify(thread);
+        setMessages(thread);
+        setLoadedFor(projectId);
+      })
+      .catch((error: unknown) => console.warn("Couldn't load the agent conversation:", error));
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
   useEffect(() => {
     if (loadedFor !== projectId || streaming) return;
-    window.localStorage.setItem(storageKey(projectId), JSON.stringify(messages));
+    const serialized = JSON.stringify(messages);
+    if (serialized === saved.current) return;
+    saved.current = serialized;
+    saving.current = saving.current
+      .then(() => saveThread(projectId, messages))
+      .catch((error: unknown) => console.warn("Couldn't save the agent conversation:", error));
   }, [loadedFor, projectId, messages, streaming]);
 
   useEffect(() => () => controller.current?.abort(), []);
@@ -79,20 +95,23 @@ function useThread(projectId: string, effects: AgentEffects) {
         case "ask":
           patch((message) => ({ ...message, ask: { question: event.question, options: event.options } }));
           return;
-        case "board": {
-          const before = fx.board();
-          fx.editBoard(() => event.board);
-          addChange({ id: crypto.randomUUID(), kind: "board", summary: copy.drafted(event.summary), before });
-          setStatus(null);
-          return;
-        }
+        case "board":
+        case "edit":
         case "scene": {
           const before = fx.board();
-          fx.editBoard((board) => ({
-            ...board,
-            nodes: board.nodes.map((node): BoardNode => (node.id === event.nodeId ? event.node : node)),
-          }));
-          addChange({ id: crypto.randomUUID(), kind: "scene", summary: event.summary, before });
+          const after = boardAfter(event, before);
+          if (after) fx.editBoard(() => after);
+          addChange(
+            event.type === "board"
+              ? {
+                  id: crypto.randomUUID(),
+                  kind: "board",
+                  summary: copy.drafted(event.summary),
+                  before,
+                  ...(event.rationale ? { rationale: event.rationale } : {}),
+                }
+              : { id: crypto.randomUUID(), kind: event.type, summary: event.summary, before }
+          );
           setStatus(null);
           return;
         }

@@ -15,9 +15,11 @@ import type { AudioActions } from "./audio/audio-actions";
 import { AudioClipBlock } from "./audio/audio-clip-block";
 import { AudioClipMenu } from "./audio/audio-clip-menu";
 import type { AudioDragMode } from "./audio/audio-drag";
-import { AUDIO_ROW_HEIGHT_PX } from "./audio/audio-metrics";
+import { audioClipInnerHeight } from "./audio/audio-metrics";
 import { dropTime } from "./audio/drop-time";
 import { TimelineRow } from "./timeline-row";
+import { TrackLockToggle } from "./track-lock-toggle";
+import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = AUDIO_COPY.track;
 
@@ -37,6 +39,11 @@ type AudioTrackRowProps = {
   /** Files dropped at a time in seconds, read from the drop point. */
   onDropFiles: (dataTransfer: DataTransfer, time: number) => void;
   onImport: () => void;
+  onToggleLocked: () => void;
+  /** The row's height, which its bottom edge resizes. */
+  height: number;
+  onResize: (height: number) => void;
+  onResetHeight: () => void;
 };
 
 function HeaderTooltip({
@@ -69,11 +76,34 @@ export function AudioTrackRow({
   onClearSelection,
   onDropFiles,
   onImport,
+  onToggleLocked,
+  height,
+  onResize,
+  onResetHeight,
 }: AudioTrackRowProps): React.ReactElement {
   const [dropping, setDropping] = useState(false);
   const muteLabel = track.muted ? copy.unmute(track.name) : copy.mute(track.name);
+  const locked = Boolean(track.locked);
+  // A locked track refuses drops: without preventDefault the browser shows the no-drop cursor.
   const hasFiles = (event: React.DragEvent) =>
-    event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer);
+    !locked && (event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer));
+  const block = (clip: AudioClip) => (
+    <AudioClipBlock
+      clip={clip}
+      clock={clock}
+      innerHeight={audioClipInnerHeight(height)}
+      key={clip.id}
+      left={toX(clip.start)}
+      locked={locked}
+      muted={Boolean(track.muted)}
+      onPointerDown={(event, mode) => onClipPointerDown(event, clip, mode)}
+      onSelect={() => onSelectClip(clip.id)}
+      projectId={projectId}
+      pxPerSecond={pxPerSecond}
+      selected={selectedClipIds.has(clip.id)}
+      width={Math.max(4, clip.duration * pxPerSecond)}
+    />
+  );
 
   return (
     <TimelineRow
@@ -87,7 +117,10 @@ export function AudioTrackRow({
       data-testid="audio-track"
       data-track-index={trackIndex}
       header={
-        <>
+        <div
+          className="flex min-w-0 flex-1 items-center gap-1"
+          data-menu="audio-lane"
+          data-track-index={trackIndex}>
           <HeaderTooltip label={muteLabel}>
             <Toggle
               aria-label={muteLabel}
@@ -103,21 +136,28 @@ export function AudioTrackRow({
               )}
             </Toggle>
           </HeaderTooltip>
+          <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
           <span
             className={cn(
-              "min-w-0 flex-1 truncate font-medium text-foreground text-xs",
+              "ms-1 min-w-0 flex-1 truncate font-medium text-foreground text-xs",
               track.muted && "text-muted-foreground line-through"
             )}>
             {track.name}
           </span>
           <HeaderTooltip label={copy.importAudio}>
-            <Button aria-label={copy.importAudio} onClick={onImport} size="icon-xs" variant="ghost">
+            <Button
+              aria-label={copy.importAudio}
+              disabled={locked}
+              onClick={onImport}
+              size="icon-xs"
+              variant="ghost">
               <UploadIcon aria-hidden="true" />
             </Button>
           </HeaderTooltip>
-        </>
+        </div>
       }
-      height={AUDIO_ROW_HEIGHT_PX}
+      height={height}
+      resize={{ label: STUDIO_COPY.timeline.resizeTrack(track.name), onResize, onReset: onResetHeight }}
       onDragLeave={() => setDropping(false)}
       onDragOver={(event) => {
         if (!hasFiles(event)) return;
@@ -141,30 +181,23 @@ export function AudioTrackRow({
           {copy.noAudio}
         </p>
       ) : null}
-      {track.clips.map((clip) => (
-        <AudioClipMenu
-          actions={actions}
-          clipId={clip.id}
-          key={clip.id}
-          onOpen={() => {
-            if (!selectedClipIds.has(clip.id)) onSelectClip(clip.id);
-          }}
-          trackIndex={trackIndex}
-          trackMuted={Boolean(track.muted)}>
-          <AudioClipBlock
-            clip={clip}
-            clock={clock}
-            left={toX(clip.start)}
-            muted={Boolean(track.muted)}
-            onPointerDown={(event, mode) => onClipPointerDown(event, clip, mode)}
-            onSelect={() => onSelectClip(clip.id)}
-            projectId={projectId}
-            pxPerSecond={pxPerSecond}
-            selected={selectedClipIds.has(clip.id)}
-            width={Math.max(4, clip.duration * pxPerSecond)}
-          />
-        </AudioClipMenu>
-      ))}
+      {track.clips.map((clip) =>
+        locked ? (
+          block(clip)
+        ) : (
+          <AudioClipMenu
+            actions={actions}
+            clipId={clip.id}
+            key={clip.id}
+            onOpen={() => {
+              if (!selectedClipIds.has(clip.id)) onSelectClip(clip.id);
+            }}
+            trackIndex={trackIndex}
+            trackMuted={Boolean(track.muted)}>
+            {block(clip)}
+          </AudioClipMenu>
+        )
+      )}
     </TimelineRow>
   );
 }

@@ -21,6 +21,7 @@ import { PROPERTY_GROUP_TONE } from "./property-group-tone";
 import { type ClipDragMode, TimelineClip } from "./timeline-clip";
 import { KEYFRAME_LANE_HEIGHT_PX, VIDEO_TRACK_HEIGHT_PX } from "./timeline-metrics";
 import { TimelineRow } from "./timeline-row";
+import { TrackLockToggle } from "./track-lock-toggle";
 import { TransitionBand } from "./transition-band";
 import { transitionRegions } from "./transition-regions";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -47,6 +48,11 @@ type VideoTrackRowProps = {
   emptyHint: boolean;
   onToggleLanes: () => void;
   onToggleHidden: () => void;
+  onToggleLocked: () => void;
+  /** The track row's height, which its bottom edge resizes. */
+  height: number;
+  onResize: (height: number) => void;
+  onResetHeight: () => void;
   onSelectTransition: (clipId: string) => void;
   onSelectClip: (clipId: string) => void;
   onClipPointerDown: (event: React.PointerEvent, clip: Clip, mode: ClipDragMode) => void;
@@ -98,6 +104,10 @@ export function VideoTrackRow({
   emptyHint,
   onToggleLanes,
   onToggleHidden,
+  onToggleLocked,
+  height,
+  onResize,
+  onResetHeight,
   onSelectTransition,
   onSelectClip,
   onClipPointerDown,
@@ -120,8 +130,10 @@ export function VideoTrackRow({
     const region = regions.find((candidate) => candidate[side] === clipId);
     return region ? (region.end - region.start) * pxPerSecond : 0;
   };
+  const locked = Boolean(track.locked);
+  // A locked track refuses drops: without preventDefault the browser shows the no-drop cursor.
   const hasFiles = (event: React.DragEvent) =>
-    event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer);
+    !locked && (event.dataTransfer.types.includes("Files") || hasAssetDrag(event.dataTransfer));
 
   return (
     <div data-testid="video-track">
@@ -132,7 +144,7 @@ export function VideoTrackRow({
         data-track-index={trackIndex}
         header={
           <div
-            className="flex min-w-0 flex-1 items-center gap-1.5"
+            className="flex min-w-0 flex-1 items-center gap-1"
             data-menu="track"
             data-track-index={trackIndex}>
             <Tooltip>
@@ -154,9 +166,10 @@ export function VideoTrackRow({
               </TooltipTrigger>
               <TooltipPopup>{visibilityLabel}</TooltipPopup>
             </Tooltip>
+            <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
             <span
               className={cn(
-                "min-w-0 flex-1 truncate font-medium text-foreground text-xs",
+                "ms-1 min-w-0 flex-1 truncate font-medium text-foreground text-xs",
                 track.hidden && "text-muted-foreground line-through"
               )}>
               {track.name}
@@ -174,7 +187,8 @@ export function VideoTrackRow({
             </HeaderButton>
           </div>
         }
-        height={VIDEO_TRACK_HEIGHT_PX}
+        height={height}
+        resize={{ label: copy.resizeTrack(track.name), onResize, onReset: onResetHeight }}
         onDragLeave={() => setDropping(false)}
         onDragOver={(event) => {
           if (!hasFiles(event)) return;
@@ -199,10 +213,12 @@ export function VideoTrackRow({
           {track.clips.map((clip) => (
             <TimelineClip
               clip={clip}
+              compact={height < VIDEO_TRACK_HEIGHT_PX}
               insetEnd={overlapPx(clip.id, "outgoingClipId")}
               insetStart={overlapPx(clip.id, "clipId")}
               key={clip.id}
               left={toX(clip.start)}
+              locked={locked}
               onPointerDown={(event, mode) => onClipPointerDown(event, clip, mode)}
               onMotionDrop={(drop) => onMotionDrop(clip.id, drop)}
               onSelect={() => onSelectClip(clip.id)}
@@ -215,6 +231,7 @@ export function VideoTrackRow({
           <TransitionBand
             key={region.clipId}
             left={toX(region.start)}
+            locked={locked}
             onSelect={() => onSelectTransition(region.clipId)}
             region={region}
             selected={selectedClipIds.has(region.clipId)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { CaptionsIcon, FileIcon, FocusIcon, MonitorIcon, VideoIcon } from "@coss/ui/icons";
+import { CaptionsIcon, FileIcon, FocusIcon, LockIcon, MonitorIcon, VideoIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type { Clip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
@@ -20,6 +20,8 @@ type TimelineClipProps = {
   left: number;
   width: number;
   selected: boolean;
+  /** On a locked track: drawn muted and out of reach of the pointer, keyboard, marquee and menus. */
+  locked?: boolean;
   /** Width hidden under transition bands at either end, so the label stays readable. */
   insetStart: number;
   insetEnd: number;
@@ -27,6 +29,8 @@ type TimelineClipProps = {
   onSelect: () => void;
   /** A motion preset dropped from the motion pane. */
   onMotionDrop?: (drop: MotionDrop) => void;
+  /** In a short track: the name only, centred, without the duration line. */
+  compact?: boolean;
 };
 
 function TrimHandle({
@@ -57,17 +61,20 @@ export function TimelineClip({
   left,
   width,
   selected,
+  locked = false,
   insetStart,
   insetEnd,
   onPointerDown,
   onSelect,
   onMotionDrop,
+  compact = false,
 }: TimelineClipProps): React.ReactElement {
   const Icon = KIND_ICONS[clip.source.kind];
   const [motionOver, setMotionOver] = useState(false);
   return (
     <div
-      className="group/clip absolute inset-y-1.5"
+      className={cn("group/clip absolute inset-y-1.5", locked && "pointer-events-none")}
+      inert={locked}
       onDragLeave={(event) => {
         if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)))
           setMotionOver(false);
@@ -88,7 +95,8 @@ export function TimelineClip({
         if (drop) onMotionDrop(drop);
       }}
       data-clip-id={clip.id}
-      data-menu="clip"
+      data-locked={locked ? "" : undefined}
+      data-menu={locked ? undefined : "clip"}
       data-selected={selected ? "" : undefined}
       data-testid="timeline-clip"
       style={{ left, width }}>
@@ -97,7 +105,9 @@ export function TimelineClip({
         className={cn(
           "flex size-full cursor-grab touch-none select-none flex-col justify-between overflow-hidden rounded-md border bg-card px-2 py-1.5 text-start shadow-xs/5 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
           selected && "border-foreground/64 bg-accent ring-1 ring-foreground/64",
-          motionOver && "border-info bg-info/8 ring-2 ring-info/48"
+          motionOver && "border-info bg-info/8 ring-2 ring-info/48",
+          locked && "cursor-default bg-muted/64 opacity-72 shadow-none",
+          compact && "justify-center py-0"
         )}
         onClick={(event) => {
           if (event.detail === 0) onSelect();
@@ -114,13 +124,22 @@ export function TimelineClip({
               className="size-3 shrink-0 text-info-foreground"
             />
           ) : null}
+          {locked ? (
+            <LockIcon aria-hidden="true" className="ms-auto size-3 shrink-0 text-muted-foreground" />
+          ) : null}
         </span>
-        <span className="truncate text-[0.625rem] text-muted-foreground tabular-nums leading-3">
-          {clip.duration.toFixed(1)} s
-        </span>
+        {compact ? null : (
+          <span className="truncate text-[0.625rem] text-muted-foreground tabular-nums leading-3">
+            {clip.duration.toFixed(1)} s
+          </span>
+        )}
       </button>
-      <TrimHandle edge="start" onPointerDown={(event) => onPointerDown(event, "trim-start")} />
-      <TrimHandle edge="end" onPointerDown={(event) => onPointerDown(event, "trim-end")} />
+      {locked ? null : (
+        <>
+          <TrimHandle edge="start" onPointerDown={(event) => onPointerDown(event, "trim-start")} />
+          <TrimHandle edge="end" onPointerDown={(event) => onPointerDown(event, "trim-end")} />
+        </>
+      )}
     </div>
   );
 }

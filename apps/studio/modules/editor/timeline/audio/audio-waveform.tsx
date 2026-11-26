@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import type * as React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackClock } from "../../player/playback-clock";
-import { TRACK_HEADER_WIDTH_PX } from "../timeline-metrics";
+import { useHeaderWidth } from "../track-header-width";
 import { visibleSpan } from "./visible-span";
 import { volumeCurvePoints } from "./volume-curve";
 
@@ -30,6 +30,7 @@ function scrollParentOf(element: HTMLElement): HTMLElement | null {
 /** The clip's pixels the timeline's scroll viewport shows, beside the sticky track headers. */
 function useVisiblePixels(ref: React.RefObject<HTMLElement | null>, width: number): [number, number] | null {
   const [span, setSpan] = useState<[number, number] | null>(null);
+  const headerWidth = useHeaderWidth();
   useLayoutEffect(() => {
     const element = ref.current;
     const scroller = element ? scrollParentOf(element) : null;
@@ -41,7 +42,7 @@ function useVisiblePixels(ref: React.RefObject<HTMLElement | null>, width: numbe
       const next = visibleSpan(
         element.getBoundingClientRect().left,
         width,
-        view.left + TRACK_HEADER_WIDTH_PX,
+        view.left + headerWidth,
         view.right
       );
       setSpan((current) => (current?.[0] === next?.[0] && current?.[1] === next?.[1] ? current : next));
@@ -58,7 +59,7 @@ function useVisiblePixels(ref: React.RefObject<HTMLElement | null>, width: numbe
       scroller.removeEventListener("scroll", schedule);
       observer.disconnect();
     };
-  }, [ref, width]);
+  }, [ref, width, headerWidth]);
   return span;
 }
 

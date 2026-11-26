@@ -69,7 +69,10 @@ export function MirrorSplit({
   const measure = () => {
     if (!host.current) return;
     const gapRect = rectOf(host.current);
-    const cards = [...document.querySelectorAll(`[${EDITOR_CARD_ATTRIBUTE}]`)].map(rectOf);
+    // A closed side panel stays mounted (inert, clipped to nothing), so its card doesn't count.
+    const cards = [...document.querySelectorAll(`[${EDITOR_CARD_ATTRIBUTE}]`)]
+      .filter((card) => !card.closest("[inert]"))
+      .map(rectOf);
     setMasks({
       before: segmentMask(cardSegments(gapRect, cards, vertical, "before"), vertical),
       after: segmentMask(cardSegments(gapRect, cards, vertical, "after"), vertical),

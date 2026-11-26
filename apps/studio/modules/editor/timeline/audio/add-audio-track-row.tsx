@@ -6,7 +6,7 @@ import { useState } from "react";
 import { hasAssetDrag } from "../../assets/asset-drag";
 import { AUDIO_COPY } from "../../audio/audio-copy";
 import { NEW_TRACK_ROW_HEIGHT_PX } from "../timeline-metrics";
-import { TimelineRow } from "../timeline-row";
+import { PLACEHOLDER_ROW_HATCH, TimelineRow } from "../timeline-row";
 import { AUDIO_ROW_HEIGHT_PX } from "./audio-metrics";
 import { dropTime } from "./drop-time";
 
@@ -34,13 +34,14 @@ export function AddAudioTrackRow({
   return (
     <TimelineRow
       className={cn(
-        "bg-muted/16",
+        PLACEHOLDER_ROW_HATCH,
         over && "bg-(--studio-audio)/12 outline-(--studio-audio)/48 outline-2 -outline-offset-2"
       )}
       contentWidth={contentWidth}
       data-audio-track-index={trackIndex}
       data-testid="audio-add-track-drop"
-      header={<span className="truncate text-muted-foreground text-xs">{AUDIO_COPY.inspector.title}</span>}
+      headerClassName={PLACEHOLDER_ROW_HATCH}
+      header={null}
       height={compact ? NEW_TRACK_ROW_HEIGHT_PX : AUDIO_ROW_HEIGHT_PX}
       onDragLeave={() => setOver(false)}
       onDragOver={(event) => {

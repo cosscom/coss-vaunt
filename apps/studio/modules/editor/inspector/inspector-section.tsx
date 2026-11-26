@@ -13,6 +13,8 @@ type InspectorSectionProps = {
   children: React.ReactNode;
   /** Replaces the default body padding, for lists whose rows bring their own. */
   bodyClassName?: string;
+  /** Starts collapsed when false. */
+  defaultOpen?: boolean;
 };
 
 export function InspectorSection({
@@ -21,19 +23,30 @@ export function InspectorSection({
   action,
   children,
   bodyClassName,
+  defaultOpen = true,
 }: InspectorSectionProps): React.ReactElement {
   return (
-    <Collapsible className="border-b" defaultOpen>
-      <div className="flex items-center">
-        <CollapsibleTrigger className="group flex h-10 min-w-0 flex-1 cursor-pointer items-center gap-2 px-4 text-start outline-none hover:bg-accent/40 focus-visible:bg-accent/60">
-          <span className="flex-1 font-medium text-foreground text-sm">{title}</span>
-          {aside ? <span className="text-muted-foreground text-xs tabular-nums">{aside}</span> : null}
-          <ChevronDownIcon
-            aria-hidden="true"
-            className="size-4 -rotate-90 text-muted-foreground transition-transform group-data-panel-open:rotate-0"
-          />
-        </CollapsibleTrigger>
-        {action ? <span className="flex h-10 items-center pe-2">{action}</span> : null}
+    <Collapsible className="border-b" defaultOpen={defaultOpen}>
+      {/* The toggle covers the whole header; the action sits on top of it, before the chevron, so the chevron stays
+          at the row's end and every other pixel of the header still collapses the section. */}
+      <div className="relative flex h-10 items-center gap-2 ps-4 pe-3">
+        <CollapsibleTrigger
+          aria-label={title}
+          className="peer absolute inset-0 cursor-pointer outline-none hover:bg-accent/40 focus-visible:bg-accent/60"
+        />
+        <span className="pointer-events-none relative flex-1 truncate font-medium text-foreground text-sm">
+          {title}
+        </span>
+        {aside ? (
+          <span className="pointer-events-none relative text-muted-foreground text-xs tabular-nums">
+            {aside}
+          </span>
+        ) : null}
+        {action ? <span className="relative flex items-center">{action}</span> : null}
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="pointer-events-none relative size-4 shrink-0 -rotate-90 text-muted-foreground transition-transform peer-data-panel-open:rotate-0"
+        />
       </div>
       <CollapsiblePanel>
         <div className={cn("flex flex-col gap-2 px-4 pt-1 pb-4", bodyClassName)}>{children}</div>

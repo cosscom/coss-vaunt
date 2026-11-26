@@ -165,7 +165,7 @@ export function SceneForm({
               loading={uploading}
               onClick={() => fileInput.current?.click()}
               size="icon-sm"
-              variant="outline">
+              variant="secondary">
               <UploadIcon aria-hidden="true" />
             </Button>
             <input

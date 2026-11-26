@@ -58,7 +58,7 @@ export function MediaUploadPanel({ projectId, onImported }: MediaUploadPanelProp
           <EmptyTitle>{copy.dropTitle}</EmptyTitle>
           <EmptyDescription>{copy.dropDescription}</EmptyDescription>
         </EmptyHeader>
-        <Button disabled={importing} loading={importing} render={<label />} size="sm" variant="outline">
+        <Button disabled={importing} loading={importing} render={<label />} size="sm" variant="secondary">
           <input
             accept={ACCEPTED_MEDIA}
             className="sr-only"

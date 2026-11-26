@@ -6,7 +6,8 @@ import { projectFileUrl } from "../../audio/project-file-url";
 
 const cache = new Map<string, Promise<WaveformPeaks | null>>();
 
-function loadPeaks(url: string): Promise<WaveformPeaks | null> {
+/** Cached per URL, so every waveform of a file shares one fetch. */
+export function loadPeaks(url: string): Promise<WaveformPeaks | null> {
   const cached = cache.get(url);
   if (cached) return cached;
   const pending = fetch(url)

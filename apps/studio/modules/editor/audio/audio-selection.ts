@@ -44,10 +44,12 @@ export function selectVolumeKeyframes(
   return { clipIds, keyframeIds: [...kept, ...toggled] };
 }
 
-/** Drops ids that no longer exist, e.g. after undo or delete. */
+/** Drops ids that no longer exist, e.g. after undo or delete, and clips on locked tracks. */
 export function pruneAudioSelection(selection: AudioSelection, project: Project): AudioSelection {
   const clips = new Map(
-    project.audioTracks.flatMap((track) => track.clips.map((clip) => [clip.id, clip] as const))
+    project.audioTracks.flatMap((track) =>
+      track.locked ? [] : track.clips.map((clip) => [clip.id, clip] as const)
+    )
   );
   const clipIds = selection.clipIds.filter((id) => clips.has(id));
   const primary = clips.get(primaryAudioClipId({ clipIds, keyframeIds: [] }) ?? "");

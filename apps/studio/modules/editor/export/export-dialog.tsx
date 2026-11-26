@@ -197,7 +197,7 @@ function ExportProgress({
       <Progress value={phase === "encode" ? 100 : percentOf(state)} />
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-xs">{copy.keepsRunning}</p>
-        <Button onClick={onCancel} size="sm" variant="outline">
+        <Button onClick={onCancel} size="sm" variant="secondary">
           {copy.cancel}
         </Button>
       </div>

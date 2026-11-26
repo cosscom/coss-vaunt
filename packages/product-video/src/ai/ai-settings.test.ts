@@ -9,6 +9,7 @@ import {
   applyAiSettingsUpdate,
   readAiSettings,
   resolveAi,
+  resolveProvider,
   writeAiSettings,
 } from "./ai-settings";
 
@@ -35,33 +36,118 @@ describe("resolveAi", () => {
       apiKey: "gw",
     });
     expect(resolveAi(null, { ANTHROPIC_API_KEY: "a", AI_GATEWAY_API_KEY: "gw" })?.provider).toBe("gateway");
+    expect(resolveAi(null, { GROQ_API_KEY: "g", OPENROUTER_API_KEY: "or" })?.provider).toBe("openrouter");
+    expect(resolveAi(null, { GOOGLE_GENERATIVE_AI_API_KEY: "g" })?.model).toBe("gemini-3-pro-preview");
     expect(resolveAi(null, {})).toBeNull();
     expect(resolveAi({ provider: "gateway", apiKeys: {} }, { ANTHROPIC_API_KEY: "x" })).toBeNull();
+  });
+
+  it("calls the OpenAI-compatible server by its address, with a model and no key needed", () => {
+    const local: AiSettings = {
+      provider: "compatible",
+      model: "llama3.2",
+      apiKeys: {},
+      baseUrl: "http://localhost:11434/v1",
+    };
+    expect(resolveAi(local, {})).toEqual({
+      provider: "compatible",
+      model: "llama3.2",
+      apiKey: "",
+      baseUrl: "http://localhost:11434/v1",
+    });
+    // It has no default model, and nothing to call without an address.
+    expect(resolveAi({ ...local, model: undefined }, {})).toBeNull();
+    expect(resolveAi({ ...local, baseUrl: undefined }, {})).toBeNull();
+  });
+});
+
+describe("resolveProvider", () => {
+  it("uses the saved model only for the chosen provider", () => {
+    const both: AiSettings = { ...saved, model: "gpt-5-mini" };
+    expect(resolveProvider("anthropic", both, {})).toEqual({
+      provider: "anthropic",
+      model: "claude-opus-5-5",
+      apiKey: "sk-ant",
+    });
+    expect(resolveProvider("openai", both, {})?.model).toBe("gpt-5-mini");
+    expect(resolveProvider("mistral", both, {})).toBeNull();
+    expect(resolveProvider("mistral", both, { MISTRAL_API_KEY: "m" })?.apiKey).toBe("m");
   });
 });
 
 describe("applyAiSettingsUpdate", () => {
   it("keeps a saved key when the update leaves it out, and removes it on null", () => {
-    expect(applyAiSettingsUpdate(saved, { provider: "openai" }).apiKeys.openai).toBe("sk-saved");
-    expect(applyAiSettingsUpdate(saved, { provider: "openai", apiKey: null }).apiKeys).toEqual({
+    expect(applyAiSettingsUpdate(saved, { provider: "openai" }, {}).apiKeys.openai).toBe("sk-saved");
+    expect(applyAiSettingsUpdate(saved, { keys: { openai: null } }, {}).apiKeys).toEqual({
       anthropic: "sk-ant",
     });
-    expect(applyAiSettingsUpdate(null, { provider: "anthropic", apiKey: "new", model: "" })).toEqual({
+    expect(
+      applyAiSettingsUpdate(null, { provider: "anthropic", keys: { anthropic: "new" }, model: "" }, {})
+    ).toEqual({
       provider: "anthropic",
       model: undefined,
       apiKeys: { anthropic: "new" },
     });
   });
+
+  it("adds a key without switching away from a provider that works", () => {
+    const next = applyAiSettingsUpdate(saved, { keys: { google: "g-key" } }, {});
+    expect(next.provider).toBe("openai");
+    expect(next.apiKeys.google).toBe("g-key");
+  });
+
+  it("makes the first connection the chosen provider", () => {
+    expect(applyAiSettingsUpdate(null, { keys: { xai: "x-key" } }, {}).provider).toBe("xai");
+    expect(applyAiSettingsUpdate(null, { baseUrl: "http://localhost:1234/v1" }, {})).toEqual({
+      provider: "compatible",
+      model: undefined,
+      apiKeys: {},
+      baseUrl: "http://localhost:1234/v1",
+    });
+    // With a key in the environment, the environment's provider is already chosen and stays.
+    expect(applyAiSettingsUpdate(null, { keys: { xai: "x" } }, { ANTHROPIC_API_KEY: "a" }).provider).toBe(
+      "anthropic"
+    );
+  });
+
+  it("goes back to the default model when switching provider without naming one", () => {
+    const chosen = { ...saved, model: "gpt-5-mini" };
+    expect(applyAiSettingsUpdate(chosen, { provider: "anthropic" }, {}).model).toBeUndefined();
+    expect(applyAiSettingsUpdate(chosen, { provider: "openai" }, {}).model).toBe("gpt-5-mini");
+    expect(
+      applyAiSettingsUpdate(chosen, { provider: "anthropic", model: "claude-haiku-5-5" }, {}).model
+    ).toBe("claude-haiku-5-5");
+  });
+
+  it("sets and removes the compatible server's address", () => {
+    const local = applyAiSettingsUpdate(saved, { baseUrl: "http://localhost:11434/v1" }, {});
+    expect(local.baseUrl).toBe("http://localhost:11434/v1");
+    expect(applyAiSettingsUpdate(local, { baseUrl: null }, {})).not.toHaveProperty("baseUrl");
+  });
 });
 
 describe("aiSettingsView", () => {
-  it("says where each key comes from without the key itself", () => {
-    const view = aiSettingsView(saved, { ANTHROPIC_API_KEY: "sk-env", XDG_CONFIG_HOME: "/cfg" });
+  it("says where each key comes from and its last characters, never the key", () => {
+    const view = aiSettingsView(
+      { ...saved, apiKeys: { ...saved.apiKeys, openai: "sk-proj-abcdefgh1234" } },
+      { ANTHROPIC_API_KEY: "sk-env", XDG_CONFIG_HOME: "/cfg" }
+    );
     expect(view).toEqual({
       provider: "openai",
       model: "",
       defaultModel: "gpt-5",
-      keys: { anthropic: "env", openai: "saved", gateway: null },
+      connections: {
+        anthropic: { source: "env", hint: "" },
+        openai: { source: "saved", hint: "…1234" },
+        google: null,
+        xai: null,
+        mistral: null,
+        groq: null,
+        openrouter: null,
+        gateway: null,
+        compatible: null,
+      },
+      baseUrl: "",
       file: "/cfg/coss-vaunt/settings.json",
     });
     expect(JSON.stringify(view)).not.toContain("sk-");
@@ -81,7 +167,7 @@ describe("the settings file", () => {
     await writeAiSettings(saved, file);
     expect(await readAiSettings(file)).toEqual(saved);
     expect((await stat(file)).mode & 0o777).toBe(0o600);
-    expect(await readFile(file, "utf8")).toContain('"provider": "openai"');
+    expect(JSON.parse(await readFile(file, "utf8"))).toEqual({ version: 2, ai: saved });
   });
 
   it("throws on a damaged file rather than forgetting the keys", async () => {

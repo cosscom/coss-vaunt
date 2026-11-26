@@ -17,20 +17,18 @@
   }
 }
 
-/* The editor's window: cards sit on this recessed surface, and the agent's frame between the two. */
+/* The editor's window: cards sit on this recessed surface. */
 :root {
-  --editor-shell: var(--color-neutral-100);
-  --agent-frame: color-mix(in srgb, var(--color-neutral-200) 72%, var(--color-neutral-100));
-  --agent-frame-ring: inset 0 0 0 1px rgb(0 0 0 / 0.04);
+  --editor-shell-color: var(--color-neutral-100);
+  --editor-shell: var(--editor-shell-color);
+  /* Audio's purple, for audio clips and anything that stands for sound (the play button's waveform). */
+  --studio-audio: oklch(0.62 0.17 295);
+  --studio-audio-line: oklch(0.42 0.2 295);
 }
 .dark {
-  --editor-shell: var(--color-neutral-950);
-  --agent-frame: color-mix(in srgb, var(--color-neutral-800) 45%, var(--color-neutral-950));
-  --agent-frame-ring: inset 0 0 0 1px rgb(255 255 255 / 0.06);
-}
-[data-slot="agent-frame"] {
-  background: var(--agent-frame);
-  box-shadow: var(--agent-frame-ring);
+  --editor-shell-color: var(--color-neutral-950);
+  --studio-audio: oklch(0.7 0.15 295);
+  --studio-audio-line: oklch(0.86 0.09 295);
 }
 
 /* In the desktop window the editor's project bar is the title bar: it runs up under the window buttons, so the
@@ -40,6 +38,43 @@ html[data-vaunt-window] body:has([data-slot="editor-shell"]) {
 }
 html[data-vaunt-window] body:has([data-slot="editor-shell"]) > [data-tauri-drag-region][aria-hidden="true"] {
   display: none;
+}
+
+/* Glass (Settings › Appearance, desktop window on macOS): the window's vibrancy shows through the editor's shell,
+   tinted with the shell's own color at `--glass-tint`; the cards stay opaque. The page itself goes transparent. */
+html[data-glass] {
+  --editor-shell: color-mix(in srgb, var(--editor-shell-color) var(--glass-tint, 64%), transparent);
+}
+html[data-glass]:has([data-slot="editor-shell"]),
+html[data-glass] body:has([data-slot="editor-shell"]) {
+  background: transparent;
+}
+
+/* Snug controls: a tab list or segmented control set into a card's corner, `--snug-inset` from its edge, takes the
+   card's corner radius less its border and that inset, so the two curves run parallel; its segments, 2 px further
+   in, take 2 px less. Cards are rounded-xl with a 1 px border. */
+[data-snug] {
+  --snug-inset: 4px;
+  --snug-radius: calc(var(--radius-xl) - 1px - var(--snug-inset));
+  padding: var(--snug-inset);
+}
+[data-snug]
+  :is([data-slot="tabs-list"], [data-slot="segmented-control"], [data-slot="segmented-radio-group"]) {
+  border-radius: var(--snug-radius);
+}
+[data-snug]
+  :is(
+    [data-slot="tabs-tab"],
+    [data-slot="tab-indicator"],
+    [data-slot="segmented-control-item"],
+    [data-slot="segmented-radio"],
+    [data-slot="segmented-control-indicator"]
+  ) {
+  border-radius: calc(var(--snug-radius) - 2px);
+}
+/* Buttons in the same strip follow the same curve (round ones stay round). */
+[data-snug] :is([data-slot="button"], [data-slot="select-trigger"]):not(.rounded-full) {
+  border-radius: var(--snug-radius);
 }
 
 /* A dialog whose height changes while open keeps its top edge still and grows downward. */

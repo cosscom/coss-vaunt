@@ -1,6 +1,6 @@
 import { EMPTY_BOARD } from "@coss/vaunt-engine/storyboard/board-schema";
 import { describe, expect, it } from "vitest";
-import { historyContent, takeEvents } from "./agent-events";
+import { boardAfter, historyContent, takeEvents } from "./agent-events";
 
 describe("takeEvents", () => {
   it("parses whole lines and keeps the unfinished one", () => {
@@ -50,5 +50,51 @@ describe("historyContent", () => {
         ask: { question: "Light or dark?", options: ["Light", "Dark"] },
       })
     ).toBe("[Asked the author: Light or dark? Replies: Light / Dark]");
+  });
+});
+
+describe("historyContent with a draft's reasons", () => {
+  it("keeps why the planner chose the scenes", () => {
+    expect(
+      historyContent({
+        id: "1",
+        role: "assistant",
+        content: "",
+        changes: [
+          {
+            id: "a",
+            kind: "board",
+            summary: "Drafted the storyboard: 3 scenes, 7 s",
+            before: EMPTY_BOARD,
+            rationale: "Left out search.",
+          },
+        ],
+      })
+    ).toBe("[Drafted the storyboard: 3 scenes, 7 s. Why these scenes: Left out search.]");
+  });
+});
+
+describe("boardAfter", () => {
+  const hook = {
+    id: "hook",
+    kind: "text" as const,
+    title: "Hook",
+    notes: "",
+    duration: 2,
+    words: "Hi",
+    position: { x: 0, y: 0 },
+  };
+  const board = { ...EMPTY_BOARD, nodes: [hook] };
+
+  it("replaces the board for a draft or an edit", () => {
+    const next = { ...EMPTY_BOARD, brief: "new" };
+    expect(boardAfter({ type: "board", board: next, summary: "" }, board)).toBe(next);
+    expect(boardAfter({ type: "edit", board: next, summary: "" }, board)).toBe(next);
+  });
+
+  it("replaces just the scene for a scene edit, and nothing for other events", () => {
+    const node = { ...hook, words: "Hello" };
+    expect(boardAfter({ type: "scene", nodeId: "hook", node, summary: "" }, board)?.nodes).toEqual([node]);
+    expect(boardAfter({ type: "theme", theme: "dark" }, board)).toBeNull();
   });
 });

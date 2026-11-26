@@ -1,18 +1,48 @@
 # Agent
 
 The editor's conversational agent: a thread you talk the video through with, which sees the project and whatever you
-point it at. It discusses only for now; the storyboard composer still drafts boards.
+point it at, drafts the storyboard and edits it.
 
 | File | What it is |
 | --- | --- |
-| `agent-sidecar.tsx` | The sidecar: the agent frame in a column on the window's right edge that pushes the editor open and closed |
-| `agent-thread.tsx` | The conversation, its empty state and starters, and the light markdown replies render with |
+| `agent-sidecar.tsx` | The sidecar: the agent card in a column on the window's right edge that pushes the editor open and closed |
+| `agent-thread.tsx` | The conversation, its empty state and starters, the change cards (Undo, Generate, "Why these scenes"), and the light markdown replies render with |
 | `agent-input.tsx` | The composer, with the context chips in its header and the model picker |
-| `model-picker.tsx` | Switches the studio's model (the same setting as AI settings) |
-| `use-agent.ts` | The thread (kept per project in localStorage), streaming, and the context sent with each message |
-| `agent-context.ts` | The context chips and the project description the agent reads |
+| `model-picker.tsx` | Switches the studio's model among the connected providers' (the same setting as Settings › AI) |
+| `use-agent.ts` | The thread, streaming, applying the agent's events with an Undo each, and the context sent with each message |
+| `agent-events.ts` | Parsing the event stream, the board an event leaves, and how a past turn reads back to the agent |
+| `thread-storage.ts` | Loading and saving the thread through the API, and moving an old localStorage thread over once |
+| `agent-context.ts` | The context chips and the project description the agent reads (scenes in story order, with ids and transitions) |
 
-The reply streams from `POST /api/projects/[id]/agent`, which calls `streamAgentReply` in the engine.
+The reply streams from `POST /api/projects/[id]/agent`, which calls `streamAgentEvents` in the engine
+(`packages/product-video/src/ai/agent-chat.ts`); the agent follows the video-director skill in `ai/skills`.
+
+## Tools
+
+The agent picks the smallest tool that does the job. Each one reports an event the studio applies at once, with an
+Undo on the agent's card, and returns the scenes in their new order so several edits in a turn build on each other.
+
+| Tool | Event | What it does |
+| --- | --- | --- |
+| `draftStoryboard` | `board` | The whole board from the request, by the high-effort planner (`ai/board-draft.ts`); comes with the planner's `rationale` |
+| `editScene` | `scene` | A typed patch of one scene's fields (title, notes, duration, words, effect, route, startFrom) |
+| `setSceneDuration` | `scene` | One scene's length |
+| `addScene`, `removeScene`, `moveScene` | `edit` | A scene in or out of story order, or to a new position; the chain rejoins and the board is laid out again |
+| `setTransition` | `edit` | The kind and seconds of the transition between two consecutive scenes |
+| `askAuthor`, `setTheme` | `ask`, `theme` | A question with quick replies (ends the turn); light or dark recording |
+
+The direct edits live in `ai/scene-edits.ts`. They change nothing else: a patch touches one scene, and other scenes
+keep their ids and fields (except that the first recording always starts fresh). They're held to the same rules as a
+draft (`sceneRuleErrors` in `board-draft.ts`: app paths, known text effects, the recording cap), and a broken edit
+goes back to the model as `failed` with the reason, so it can fix it.
+
+## The thread
+
+Kept per project in `agent-thread.json` beside `project.json` (`project-store/agent-thread-store.ts`), through
+`GET`/`PUT /api/projects/[id]/agent/thread`: loaded when the editor opens and saved after each turn and each undo.
+A thread from before, in this browser's localStorage, moves to the project the first time it opens without one.
+Each change keeps the board it replaced, for its Undo; a draft keeps the planner's reasons, which read back to the
+agent in later turns so it can say why a scene is there.
 
 ## Decided (from the prototype, November 2026)
 
@@ -24,18 +54,22 @@ Explored at `/proto/agent-shell` over four rounds; the prototype is deleted.
 - **Resize handles:** the gap between two cards is the handle; nothing is drawn in it. Hovering or dragging lights
   the facing borders of both cards, mirrored, and only where a bordered card sits against the gap: the glow skips
   the gaps between cards and fades 14 px + 28 px before each rounded corner. A side with no border stays dark.
-- **The agent is an extension, not a panel:** its own frame (the composer frame's material: a muted shell with the
-  header on it, holding an inset card for the thread, composer under the card). Sidecar: a full-height column on
+- **The agent is one of the editor's cards** (November 2026, replacing its own muted frame): bordered like the
+  inspector beside it, a plain "Agent" header (no icon), the thread, and the composer set into the card's bottom
+  4 px from its edge, its corners following the card's (`data-snug` math: card radius − border − inset; the
+  composer 2 px tighter than its chip shelf). The frame read as a dark slab sitting above the composer. Sidecar: a full-height column on
   the window's right edge, beside the whole editor. 360 px by default, 300–520, collapses when dragged well past
   its minimum. Hidden until opened (the title bar's Agent button, ⌘L, or the storyboard's agent button), so the
   editor starts clean; once opened it stays open across reloads.
 - **Open and close push the editor:** the column's width eases (320 ms, `cubic-bezier(0.32, 0.72, 0, 1)`) and the
   frame fades with it (240 ms); the frame keeps its width and is revealed from the window edge. Dragging tracks the
-  pointer with no easing; reduced motion opens and closes instantly. ⌘L, the title bar's Agent button or the
-  frame's ×.
+  pointer with no easing; reduced motion opens and closes instantly. ⌘L, the title bar's Agent button (a label, no
+  icon) or the frame's ×. The storyboard panel and the inspector open and close the same way, from their own edges
+  (`editor/layout/push-panel.tsx`, with the easing state in `use-panel-layout.ts`).
 - **Context:** chips in the composer header. The project is always attached; the selected clip and the playhead
   (when paused) attach on their own and can be removed. Starters change to clip prompts when a clip is selected.
-- **Model picker** in the composer, writing the global AI setting; ⌘I opens AI settings.
+- **Model picker** in the composer, writing the global AI setting; "AI settings…" (⌘,) opens Settings at AI
+  (see `modules/settings/README.md`).
 
 ## Empty storyboard (decided from the prototype, November 2026)
 

@@ -5,7 +5,7 @@ export const AUDIO_COPY = {
     unmute: (name: string) => `Unmute ${name}`,
     importAudio: "Import audio",
     noAudio: "Drop music or sound effects here",
-    addTrackDrop: "Drop audio here to add an audio track",
+    addTrackDrop: "Drop audio or drag a clip here for a new track",
   },
   clip: {
     seconds: (value: number) => `${value.toFixed(1)} s`,

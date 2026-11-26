@@ -30,12 +30,14 @@ describe("matchShortcut", () => {
     ]).toEqual(["undo", "redo", "redo"]);
   });
 
-  it("opens the agent with ⌘L and AI settings with ⌘I", () => {
-    expect([press("l", { metaKey: true }), press("i", { ctrlKey: true }), press("l")]).toEqual([
-      "toggle-agent",
-      "open-ai-settings",
-      null,
-    ]);
+  it("opens the agent with ⌘L and Settings with ⌘,, leaving a plain comma to nudge", () => {
+    expect([
+      press("l", { metaKey: true }),
+      press(",", { ctrlKey: true }),
+      press(","),
+      press("i", { metaKey: true }),
+      press("l"),
+    ]).toEqual(["toggle-agent", "open-settings", "nudge-back", null, null]);
   });
 
   it("separates K, Shift+K and ⌥K by physical key", () => {

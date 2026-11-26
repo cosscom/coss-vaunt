@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@coss/ui/components/button";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@coss/ui/components/select";
 import { Toggle } from "@coss/ui/components/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import {
@@ -13,14 +12,9 @@ import {
   PanelRightOpenIcon,
   RotateCcwIcon,
   RotateCwIcon,
-  SparklesIcon,
 } from "@coss/ui/icons";
 import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
-import {
-  ASPECT_RATIOS,
-  type Project,
-  type ProjectSettings,
-} from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";
@@ -28,19 +22,16 @@ import { comboKeys, KEYMAP } from "./editor-keymap";
 import { ExportButton } from "./export/export-dialog";
 import { useIsMac } from "./use-is-mac";
 import type { SaveStatus } from "./use-project-autosave";
-import { AiSettingsButton } from "@/modules/settings/ai-settings-dialog";
+import { SettingsButton } from "@/modules/settings/settings-button";
 import { STUDIO_COPY } from "@/modules/studio-copy";
-import { AppThemeToggle } from "@/modules/theme/app-theme-toggle";
 
 const copy = STUDIO_COPY.editor;
-const aspectItems = ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
 const QUIET = "text-muted-foreground hover:text-foreground";
 
 type ProjectBarProps = {
   project: Project;
   saveStatus: SaveStatus;
   onRename: (name: string) => void;
-  onSettingsChange: (settings: Partial<ProjectSettings>) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -51,8 +42,6 @@ type ProjectBarProps = {
   onTogglePrompt: () => void;
   onToggleInspector: () => void;
   onToggleAgent: () => void;
-  aiSettingsOpen: boolean;
-  onAiSettingsOpenChange: (open: boolean) => void;
 };
 
 function Tip({ label, children }: { label: string; children: React.ReactElement }): React.ReactElement {
@@ -146,7 +135,6 @@ export function ProjectBar({
   project,
   saveStatus,
   onRename,
-  onSettingsChange,
   canUndo,
   canRedo,
   onUndo,
@@ -157,8 +145,6 @@ export function ProjectBar({
   onTogglePrompt,
   onToggleInspector,
   onToggleAgent,
-  aiSettingsOpen,
-  onAiSettingsOpenChange,
 }: ProjectBarProps): React.ReactElement {
   const [draftName, setDraftName] = useState(project.name);
   const mac = useIsMac();
@@ -205,26 +191,8 @@ export function ProjectBar({
         <SaveIndicator status={saveStatus} />
       </div>
 
-      <div className="flex items-center" data-tauri-drag-region>
-        <Select
-          items={aspectItems}
-          onValueChange={(value) => value && onSettingsChange({ aspectRatio: value })}
-          value={project.settings.aspectRatio}>
-          <SelectTrigger
-            aria-label={copy.aspectRatio}
-            className="w-auto min-w-0 border-transparent bg-transparent tabular-nums shadow-none hover:bg-accent"
-            size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectPopup>
-            {aspectItems.map((item) => (
-              <SelectItem className="tabular-nums" key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-      </div>
+      {/* The aspect ratio moved to the stage's toolbar; the middle of the bar stays a place to drag the window by. */}
+      <div data-tauri-drag-region />
 
       <div className="flex items-center justify-end gap-0.5" data-tauri-drag-region>
         <HistoryButton disabled={!canUndo} label={copy.undo} onClick={onUndo}>
@@ -237,20 +205,14 @@ export function ProjectBar({
         <Tip label={agentLabel}>
           <Toggle
             aria-label={agentOpen ? STUDIO_COPY.agent.hide : STUDIO_COPY.agent.show}
-            className={`h-7 gap-1.5 px-2 ${QUIET} data-pressed:text-foreground`}
+            className={`h-7 px-2 ${QUIET} data-pressed:text-foreground`}
             onPressedChange={onToggleAgent}
             pressed={agentOpen}
             size="sm">
-            <SparklesIcon aria-hidden="true" />
             <span className="text-[13px]">{STUDIO_COPY.agent.title}</span>
           </Toggle>
         </Tip>
-        <span className={`inline-flex ${QUIET} [&_button]:text-inherit`}>
-          <AiSettingsButton onOpenChange={onAiSettingsOpenChange} open={aiSettingsOpen} />
-        </span>
-        <span className={`inline-flex ${QUIET} [&_button]:text-inherit`}>
-          <AppThemeToggle />
-        </span>
+        <SettingsButton className={QUIET} />
         <PanelToggle
           hideLabel={STUDIO_COPY.layout.hideInspector}
           onToggle={onToggleInspector}

@@ -125,7 +125,7 @@ export function RecordClipButton({ project, clip }: RecordClipButtonProps): Reac
         disabled={recording || state.kind === "checking"}
         onClick={() => void record()}
         size="sm"
-        variant="outline">
+        variant="secondary">
         <VideoIcon aria-hidden="true" />
         {state.kind === "recorded" ? copy.rerecord : copy.record}
       </Button>

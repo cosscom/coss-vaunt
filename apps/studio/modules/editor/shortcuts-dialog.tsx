@@ -7,7 +7,14 @@ import { comboKeys, KEYMAP, type ShortcutGroup } from "./editor-keymap";
 import { useIsMac } from "./use-is-mac";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
-const GROUPS: ShortcutGroup[] = ["Playback", "Editing", "Keyframes", "Timeline", "Agent", "Help"];
+export const SHORTCUT_GROUPS: ShortcutGroup[] = [
+  "Playback",
+  "Editing",
+  "Keyframes",
+  "Timeline",
+  "Agent",
+  "Help",
+];
 
 export function ShortcutsDialog({
   open,
@@ -24,7 +31,7 @@ export function ShortcutsDialog({
           <DialogTitle>{STUDIO_COPY.shortcuts.title}</DialogTitle>
         </DialogHeader>
         <DialogPanel className="grid grid-cols-2 gap-x-8 gap-y-5">
-          {GROUPS.map((group) => (
+          {SHORTCUT_GROUPS.map((group) => (
             <section className="flex flex-col gap-1.5" key={group}>
               <h3 className="font-medium text-muted-foreground text-xs">
                 {STUDIO_COPY.shortcuts.groups[group]}

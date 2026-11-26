@@ -3,7 +3,7 @@
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import { autoscrollStep } from "./edge-autoscroll";
-import { TRACK_HEADER_WIDTH_PX } from "./timeline-metrics";
+import { useHeaderWidth } from "./track-header-width";
 
 type DragHandlers = {
   onMove: (move: DragMove) => void;
@@ -21,8 +21,13 @@ export type DragMove = { dx: number; clientX: number; clientY: number; shiftKey:
  * Window-level pointer tracking for a drag that starts on an element; Escape cancels it. Inside the
  * timeline scroller, holding the pointer near a visible edge scrolls the timeline.
  */
-export function usePointerDrag(): (event: React.PointerEvent, handlers: DragHandlers) => void {
+/** `headerWidth` is for callers above the timeline's header-width context (the panel itself). */
+export function usePointerDrag(
+  headerWidthOverride?: number
+): (event: React.PointerEvent, handlers: DragHandlers) => void {
   const stopRef = useRef<(() => void) | null>(null);
+  const contextWidth = useHeaderWidth();
+  const headerWidth = headerWidthOverride ?? contextWidth;
   useEffect(() => () => stopRef.current?.(), []);
 
   return (event, { onMove, onEnd, onCancel }) => {
@@ -51,7 +56,7 @@ export function usePointerDrag(): (event: React.PointerEvent, handlers: DragHand
       frame = 0;
       if (!scroller) return;
       const box = scroller.getBoundingClientRect();
-      const step = autoscrollStep(pointer.clientX, box.left + TRACK_HEADER_WIDTH_PX, box.right);
+      const step = autoscrollStep(pointer.clientX, box.left + headerWidth, box.right);
       if (step === 0) return;
       scroller.scrollLeft += step;
       frame = requestAnimationFrame(tick);

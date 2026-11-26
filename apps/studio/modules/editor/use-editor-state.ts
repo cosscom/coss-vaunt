@@ -1,6 +1,7 @@
 "use client";
 
 import { toastManager } from "@coss/ui/components/toast";
+import { updateAudioTrack } from "@coss/vaunt-engine/audio/audio-edits";
 import {
   applyMotionPreset,
   type MotionPlacement,
@@ -9,6 +10,7 @@ import {
 import { findMotionPreset } from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
 import { applyGeneratedClips } from "@coss/vaunt-engine/storyboard/board-generation";
 import { type Board, EMPTY_BOARD } from "@coss/vaunt-engine/storyboard/board-schema";
+import { syncBoard } from "@coss/vaunt-engine/storyboard/board-sync";
 import {
   PROPERTY_KEYS,
   PROPERTY_SPECS,
@@ -87,6 +89,7 @@ import { useMediaImport } from "./media/use-media-import";
 import type { PlaybackClock } from "./player/playback-clock";
 import { createHistory, pushHistory, redo, undo } from "./project-history";
 import type { NewClipKind } from "./timeline/timeline-transport";
+import { changesLockedTracks, lockedClipIds, withoutLockedClips } from "./track-locks";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.timeline;
@@ -120,7 +123,11 @@ function fileUrl(projectId: string, clip: Clip): string | null {
  * shortcuts share. Discrete actions read the latest render; continuous ones go through `edit`.
  */
 export function useEditorState(initialProject: Project, clock: PlaybackClock) {
-  const [history, setHistory] = useState(() => createHistory(quantiseProjectKeyframes(initialProject)));
+  const [history, setHistory] = useState(() =>
+    createHistory(quantiseProjectKeyframes(syncBoard(initialProject, initialProject)))
+  );
+  /** Scenes being generated: the board keeps them while their clips are replaced. */
+  const generatingScenes = useRef<ReadonlySet<string>>(new Set());
   const [rawSelection, setSelection] = useState<EditorSelection>(EMPTY_SELECTION);
   const [focusTransition, setFocusTransition] = useState(false);
   const [lastProperty, setLastProperty] = useState<PropertyKey | null>(null);
@@ -140,16 +147,26 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
   const playhead = () => clock.getState().time;
   const frame = 1 / project.settings.fps;
 
-  const edit = (update: (current: Project) => Project, group?: string) =>
+  /** Every edit, from the timeline, the board or the agent, ends with the board matched to the timeline. */
+  const synced = (before: Project, after: Project) =>
+    syncBoard(before, after, { keep: generatingScenes.current });
+
+  /** Edits that change a locked track's clips are dropped too, unless `unlocked` (generated clips). */
+  const edit = (update: (current: Project) => Project, group?: string, { unlocked = false } = {}) =>
     setHistory((current) => {
-      const next = quantiseProjectKeyframes(update(current.present));
+      const next = quantiseProjectKeyframes(synced(current.present, update(current.present)));
       if (next === current.present || !isValid(next)) return current;
+      if (!unlocked && changesLockedTracks(current.present, next)) return current;
       return pushHistory(current, next, { group, now: Date.now() });
     });
 
   const commit = (proposed: Project, { group, selection: nextSelection }: EditOptions = {}) => {
-    const next = quantiseProjectKeyframes(proposed);
+    const next = quantiseProjectKeyframes(synced(project, proposed));
     if (next === project || !isValid(next)) return false;
+    if (changesLockedTracks(project, next)) {
+      toastManager.add({ type: "info", title: copy.trackLockedRefused });
+      return false;
+    }
     setHistory((current) => pushHistory(current, next, { group, now: Date.now() }));
     if (nextSelection) {
       setSelection(nextSelection);
@@ -197,7 +214,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
 
   const clipsAtPlayhead = () =>
     project.videoTracks
-      .flatMap((track) => track.clips)
+      .flatMap((track) => (track.locked ? [] : track.clips))
       .filter((clip) => playhead() > clip.start && playhead() < clipEnd(clip));
 
   const withTrack = (trackIndex: number) =>
@@ -248,7 +265,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     shownLanes: lanes.shown,
     hasValue: valueClipboard !== null,
     importing: media.importing,
-    edit,
+    edit: (update: (current: Project) => Project, group?: string) => edit(update, group),
     editClip,
 
     undo: () => setHistory(undo),
@@ -269,7 +286,7 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     selectAllClips: (trackIndex?: number) =>
       setSelection({
         clipIds: project.videoTracks
-          .filter((_, index) => trackIndex === undefined || index === trackIndex)
+          .filter((track, index) => !track.locked && (trackIndex === undefined || index === trackIndex))
           .flatMap((track) => track.clips.map((clip) => clip.id)),
         keyframes: [],
       }),
@@ -543,6 +560,24 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       commit(updateVideoTrack(project, trackIndex, (track) => ({ ...track, name }))),
     setTrackHidden: (trackIndex: number, hidden: boolean) =>
       commit(updateVideoTrack(project, trackIndex, (track) => ({ ...track, hidden: hidden || undefined }))),
+    /** One undo step; locking drops the track's clips from the selection. */
+    setTrackLocked: (trackIndex: number, locked: boolean) => {
+      const next = updateVideoTrack(project, trackIndex, (track) => ({
+        ...track,
+        locked: locked || undefined,
+      }));
+      const keep = new Set(withoutLockedClips(selection.clipIds, next));
+      commit(next, {
+        selection: {
+          clipIds: selection.clipIds.filter((id) => keep.has(id)),
+          keyframes: selection.keyframes.filter((keyframe) => keep.has(keyframe.clipId)),
+        },
+      });
+    },
+    /** The audio selection lives with the audio tracks and drops locked clips itself. */
+    setAudioTrackLocked: (trackIndex: number, locked: boolean) =>
+      commit(updateAudioTrack(project, trackIndex, (track) => ({ ...track, locked: locked || undefined }))),
+    lockedClipIds: lockedClipIds(project),
     moveSelection: (next: Project) => commit(next),
 
     board: project.storyboard ?? EMPTY_BOARD,
@@ -555,7 +590,10 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
       }, group),
     /** Generated clips arrive while the author keeps editing, so this applies to the latest project. */
     applyGeneratedClips: (nodeId: string, clips: Clip[]) =>
-      edit((current) => applyGeneratedClips(current, nodeId, clips)),
+      edit((current) => applyGeneratedClips(current, nodeId, clips), undefined, { unlocked: true }),
+    setGeneratingScenes: (nodeIds: ReadonlySet<string>) => {
+      generatingScenes.current = nodeIds;
+    },
   };
 }
 

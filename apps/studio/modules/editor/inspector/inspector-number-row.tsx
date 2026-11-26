@@ -71,18 +71,15 @@ export function InspectorNumberRow({
       ) : (
         <span className="truncate text-end text-muted-foreground text-xs">{hint}</span>
       )}
-      <NumberFieldGroup>
+      {/* Without a keyframe toggle the field takes its column too, so it ends flush with full-width controls. */}
+      <NumberFieldGroup className={keyframe ? undefined : "col-span-2 w-18 justify-self-end"}>
         <NumberFieldInput
           aria-label={label}
           className="px-2 text-end tabular-nums"
           onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
         />
       </NumberFieldGroup>
-      {keyframe ? (
-        <KeyframeToggle label={label} onToggle={keyframe.onToggle} state={keyframe.state} />
-      ) : (
-        <span />
-      )}
+      {keyframe ? <KeyframeToggle label={label} onToggle={keyframe.onToggle} state={keyframe.state} /> : null}
     </NumberField>
   );
 }

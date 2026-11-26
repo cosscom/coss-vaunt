@@ -12,13 +12,14 @@ import type { PlaybackClock } from "../player/playback-clock";
 import type { EditorState } from "../use-editor-state";
 import { AudioTracks } from "./audio/audio-tracks";
 import { NewVideoTrackRow } from "./new-video-track-row";
+import { TimelineScrollFades } from "./scroll-fades";
 import { TimelineContextMenu, type TimelineMenuTarget } from "./timeline-context-menu";
 import {
   CONTENT_PADDING_PX,
   MIN_VISIBLE_SECONDS,
   RULER_HEIGHT_PX,
   TAIL_SECONDS,
-  TRACK_HEADER_WIDTH_PX,
+  VIDEO_TRACK_HEIGHT_PX,
 } from "./timeline-metrics";
 import { RulerPlayheadHead, TimelinePlayhead } from "./timeline-playhead";
 import { TimelineRuler } from "./timeline-ruler";
@@ -32,6 +33,14 @@ import {
 } from "./timeline-scale";
 import { TimelineTransport } from "./timeline-transport";
 import { DeleteTrackDialog, RenameTrackDialog } from "./track-dialogs";
+import {
+  TRACK_HEADER_MAX_WIDTH_PX,
+  TRACK_HEADER_MIN_WIDTH_PX,
+  TrackHeaderWidthContext,
+  useTrackHeaderWidthState,
+} from "./track-header-width";
+import { useTrackHeights } from "./track-heights";
+import { TrackResizeHandle } from "./track-resize-handle";
 import { useTimelineGestures } from "./use-timeline-gestures";
 import { VideoTrackRow } from "./video-track-row";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -41,6 +50,8 @@ export type TimelineHandle = { zoom: (direction: "in" | "out" | "fit") => void }
 type TimelinePanelProps = {
   editor: EditorState;
   clock: PlaybackClock;
+  /** The height the timeline needs to show all of itself (transport, ruler and every row), as it changes. */
+  onContentHeight?: (height: number) => void;
   ref?: React.Ref<TimelineHandle>;
 };
 
@@ -83,9 +94,17 @@ function menuTargetFrom(element: Element | null, time: number): TimelineMenuTarg
   }
 }
 
-export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React.ReactElement {
+export function TimelinePanel({
+  editor,
+  clock,
+  ref,
+  onContentHeight,
+}: TimelinePanelProps): React.ReactElement {
   const { project, selection } = editor;
   const [pxPerSecond, setPxPerSecond] = useState(DEFAULT_PX_PER_SECOND);
+  const trackHeights = useTrackHeights();
+  const headerColumn = useTrackHeaderWidthState();
+  const headerWidth = headerColumn.width;
   const [collapsedTracks, setCollapsedTracks] = useState<ReadonlySet<string>>(new Set());
   const [menuTarget, setMenuTarget] = useState<TimelineMenuTarget | null>(null);
   const [renaming, setRenaming] = useState<number | null>(null);
@@ -99,10 +118,10 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
   const zoomState = useRef({ pxPerSecond });
   zoomState.current.pxPerSecond = pxPerSecond;
   const viewportWidth = useElementWidth(scrollRef);
-  const gestures = useTimelineGestures({ editor, clock, pxPerSecond, contentRef, bodyRef });
+  const gestures = useTimelineGestures({ editor, clock, pxPerSecond, contentRef, bodyRef, headerWidth });
 
   const view = gestures.draft ?? project;
-  const laneWidth = viewportWidth - TRACK_HEADER_WIDTH_PX - CONTENT_PADDING_PX * 2;
+  const laneWidth = viewportWidth - headerWidth - CONTENT_PADDING_PX * 2;
   const visibleSeconds = Math.max(
     MIN_VISIBLE_SECONDS,
     Math.ceil(projectDuration(view) + TAIL_SECONDS),
@@ -110,7 +129,7 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
   );
   const contentWidth = Math.max(
     visibleSeconds * pxPerSecond + CONTENT_PADDING_PX * 2,
-    viewportWidth - TRACK_HEADER_WIDTH_PX
+    viewportWidth - headerWidth
   );
   const toX = (seconds: number) => CONTENT_PADDING_PX + seconds * pxPerSecond;
 
@@ -176,13 +195,32 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
     const playheadX = content ? content.getBoundingClientRect().left + toX(clock.getState().time) : 0;
     const visible = scroller && content ? scroller.getBoundingClientRect() : null;
     const anchor =
-      visible && playheadX > visible.left + TRACK_HEADER_WIDTH_PX && playheadX < visible.right
+      visible && playheadX > visible.left + headerWidth && playheadX < visible.right
         ? playheadX
-        : (visible?.left ?? 0) + TRACK_HEADER_WIDTH_PX;
+        : (visible?.left ?? 0) + headerWidth;
     zoomAt(anchor, clampPxPerSecond(zoomTimeline(pxPerSecond, direction)) / pxPerSecond);
   };
 
   useImperativeHandle(ref, () => ({ zoom }));
+
+  // Reports the transport plus the body's natural height, which doesn't depend on the panel's own height.
+  const sectionRef = useRef<HTMLElement>(null);
+  const reportHeight = useRef(onContentHeight);
+  reportHeight.current = onContentHeight;
+  useEffect(() => {
+    const body = bodyRef.current;
+    const section = sectionRef.current;
+    if (!body || !section) return;
+    const measure = () => {
+      const transport =
+        section.firstElementChild instanceof HTMLElement ? section.firstElementChild.offsetHeight : 0;
+      reportHeight.current?.(transport + body.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, []);
 
   const openImport = (time: number, trackIndex: number) => {
     importTarget.current = { time, trackIndex };
@@ -212,15 +250,20 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
   const videoTracks = view.videoTracks.map((track, trackIndex) => ({ track, trackIndex })).reverse();
 
   return (
-    <section aria-label={STUDIO_COPY.timeline.label} className="flex h-full min-h-0 flex-col">
+    <section
+      aria-label={STUDIO_COPY.timeline.label}
+      className="flex h-full min-h-0 flex-col"
+      ref={sectionRef}>
       <TimelineTransport
         clock={clock}
         onAddClip={editor.addClip}
         onAddTrack={editor.addTrack}
         onImportMedia={() => openImport(clock.getState().time, 0)}
         onImported={editor.insertImported}
+        fps={project.settings.fps}
         onZoom={zoom}
-        projectId={project.id}
+        project={project}
+        zoomPercent={Math.round((pxPerSecond / DEFAULT_PX_PER_SECOND) * 100)}
       />
       <input
         accept="video/*,image/*"
@@ -236,132 +279,158 @@ export function TimelinePanel({ editor, clock, ref }: TimelinePanelProps): React
         ref={fileInputRef}
         type="file"
       />
-      <ContextMenu>
-        <ContextMenuTrigger
-          className="relative min-h-0 flex-1 overflow-auto overscroll-contain"
-          onContextMenu={(event) => {
-            const target = menuTargetFrom(
-              event.target instanceof Element ? event.target : null,
-              gestures.timeAt(event.clientX)
-            );
-            if (target.kind === "clip" && !selectedClipIds.has(target.clipId))
-              editor.selectClip(target.clipId);
-            if (target.kind === "keyframe" && !selectedKeyframeIds.has(target.keyframeId)) {
-              editor.selectKeyframes(
-                [{ clipId: target.clipId, key: target.key, keyframeId: target.keyframeId }],
-                false
-              );
-            }
-            setMenuTarget(target);
-          }}
-          data-timeline-scroller=""
-          ref={scrollRef}>
-          <div className="relative" ref={bodyRef} style={{ width: TRACK_HEADER_WIDTH_PX + contentWidth }}>
-            <div
-              className="sticky top-0 z-30 flex border-b bg-background"
-              style={{ height: RULER_HEIGHT_PX }}>
-              <div
-                className="sticky left-0 z-10 shrink-0 border-e bg-background"
-                style={{ width: TRACK_HEADER_WIDTH_PX }}
-              />
-              <div className="relative" ref={contentRef} style={{ width: contentWidth }}>
-                <TimelineRuler
-                  onPointerDown={gestures.onRulerPointerDown}
+      <TrackHeaderWidthContext value={headerWidth}>
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <ContextMenu>
+            <ContextMenuTrigger
+              className="relative min-h-0 flex-1 overflow-auto overscroll-contain"
+              onContextMenu={(event) => {
+                const target = menuTargetFrom(
+                  event.target instanceof Element ? event.target : null,
+                  gestures.timeAt(event.clientX)
+                );
+                if (target.kind === "clip" && !selectedClipIds.has(target.clipId))
+                  editor.selectClip(target.clipId);
+                if (target.kind === "keyframe" && !selectedKeyframeIds.has(target.keyframeId)) {
+                  editor.selectKeyframes(
+                    [{ clipId: target.clipId, key: target.key, keyframeId: target.keyframeId }],
+                    false
+                  );
+                }
+                setMenuTarget(target);
+              }}
+              data-timeline-scroller=""
+              ref={scrollRef}>
+              <div className="relative" ref={bodyRef} style={{ width: headerWidth + contentWidth }}>
+                <div
+                  className="sticky top-0 z-30 flex border-b bg-background"
+                  style={{ height: RULER_HEIGHT_PX }}>
+                  <div
+                    className="sticky left-0 z-10 shrink-0 border-e bg-background"
+                    style={{ width: headerWidth }}
+                  />
+                  <div className="relative" ref={contentRef} style={{ width: contentWidth }}>
+                    <TimelineRuler
+                      onPointerDown={gestures.onRulerPointerDown}
+                      pxPerSecond={pxPerSecond}
+                      toX={toX}
+                      visibleSeconds={visibleSeconds}
+                    />
+                    <RulerPlayheadHead clock={clock} onPointerDown={gestures.onRulerPointerDown} toX={toX} />
+                  </div>
+                </div>
+
+                <TimelinePlayhead clock={clock} offset={headerWidth} scrollRef={scrollRef} toX={toX} />
+
+                <NewVideoTrackRow
+                  contentWidth={contentWidth}
+                  left={toX(0)}
+                  onDropFiles={(dataTransfer, clientX) =>
+                    dropMedia(dataTransfer, clientX, project.videoTracks.length)
+                  }
+                  trackIndex={project.videoTracks.length}
+                />
+                {videoTracks.map(({ track, trackIndex }) => (
+                  <VideoTrackRow
+                    clock={clock}
+                    contentWidth={contentWidth}
+                    emptyHint={!hasClips && trackIndex === 0}
+                    height={trackHeights.heightOf(track.id, VIDEO_TRACK_HEIGHT_PX)}
+                    key={track.id}
+                    onResetHeight={() => trackHeights.resetHeight(track.id)}
+                    onResize={(height) => trackHeights.setHeight(track.id, height)}
+                    lanesOpen={!collapsedTracks.has(track.id)}
+                    onSelectLane={editor.selectLane}
+                    onShowLane={(key) => {
+                      editor.showLane(key);
+                      setCollapsedTracks((current) => {
+                        const next = new Set(current);
+                        next.delete(track.id);
+                        return next;
+                      });
+                    }}
+                    selectedLanes={editor.selectedLanes}
+                    shownLanes={editor.shownLanes}
+                    onClipPointerDown={(event, clip, mode) =>
+                      gestures.onClipPointerDown(event, clip, trackIndex, mode)
+                    }
+                    onDropFiles={(dataTransfer, clientX) => dropMedia(dataTransfer, clientX, trackIndex)}
+                    onMotionDrop={(clipId, drop) => {
+                      editor.applyMotionPreset(clipId, drop.presetId, drop.placement);
+                      setCollapsedTracks((current) => {
+                        const next = new Set(current);
+                        next.delete(track.id);
+                        return next;
+                      });
+                    }}
+                    onKeyframePointerDown={(event, clip, keyframe, key) =>
+                      gestures.onKeyframePointerDown(event, clip, key, keyframe)
+                    }
+                    onMarqueePointerDown={gestures.onMarqueePointerDown}
+                    onSelectClip={(clipId) => editor.selectClip(clipId)}
+                    onSelectTransition={(clipId) => editor.selectClip(clipId, { transition: true })}
+                    onToggleHidden={() => editor.setTrackHidden(trackIndex, !track.hidden)}
+                    onToggleLocked={() => editor.setTrackLocked(trackIndex, !track.locked)}
+                    onToggleLanes={() => toggleLanes(track.id)}
+                    primaryClipId={primaryId}
+                    pxPerSecond={pxPerSecond}
+                    selectedClipIds={selectedClipIds}
+                    keyframeTolerance={frameTolerance(project.settings.fps)}
+                    selectedKeyframeIds={selectedKeyframeIds}
+                    toX={toX}
+                    track={track}
+                    trackIndex={trackIndex}
+                  />
+                ))}
+                <AudioTracks
+                  clock={clock}
+                  contentWidth={contentWidth}
+                  editor={editor}
                   pxPerSecond={pxPerSecond}
                   toX={toX}
-                  visibleSeconds={visibleSeconds}
+                  trackHeights={trackHeights}
                 />
-                <RulerPlayheadHead clock={clock} toX={toX} />
+                {gestures.marquee ? (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute z-25 rounded-xs border border-info/64 bg-info/12"
+                    data-testid="marquee"
+                    style={gestures.marquee}
+                  />
+                ) : null}
               </div>
-            </div>
-
-            <TimelinePlayhead clock={clock} offset={TRACK_HEADER_WIDTH_PX} scrollRef={scrollRef} toX={toX} />
-
-            <NewVideoTrackRow
-              contentWidth={contentWidth}
-              left={toX(0)}
-              onDropFiles={(dataTransfer, clientX) =>
-                dropMedia(dataTransfer, clientX, project.videoTracks.length)
-              }
-              trackIndex={project.videoTracks.length}
-            />
-            {videoTracks.map(({ track, trackIndex }) => (
-              <VideoTrackRow
-                clock={clock}
-                contentWidth={contentWidth}
-                emptyHint={!hasClips && trackIndex === 0}
-                key={track.id}
-                lanesOpen={!collapsedTracks.has(track.id)}
-                onSelectLane={editor.selectLane}
-                onShowLane={(key) => {
-                  editor.showLane(key);
-                  setCollapsedTracks((current) => {
-                    const next = new Set(current);
-                    next.delete(track.id);
-                    return next;
-                  });
-                }}
-                selectedLanes={editor.selectedLanes}
-                shownLanes={editor.shownLanes}
-                onClipPointerDown={(event, clip, mode) =>
-                  gestures.onClipPointerDown(event, clip, trackIndex, mode)
-                }
-                onDropFiles={(dataTransfer, clientX) => dropMedia(dataTransfer, clientX, trackIndex)}
-                onMotionDrop={(clipId, drop) => {
-                  editor.applyMotionPreset(clipId, drop.presetId, drop.placement);
-                  setCollapsedTracks((current) => {
-                    const next = new Set(current);
-                    next.delete(track.id);
-                    return next;
-                  });
-                }}
-                onKeyframePointerDown={(event, clip, keyframe, key) =>
-                  gestures.onKeyframePointerDown(event, clip, key, keyframe)
-                }
-                onMarqueePointerDown={gestures.onMarqueePointerDown}
-                onSelectClip={(clipId) => editor.selectClip(clipId)}
-                onSelectTransition={(clipId) => editor.selectClip(clipId, { transition: true })}
-                onToggleHidden={() => editor.setTrackHidden(trackIndex, !track.hidden)}
-                onToggleLanes={() => toggleLanes(track.id)}
-                primaryClipId={primaryId}
-                pxPerSecond={pxPerSecond}
-                selectedClipIds={selectedClipIds}
-                keyframeTolerance={frameTolerance(project.settings.fps)}
-                selectedKeyframeIds={selectedKeyframeIds}
-                toX={toX}
-                track={track}
-                trackIndex={trackIndex}
-              />
-            ))}
-            <AudioTracks
+            </ContextMenuTrigger>
+            <TimelineContextMenu
               clock={clock}
-              contentWidth={contentWidth}
               editor={editor}
-              pxPerSecond={pxPerSecond}
-              toX={toX}
+              onDeleteTrack={(trackIndex) => {
+                if ((project.videoTracks[trackIndex]?.clips.length ?? 0) > 0) setDeleting(trackIndex);
+                else editor.deleteTrack(trackIndex);
+              }}
+              onImportMedia={openImport}
+              onRenameTrack={setRenaming}
+              target={menuTarget}
             />
-            {gestures.marquee ? (
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute z-25 rounded-xs border border-info/64 bg-info/12"
-                data-testid="marquee"
-                style={gestures.marquee}
-              />
-            ) : null}
-          </div>
-        </ContextMenuTrigger>
-        <TimelineContextMenu
-          clock={clock}
-          editor={editor}
-          onDeleteTrack={(trackIndex) => {
-            if ((project.videoTracks[trackIndex]?.clips.length ?? 0) > 0) setDeleting(trackIndex);
-            else editor.deleteTrack(trackIndex);
-          }}
-          onImportMedia={openImport}
-          onRenameTrack={setRenaming}
-          target={menuTarget}
-        />
-      </ContextMenu>
+          </ContextMenu>
+          <TimelineScrollFades
+            content={bodyRef}
+            left={headerWidth}
+            scroller={scrollRef}
+            top={RULER_HEIGHT_PX}
+          />
+          <TrackResizeHandle
+            axis="x"
+            className="z-35"
+            label={STUDIO_COPY.timeline.resizeTrackHeaders}
+            max={TRACK_HEADER_MAX_WIDTH_PX}
+            min={TRACK_HEADER_MIN_WIDTH_PX}
+            onReset={headerColumn.resetWidth}
+            onResize={headerColumn.setWidth}
+            style={{ left: headerWidth }}
+            value={headerWidth}
+          />
+        </div>
+      </TrackHeaderWidthContext>
       <RenameTrackDialog
         name={renaming === null ? "" : (project.videoTracks[renaming]?.name ?? "")}
         onOpenChange={(open) => !open && setRenaming(null)}

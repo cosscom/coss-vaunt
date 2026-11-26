@@ -1,0 +1,22 @@
+{
+  "source": "audio",
+  "seed": 1,
+  "size": 32,
+  "width": 132,
+  "triangleScale": 0.42,
+  "triangleRadius": 2,
+  "triangleOffset": 1.5,
+  "bars": 35,
+  "barWidth": 1.5,
+  "dotSize": 2,
+  "amplitude": 0.45,
+  "focus": 0.31,
+  "window": 2.5,
+  "openMs": 280,
+  "closeMs": 210,
+  "easing": "spring",
+  "bounce": 0.3,
+  "stagger": 14,
+  "barMs": 230,
+  "palette": "gradient"
+}

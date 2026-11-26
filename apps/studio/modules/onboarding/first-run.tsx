@@ -5,7 +5,6 @@ import type * as React from "react";
 import { useEffect, useState } from "react";
 import { Onboarding } from "./onboarding";
 import { growWindowTo } from "@/modules/desktop/desktop-window";
-import { markIntroSeen } from "@/modules/intro/intro-gate";
 
 /** The studio window's size once onboarding hands over, when the screen has room for it. */
 const STUDIO_WINDOW = { width: 1920, height: 1080 };
@@ -21,10 +20,6 @@ type Phase = "onboarding" | "leaving" | "studio";
  */
 export function FirstRun({ children }: { children: React.ReactNode }): React.ReactElement {
   const [phase, setPhase] = useState<Phase>("onboarding");
-
-  useEffect(() => {
-    markIntroSeen();
-  }, []);
 
   useEffect(() => {
     if (phase === "studio") return;
