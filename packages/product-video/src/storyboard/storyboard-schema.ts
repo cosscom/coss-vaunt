@@ -221,6 +221,8 @@ export const videoTrackSchema = z
     clips: z.array(clipSchema),
     /** Hidden tracks stay in the project but don't draw. */
     hidden: z.boolean().optional(),
+    /** Locked tracks still draw, but their clips can't be selected or edited in the editor. */
+    locked: z.boolean().optional(),
   })
   .superRefine((track, ctx) => {
     const clips = [...track.clips].sort((a, b) => a.start - b.start);
@@ -305,6 +307,8 @@ export const audioTrackSchema = z.object({
   clips: z.array(audioClipSchema),
   /** Muted tracks stay in the project but don't play. */
   muted: z.boolean().optional(),
+  /** Locked tracks still play, but their clips can't be selected or edited in the editor. */
+  locked: z.boolean().optional(),
 });
 
 export const APP_INSTRUCTIONS_MAX = 4000;
