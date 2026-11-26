@@ -8,6 +8,7 @@ import {
   dropTrackIndex,
   isClipLocked,
   lockedClipIds,
+  lockedSceneIds,
   withoutLockedClips,
 } from "./track-locks";
 
@@ -53,6 +54,15 @@ const withTrack = (
 });
 
 describe("locked clips", () => {
+  it("lists the scenes with a clip on a locked video track", () => {
+    const project = lockedProject();
+    const bound = withTrack(project, 1, (track) => ({
+      clips: track.clips.map((clip) => (clip.id === "b" ? { ...clip, storyboardNodeId: "scene-b" } : clip)),
+    }));
+    expect([...lockedSceneIds(bound)]).toEqual(["scene-b"]);
+    expect(lockedSceneIds(project).size).toBe(0);
+  });
+
   it("lists clips on locked video and audio tracks", () => {
     const project = lockedProject();
     expect([...lockedClipIds(project)].sort()).toEqual(["b", "c", "m"]);

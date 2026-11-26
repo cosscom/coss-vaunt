@@ -139,4 +139,33 @@ describe("describeProject", () => {
       "1. [text] Hook (2 s, “Hi”), id hook; then crossfade 0.5 s\n2. [recording] Ask (6 s, /home), id ask"
     );
   });
+
+  it("marks scenes and tracks that are locked", () => {
+    const { project } = projectWithClip();
+    const [track] = project.videoTracks;
+    if (!track) throw new Error("no track");
+    const locked: Project = {
+      ...project,
+      videoTracks: [
+        { ...track, locked: true, clips: track.clips.map((clip) => ({ ...clip, storyboardNodeId: "hook" })) },
+      ],
+    };
+    const board = {
+      ...EMPTY_BOARD,
+      nodes: [
+        {
+          id: "hook",
+          kind: "text" as const,
+          title: "Hook",
+          notes: "",
+          duration: 3,
+          position: { x: 0, y: 0 },
+          words: "Hi",
+        },
+      ],
+    };
+    const text = describeProject(locked, board, []);
+    expect(text).toContain("id hook (on a locked track: don't move, retime or remove it)");
+    expect(text).toContain("Video track 1 (locked):");
+  });
 });

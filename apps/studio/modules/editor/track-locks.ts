@@ -8,6 +8,17 @@ export function lockedClipIds(project: Project): ReadonlySet<string> {
   return new Set(tracks.flatMap((track) => (track.locked ? track.clips.map((clip) => clip.id) : [])));
 }
 
+/** Storyboard scenes with a clip on a locked video track: the board and the agent can't move, retime or remove them. */
+export function lockedSceneIds(project: Project): ReadonlySet<string> {
+  return new Set(
+    project.videoTracks.flatMap((track) =>
+      track.locked
+        ? track.clips.flatMap((clip) => (clip.storyboardNodeId ? [clip.storyboardNodeId] : []))
+        : []
+    )
+  );
+}
+
 export function withoutLockedClips(clipIds: readonly string[], project: Project): string[] {
   const locked = lockedClipIds(project);
   return locked.size === 0 ? [...clipIds] : clipIds.filter((id) => !locked.has(id));

@@ -6,6 +6,7 @@ import {
   CaptionsIcon,
   CheckIcon,
   ChevronDownIcon,
+  CircleAlertIcon,
   ClockIcon,
   MessageCircleIcon,
   RotateCcwIcon,
@@ -147,26 +148,32 @@ function ChangeCard({
   message: AgentMessage;
   change: AgentChange;
 }): React.ReactElement {
-  const showGenerate = change.kind === "board" && !change.undone && agent.canGenerate;
+  const showGenerate = change.kind === "board" && !change.undone && !change.failed && agent.canGenerate;
+  const Icon = change.failed ? CircleAlertIcon : CheckIcon;
   return (
     <div
       className={cn(
         "flex flex-col gap-2 rounded-xl border bg-card p-2.5 text-xs",
-        change.undone && "border-dashed bg-transparent"
+        (change.undone || change.failed) && "border-dashed bg-transparent"
       )}>
       <div className="flex items-center gap-2">
-        <CheckIcon
+        <Icon
           aria-hidden="true"
           className={cn(
             "size-3.5 shrink-0",
-            change.undone ? "text-muted-foreground" : "text-success-foreground"
+            change.undone || change.failed ? "text-muted-foreground" : "text-success-foreground"
           )}
         />
         <span
-          className={cn("min-w-0 flex-1 truncate", change.undone && "text-muted-foreground line-through")}>
+          className={cn(
+            "min-w-0 flex-1 truncate",
+            change.undone && "text-muted-foreground line-through",
+            change.failed && "text-muted-foreground"
+          )}
+          title={change.failed ? change.summary : undefined}>
           {change.summary}
         </span>
-        {change.undone ? (
+        {change.failed ? null : change.undone ? (
           <span className="shrink-0 text-muted-foreground">{copy.undone}</span>
         ) : (
           <Button

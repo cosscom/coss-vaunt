@@ -137,7 +137,7 @@ export function spansAreValid(spans: Span[]): boolean {
 }
 
 /** Overlaps stop short of covering either clip, so both stay selectable. */
-function maxOverlap(a: number, b: number): number {
+export function maxOverlap(a: number, b: number): number {
   return Math.max(0, Math.min(MAX_TRANSITION_SECONDS, Math.min(a, b) - MIN_CLIP_SECONDS));
 }
 
