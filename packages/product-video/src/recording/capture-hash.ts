@@ -68,18 +68,32 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 
-const FNV_OFFSET = BigInt("0xcbf29ce484222325");
-const FNV_PRIME = BigInt("0x100000001b3");
-const MASK_64 = BigInt("0xffffffffffffffff");
+const encoder = new TextEncoder();
 
-/** FNV-1a 64 over UTF-8: the same in the browser and in Node, so the editor finds recordings without a server. */
+/**
+ * FNV-1a 64 over UTF-8: the same in the browser and in Node, so the editor finds recordings without a server.
+ * The 64-bit hash is four 16-bit limbs (low first) so it runs on plain numbers; BigInt was ~50x slower, and the
+ * editor hashes every recording clip on each edit.
+ */
 export function fnv1a64(text: string): string {
-  let hash = FNV_OFFSET;
-  for (const byte of new TextEncoder().encode(text)) {
-    hash ^= BigInt(byte);
-    hash = (hash * FNV_PRIME) & MASK_64;
+  // Offset basis 0xcbf29ce484222325.
+  let h0 = 0x2325;
+  let h1 = 0x8422;
+  let h2 = 0x9ce4;
+  let h3 = 0xcbf2;
+  for (const byte of encoder.encode(text)) {
+    h0 ^= byte;
+    // Times the prime 0x100000001b3: times 0x1b3, plus the hash shifted left by 40 bits.
+    const t0 = h0 * 0x1b3;
+    const t1 = h1 * 0x1b3 + (t0 >>> 16);
+    const t2 = h2 * 0x1b3 + (h0 << 8) + (t1 >>> 16);
+    h3 = (h3 * 0x1b3 + (h1 << 8) + (t2 >>> 16)) & 0xffff;
+    h0 = t0 & 0xffff;
+    h1 = t1 & 0xffff;
+    h2 = t2 & 0xffff;
   }
-  return hash.toString(16).padStart(16, "0");
+  const hex = (limb: number) => limb.toString(16).padStart(4, "0");
+  return hex(h3) + hex(h2) + hex(h1) + hex(h0);
 }
 
 export function captureHash(spec: CaptureSpec): string {

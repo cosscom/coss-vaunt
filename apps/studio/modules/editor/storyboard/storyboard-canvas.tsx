@@ -26,7 +26,7 @@ import {
 } from "@xyflow/react";
 import { useTheme } from "next-themes";
 import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { matchShortcut } from "../editor-keymap";
 import {
   applySelectChanges,
@@ -135,9 +135,13 @@ function CanvasInner({
   const [menuTarget, setMenuTarget] = useState<StoryboardMenuTarget | null>(null);
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
   const { board, selection } = actions;
-  const nodes = toFlowNodes(board, { selection, generation: statuses, issues, measured });
-  const offsets = growthOffsets(board, measured);
-  const edges = toFlowEdges(board, selection);
+  // Kept while the board is unchanged, so an edit elsewhere (a canvas drag every frame) doesn't resync React Flow.
+  const nodes = useMemo(
+    () => toFlowNodes(board, { selection, generation: statuses, issues, measured }),
+    [board, selection, statuses, issues, measured]
+  );
+  const offsets = useMemo(() => growthOffsets(board, measured), [board, measured]);
+  const edges = useMemo(() => toFlowEdges(board, selection), [board, selection]);
   const paneWidth = useStore((state) => state.width);
   const fit = (duration = 200) => {
     if (fitMode === "all") return void flow.fitView({ ...FIT_OPTIONS, duration });

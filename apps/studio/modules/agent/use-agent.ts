@@ -243,16 +243,16 @@ export function useAgent(
     theme: () => editor.project.settings.theme,
     setTheme: (theme) => editor.updateSettings({ theme }),
   });
-  const time = useSyncExternalStore(
+  // The moment chip shows tenths, and only while paused: selecting just that keeps playback and scrubbing from
+  // re-rendering the whole editor every frame.
+  const pausedTenths = useSyncExternalStore(
     clock.subscribe,
-    () => clock.getState().time,
+    () => (clock.getState().playing ? null : Math.floor(clock.getState().time * 10)),
     () => 0
   );
-  const playing = useSyncExternalStore(
-    clock.subscribe,
-    () => clock.getState().playing,
-    () => false
-  );
+  const playing = pausedTenths === null;
+  // The middle of the tenth, so it reads back as the same tenth.
+  const time = pausedTenths === null ? 0 : (pausedTenths + 0.5) / 10;
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const chips: ContextChip[] = contextChips({

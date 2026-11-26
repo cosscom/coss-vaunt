@@ -50,14 +50,26 @@ export function AudioVolumeLane({
   actions,
   onKeyframePointerDown,
 }: AudioVolumeLaneProps): React.ReactElement {
-  const time = usePlaybackState(clock, (state) => state.time);
+  // What the lane shows of the playhead, not the time itself, so playback re-renders it only when that changes.
+  const inside = usePlaybackState(
+    clock,
+    (state) => state.time >= clip.start && state.time <= clip.start + clip.duration
+  );
+  const atPlayhead = usePlaybackState(
+    clock,
+    (state) => keyframeAt(clip.volume, Math.min(clip.duration, Math.max(0, state.time - clip.start))) !== null
+  );
+  const currentId = usePlaybackState(
+    clock,
+    (state) =>
+      clip.volume.keyframes.find(
+        (keyframe) => Math.abs(clip.start + keyframe.at - state.time) <= KEYFRAME_SNAP_SECONDS
+      )?.id ?? null
+  );
   const [menuKeyframe, setMenuKeyframe] = useState<Keyframe | null>(null);
   const { keyframes } = clip.volume;
   const first = keyframes[0];
   const last = keyframes[keyframes.length - 1];
-  const local = Math.min(clip.duration, Math.max(0, time - clip.start));
-  const atPlayhead = keyframeAt(clip.volume, local) !== null;
-  const inside = time >= clip.start && time <= clip.start + clip.duration;
   const menuTargets = (keyframe: Keyframe | null) => {
     if (!keyframe) return [];
     return selectedKeyframeIds.has(keyframe.id) ? [...selectedKeyframeIds] : [keyframe.id];
@@ -114,7 +126,7 @@ export function AudioVolumeLane({
             />
           ) : null}
           {keyframes.map((keyframe) => {
-            const current = Math.abs(clip.start + keyframe.at - time) <= KEYFRAME_SNAP_SECONDS;
+            const current = keyframe.id === currentId;
             const selected = selectedKeyframeIds.has(keyframe.id);
             return (
               <button

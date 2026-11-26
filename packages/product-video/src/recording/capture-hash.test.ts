@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createProject, createRecordingClip } from "../storyboard/storyboard-factories";
 import type { Clip, Project } from "../storyboard/storyboard-schema";
-import { canonicalJson, captureHashForClip, captureSpecFor } from "./capture-hash";
+import { canonicalJson, captureHashForClip, captureSpecFor, fnv1a64 } from "./capture-hash";
 
 const project: Project = {
   ...createProject({ name: "Demo", now: new Date("2026-11-18T08:00:00Z") }),
@@ -33,6 +33,42 @@ const hash = (
 describe("canonicalJson", () => {
   it("ignores key order and undefined fields", () => {
     expect(canonicalJson({ b: 1, a: [{ d: 2, c: undefined }] })).toBe(canonicalJson({ a: [{ d: 2 }], b: 1 }));
+  });
+});
+
+/** FNV-1a 64 with BigInt, as the hash was first written: recordings on disk are named by its output. */
+function referenceFnv1a64(text: string): string {
+  let hash = BigInt("0xcbf29ce484222325");
+  for (const byte of new TextEncoder().encode(text)) {
+    hash ^= BigInt(byte);
+    hash = (hash * BigInt("0x100000001b3")) & BigInt("0xffffffffffffffff");
+  }
+  return hash.toString(16).padStart(16, "0");
+}
+
+describe("fnv1a64", () => {
+  it("matches the published test vectors", () => {
+    expect(fnv1a64("")).toBe("cbf29ce484222325");
+    expect(fnv1a64("a")).toBe("af63dc4c8601ec8c");
+    expect(fnv1a64("foobar")).toBe("85944171f73967e8");
+  });
+
+  it("hashes exactly as the BigInt version did, so existing takes still match", () => {
+    const samples = [
+      "héllo wörld ✓ 🎬",
+      canonicalJson(captureSpecFor({ project, clip })),
+      "x".repeat(10_000),
+    ];
+    let seed = 7;
+    for (let index = 0; index < 500; index++) {
+      seed = (seed * 48271) % 2147483647;
+      samples.push(
+        Array.from({ length: seed % 80 }, (_, char) =>
+          String.fromCodePoint(((seed >> (char % 16)) % 0x2fff) + 32)
+        ).join("")
+      );
+    }
+    for (const sample of samples) expect(fnv1a64(sample)).toBe(referenceFnv1a64(sample));
   });
 });
 
