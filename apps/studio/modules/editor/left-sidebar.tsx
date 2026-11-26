@@ -29,6 +29,7 @@ export function LeftSidebar({
   storyboard,
   generation,
   onPlanWithAgent,
+  visible,
 }: {
   editor: EditorState;
   clock: PlaybackClock;
@@ -36,14 +37,17 @@ export function LeftSidebar({
   storyboard: StoryboardActions;
   generation: BoardGeneration;
   onPlanWithAgent: () => void;
+  /** Whether the sidebar's column is open; closed, it stays mounted but stops fetching the asset listing. */
+  visible: boolean;
 }): React.ReactElement {
   const [tab, setTab] = useState<SidebarTab>("storyboard");
   // Open while there's nothing on the timeline to make; once there is, the storyboard steps aside for the stage.
   const [open, setOpen] = useState(() =>
     editor.project.videoTracks.every((track) => track.clips.length === 0)
   );
-  // The storyboard's media picker needs the imported files too, so the listing stays live on both tabs.
-  const { assets, failed, refresh } = useProjectAssets(editor.project, true);
+  // The storyboard's media picker needs the imported files too, so the listing stays live on both tabs, and is
+  // fetched afresh when the column opens again.
+  const { assets, failed, refresh } = useProjectAssets(editor.project, visible);
   const files = (assets?.files ?? []).filter((file) => file.kind !== "audio");
 
   return (

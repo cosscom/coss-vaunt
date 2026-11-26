@@ -14,6 +14,9 @@ On macOS it renders with WKWebView, the same engine as Safari.
   with the glass the settings file has (`appearance.glass` in `~/.config/coss-vaunt/settings.json`), and the page
   marks `<html data-vaunt-glass>` so Settings knows the window can do it. Transparency needs Tauri's
   `macos-private-api` feature, so this build can't go on the Mac App Store.
+- Icons: `icons/icon.png` (1024 px, with the macOS margin for the shadow) and `icons/icon.icns` are the app icon, the
+  particle V on a dark tile; the studio's favicon (`apps/studio/app/icon.png`) is the same image. `icons/icon-dev.png`
+  is a blue version kept for a possible dev-build icon; nothing uses it yet.
 
 ## Develop
 

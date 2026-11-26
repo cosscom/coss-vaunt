@@ -10,12 +10,13 @@ import {
   insertBoardSegment,
   layoutBoard,
   moveBoardNodes,
+  removeBoardNodes,
   updateBoardEdge,
   updateBoardNode,
 } from "@coss/vaunt-engine/storyboard/board-edits";
 import { boardOrder } from "@coss/vaunt-engine/storyboard/board-order";
 import type { Board, BoardEdge, BoardNode, BoardNodeKind } from "@coss/vaunt-engine/storyboard/board-schema";
-import { removeScenes, reorderScene } from "@coss/vaunt-engine/storyboard/board-sync";
+import { reorderScene } from "@coss/vaunt-engine/storyboard/board-sync";
 import { useState } from "react";
 import type { EditorState } from "../use-editor-state";
 import { type BoardSelection, EMPTY_BOARD_SELECTION } from "./board-flow";
@@ -63,8 +64,8 @@ export function useStoryboardActions(editor: EditorState) {
 
     add,
     remove: (target: BoardSelection = selection) => {
-      // A scene's clips go with it, or the timeline would bring it straight back.
-      editor.edit((current) => removeScenes(current, target.nodeIds, target.edgeIds));
+      // The sync takes a scene's clips with it, and turns a deleted join between two scenes into a cut.
+      editor.editBoard((current) => removeBoardNodes(current, target.nodeIds, target.edgeIds));
       setSelection(EMPTY_BOARD_SELECTION);
     },
     duplicate: (nodeIds: string[] = selection.nodeIds) => {
@@ -89,7 +90,7 @@ export function useStoryboardActions(editor: EditorState) {
     connect: (from: string, to: string) =>
       editor.editBoard((current) => connectBoardNodes(current, from, to)),
     reorder: (nodeId: string, direction: -1 | 1) =>
-      editor.edit((current) => reorderScene(current, nodeId, direction)),
+      editor.editScenes((current) => reorderScene(current, nodeId, direction)),
     layout: () => editor.editBoard(layoutBoard),
     move: (positions: Record<string, BoardNode["position"]>) =>
       editor.editBoard((current) => moveBoardNodes(current, positions), "board-move"),
@@ -99,7 +100,7 @@ export function useStoryboardActions(editor: EditorState) {
       editor.editBoard((current) => updateBoardEdge(current, edgeId, update), group),
     setBrief: (brief: string) => editor.editBoard((current) => ({ ...current, brief }), "board-brief"),
     replace: (next: Board) => {
-      editor.editBoard(() => next);
+      editor.editBoard(() => next, undefined, { replace: true });
       setSelection(EMPTY_BOARD_SELECTION);
     },
   };

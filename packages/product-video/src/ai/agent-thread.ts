@@ -5,7 +5,13 @@ import { VIDEO_THEMES } from "../storyboard/storyboard-schema";
 /** The most turns a saved thread keeps; the oldest go first. */
 export const MAX_THREAD_MESSAGES = 400;
 
-const changeBase = { id: z.string().min(1), summary: z.string(), undone: z.boolean().optional() };
+const changeBase = {
+  id: z.string().min(1),
+  summary: z.string(),
+  undone: z.boolean().optional(),
+  /** The studio couldn't apply it (a locked track, an order the timeline can't follow); the summary says why. */
+  failed: z.boolean().optional(),
+};
 
 /** Something the agent changed, with what was there before so its card can undo it. */
 export const agentChangeSchema = z.union([

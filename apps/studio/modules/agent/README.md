@@ -12,7 +12,7 @@ point it at, drafts the storyboard and edits it.
 | `use-agent.ts` | The thread, streaming, applying the agent's events with an Undo each, and the context sent with each message |
 | `agent-events.ts` | Parsing the event stream, the board an event leaves, and how a past turn reads back to the agent |
 | `thread-storage.ts` | Loading and saving the thread through the API, and moving an old localStorage thread over once |
-| `agent-context.ts` | The context chips and the project description the agent reads (scenes in story order, with ids and transitions) |
+| `agent-context.ts` | The context chips and the project description the agent reads (scenes in story order, with ids, transitions and which are on a locked track) |
 
 The reply streams from `POST /api/projects/[id]/agent`, which calls `streamAgentEvents` in the engine
 (`packages/product-video/src/ai/agent-chat.ts`); the agent follows the video-director skill in `ai/skills`.
@@ -35,6 +35,14 @@ The direct edits live in `ai/scene-edits.ts`. They change nothing else: a patch 
 keep their ids and fields (except that the first recording always starts fresh). They're held to the same rules as a
 draft (`sceneRuleErrors` in `board-draft.ts`: app paths, known text effects, the recording cap), and a broken edit
 goes back to the model as `failed` with the reason, so it can fix it.
+
+The board is a view of the timeline, so the studio applies each event as a board edit that `syncBoardEdits`
+(`storyboard/board-sync.ts`) carries over to the clips: a removed scene takes its clips with it, a move re-lays the
+moved scenes' clips on their track, and a new duration or transition trims or overlaps them. A draft (and undoing
+one) replaces the board wholesale instead: scenes it leaves out keep their clips and come back. When the timeline
+can't follow (scenes on different tracks, other clips between them, a locked track), nothing changes and the card
+says `Couldn't apply: …` with no Undo. The context marks scenes on a locked track, and `removeScene`, `moveScene`,
+`setSceneDuration`, `setTransition` and a duration in `editScene` refuse them (`lockedScenes` in the request).
 
 ## The thread
 

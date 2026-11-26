@@ -69,6 +69,21 @@ function missing(sceneId: string): { error: string } {
 }
 
 /**
+ * Why `sceneIds` can't be moved, retimed or removed: a scene whose clip is on a locked track stays as it is until
+ * the author unlocks the track. Null when none is locked.
+ */
+export function lockedSceneError(
+  board: Board,
+  sceneIds: readonly string[],
+  locked: ReadonlySet<string>
+): { error: string } | null {
+  const node = board.nodes.find((item) => sceneIds.includes(item.id) && locked.has(item.id));
+  return node
+    ? { error: `${quoted(node)} is on a locked track; ask the author to unlock it before changing it.` }
+    : null;
+}
+
+/**
  * A scene after the checks every scene passes: its schema, the recording cap and the draft rules. With `board`, a
  * recording that continues the previous one needs a recording before it there.
  */

@@ -6,6 +6,7 @@ import { type Board, type BoardNode, boardSchema } from "../storyboard/board-sch
 import { BoardDraftError, type BoardPlanner, draftBoard } from "./board-draft";
 import {
   addScene,
+  lockedSceneError,
   moveScene,
   newSceneSchema,
   patchScene,
@@ -37,6 +38,8 @@ export const agentChatRequestSchema = z.object({
   context: z.string().max(40000),
   /** The board as it is now, which drafts revise and replace. */
   board: boardSchema,
+  /** Scenes whose clips are on a locked track, which the tools won't move, retime or remove. */
+  lockedScenes: z.array(z.string().min(1)).max(1000).optional(),
 });
 
 export type AgentChatRequest = z.infer<typeof agentChatRequestSchema>;
@@ -65,6 +68,8 @@ export type AgentDeps = {
   planner?: BoardPlanner;
   /** Ids for scenes and edges the tools add; tests make them predictable. */
   newId?: () => string;
+  /** Scenes on locked tracks (see `agentChatRequestSchema`). */
+  lockedScenes?: readonly string[];
 };
 
 /** The agent's instructions: its skill, then the project the author is looking at. */
@@ -95,9 +100,15 @@ function sceneLine(board: Board): string {
 export function agentTools(
   board: Board,
   emit: (event: AgentEvent) => void,
-  { pages, appNotes = "", planner, newId = () => crypto.randomUUID() }: AgentDeps
+  { pages, appNotes = "", planner, newId = () => crypto.randomUUID(), lockedScenes = [] }: AgentDeps
 ): Record<string, Tool> {
   let current = board;
+  const locked = new Set(lockedScenes);
+  /** A scene on a locked track stays as it is; the model hears why and tells the author. */
+  const unlocked = (sceneIds: readonly string[], run: () => object) => {
+    const refused = lockedSceneError(current, sceneIds, locked);
+    return refused ? { failed: refused.error } : run();
+  };
   const draft = (request: Omit<Parameters<typeof draftBoard>[0], "pages" | "appNotes" | "planner">) =>
     draftBoard({ ...request, pages, appNotes, planner });
   /** Applies a direct edit to the whole board, or hands its problem back to the model to fix and retry. */
@@ -161,13 +172,16 @@ export function agentTools(
         "Change fields of one scene by its id: title, notes, duration, words and effect (text scenes), route and " +
         "startFrom (recording scenes). Only the fields you pass change, and no other scene does. Instant.",
       inputSchema: z.object({ sceneId: z.string().min(1), patch: scenePatchSchema }),
-      execute: async ({ sceneId, patch }) => updateScene(patchScene(current, sceneId, patch), sceneId),
+      execute: async ({ sceneId, patch }) =>
+        patch.duration === undefined
+          ? updateScene(patchScene(current, sceneId, patch), sceneId)
+          : unlocked([sceneId], () => updateScene(patchScene(current, sceneId, patch), sceneId)),
     }),
     setSceneDuration: tool({
       description: "Set how many seconds one scene lasts, by its id.",
       inputSchema: z.object({ sceneId: z.string().min(1), seconds: z.number().positive() }),
       execute: async ({ sceneId, seconds }) =>
-        updateScene(setSceneDuration(current, sceneId, seconds), sceneId),
+        unlocked([sceneId], () => updateScene(setSceneDuration(current, sceneId, seconds), sceneId)),
     }),
     addScene: tool({
       description:
@@ -179,12 +193,14 @@ export function agentTools(
     removeScene: tool({
       description: "Remove one scene by its id; the scenes either side of it join up.",
       inputSchema: z.object({ sceneId: z.string().min(1) }),
-      execute: async ({ sceneId }) => editBoard(removeScene(current, sceneId, newId)),
+      execute: async ({ sceneId }) =>
+        unlocked([sceneId], () => editBoard(removeScene(current, sceneId, newId))),
     }),
     moveScene: tool({
       description: "Move one scene to a position in story order (1 is first).",
       inputSchema: z.object({ sceneId: z.string().min(1), position: z.number().int().min(1) }),
-      execute: async ({ sceneId, position }) => editBoard(moveScene(current, sceneId, position, newId)),
+      execute: async ({ sceneId, position }) =>
+        unlocked([sceneId], () => editBoard(moveScene(current, sceneId, position, newId))),
     }),
     setTransition: tool({
       description:
@@ -195,7 +211,9 @@ export function agentTools(
         ...transitionSchema.shape,
       }),
       execute: async ({ fromSceneId, toSceneId, kind, seconds }) =>
-        editBoard(setTransition(current, fromSceneId, toSceneId, { kind, seconds }, newId)),
+        unlocked([fromSceneId, toSceneId], () =>
+          editBoard(setTransition(current, fromSceneId, toSceneId, { kind, seconds }, newId))
+        ),
     }),
     setTheme: tool({
       description: "Set whether the app is recorded in light or dark mode.",
@@ -213,7 +231,7 @@ export function agentTools(
  * turn. Without `model`, it uses the one in the AI settings.
  */
 export function streamAgentEvents(
-  { messages, context, board }: AgentChatRequest,
+  { messages, context, board, lockedScenes }: AgentChatRequest,
   deps: AgentDeps,
   { model, abortSignal }: { model?: StudioModel; abortSignal?: AbortSignal } = {}
 ): ReadableStream<AgentEvent> {
@@ -225,7 +243,7 @@ export function streamAgentEvents(
           model: model ?? (await loadStudioModel()),
           system: agentSystemPrompt(context),
           messages,
-          tools: agentTools(board, emit, deps),
+          tools: agentTools(board, emit, { ...deps, lockedScenes: lockedScenes ?? deps.lockedScenes }),
           stopWhen: [stepCountIs(MAX_STEPS), hasToolCall("askAuthor")],
           maxOutputTokens: MAX_REPLY_TOKENS,
           abortSignal,

@@ -21,13 +21,14 @@ const DRAFT: BoardDraft = {
   edges: [{ from: "hook", to: "links", transition: "crossfade", transitionSeconds: 0.4 }],
 };
 
-function run(board: Board, planner: BoardPlanner) {
+function run(board: Board, planner: BoardPlanner, lockedScenes: string[] = []) {
   const events: AgentEvent[] = [];
   let counter = 0;
   const tools = agentTools(board, (event) => events.push(event), {
     pages: [],
     planner,
     newId: () => `new-${++counter}`,
+    lockedScenes,
   });
   // The tools' execute functions, called as the model would; the options argument is unused by them.
   const call = (name: string, input: unknown) =>
@@ -143,6 +144,24 @@ describe("agentTools", () => {
       failed: "There's no scene with id nope.",
     });
     expect(events).toEqual([]);
+  });
+
+  it("leaves scenes on a locked track alone, saying why", async () => {
+    const board = await drafted();
+    const [hook, links] = board.nodes;
+    if (!hook || !links) throw new Error("no scenes");
+    const { events, call } = run(board, async () => DRAFT, [hook.id]);
+    const locked = { failed: expect.stringContaining("is on a locked track") };
+    expect(await call("removeScene", { sceneId: hook.id })).toMatchObject(locked);
+    expect(await call("moveScene", { sceneId: hook.id, position: 2 })).toMatchObject(locked);
+    expect(await call("setSceneDuration", { sceneId: hook.id, seconds: 3 })).toMatchObject(locked);
+    expect(
+      await call("setTransition", { fromSceneId: hook.id, toSceneId: links.id, kind: "cut" })
+    ).toMatchObject(locked);
+    expect(events).toEqual([]);
+    expect(await call("editScene", { sceneId: hook.id, patch: { title: "Hello" } })).toMatchObject({
+      done: expect.any(String),
+    });
   });
 
   it("adds, moves and removes scenes in story order, each step building on the last", async () => {

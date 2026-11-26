@@ -134,6 +134,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
                     generation={generation}
                     onPlanWithAgent={planWithAgent}
                     storyboard={storyboard}
+                    visible={!prompt.collapsed}
                   />
                 </div>
               </div>

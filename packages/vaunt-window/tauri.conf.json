@@ -8,5 +8,5 @@
     "security": { "csp": null },
     "macOSPrivateApi": true
   },
-  "bundle": { "active": false, "icon": ["icons/icon.png"] }
+  "bundle": { "active": false, "icon": ["icons/icon.png", "icons/icon.icns"] }
 }

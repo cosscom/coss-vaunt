@@ -211,6 +211,15 @@ export const STUDIO_COPY = {
   },
   storyboard: {
     tab: "Storyboard",
+    /** Why a board edit couldn't be carried over to the timeline, by `BoardRefusal`. */
+    refused: {
+      "scenes-span-tracks":
+        "Those scenes are on different tracks. Move their clips onto one track to reorder them.",
+      "scenes-not-together":
+        "Other clips sit between those scenes on the timeline, so they can't swap places.",
+      "order-breaks-overlaps": "That order doesn't fit the transitions between those clips.",
+    },
+    invalidEdit: "That change doesn't fit the timeline.",
     canvas: "Storyboard canvas",
     kinds: { recording: "Recording", text: "Text", media: "Media" },
     newTitles: { recording: "Recording", text: "Title card", media: "Media" },
@@ -676,6 +685,7 @@ export const STUDIO_COPY = {
       },
     },
     drafted: (summary: string) => `Drafted the storyboard: ${summary}`,
+    notApplied: (reason: string) => `Couldn't apply: ${reason}`,
     whyTheseScenes: "Why these scenes",
     themeSet: (theme: "light" | "dark") => `Recording in ${theme} mode`,
     undo: "Undo",

@@ -2,6 +2,7 @@ import { boardOrder } from "@coss/vaunt-engine/storyboard/board-order";
 import type { Board, BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
 import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
+import { lockedSceneIds } from "../editor/track-locks";
 
 /** Something the author is pointing the agent at; the project is always in context. */
 export type ContextChip =
@@ -60,9 +61,9 @@ function sceneDetail(node: BoardNode): string {
 
 /**
  * The board in story order, one line a scene with its id, and the transition into the next, so the agent can name
- * scenes and transitions in its edits.
+ * scenes and transitions in its edits. Scenes on a locked track say so, so the agent leaves them alone.
  */
-function sceneLines(board: Board): string {
+function sceneLines(board: Board, locked: ReadonlySet<string>): string {
   const order = boardOrder(board);
   return order
     .map((node, index) => {
@@ -71,7 +72,8 @@ function sceneLines(board: Board): string {
       const join = edge
         ? `; then ${edge.transition}${edge.transition === "cut" ? "" : ` ${edge.transitionSeconds} s`}`
         : "";
-      return `${index + 1}. [${node.kind}] ${node.title} (${node.duration} s${sceneDetail(node)}), id ${node.id}${join}`;
+      const lock = locked.has(node.id) ? " (on a locked track: don't move, retime or remove it)" : "";
+      return `${index + 1}. [${node.kind}] ${node.title} (${node.duration} s${sceneDetail(node)}), id ${node.id}${lock}${join}`;
     })
     .join("\n");
 }
@@ -83,7 +85,7 @@ export function describeProject(project: Project, board: Board, chips: readonly 
     `Project "${project.name}", ${aspectRatio}, ${theme} theme, ${projectDuration(project).toFixed(1)} s long.`,
     board.brief ? `Brief: ${board.brief}` : "No brief yet.",
     board.nodes.length > 0
-      ? `Storyboard scenes, in story order:\n${sceneLines(board)}`
+      ? `Storyboard scenes, in story order:\n${sceneLines(board, lockedSceneIds(project))}`
       : "The storyboard is empty.",
   ];
   project.videoTracks.forEach((track, index) => {
@@ -94,7 +96,8 @@ export function describeProject(project: Project, board: Board, chips: readonly 
           `- "${clip.name}", ${clip.source.kind}, at ${clip.start.toFixed(1)} s for ${clip.duration.toFixed(1)} s`
       )
       .join("\n");
-    lines.push(`Video track ${index + 1}${track.hidden ? " (hidden)" : ""}:\n${clips}`);
+    const state = [track.hidden && "hidden", track.locked && "locked"].filter(Boolean).join(", ");
+    lines.push(`Video track ${index + 1}${state ? ` (${state})` : ""}:\n${clips}`);
   });
   if (project.videoTracks.every((track) => track.clips.length === 0)) lines.push("The timeline is empty.");
 

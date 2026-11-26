@@ -7,7 +7,8 @@ import { type ContextChip, contextChips, describeProject } from "./agent-context
 import { type AgentChange, type AgentMessage, boardAfter, historyContent, takeEvents } from "./agent-events";
 import { loadThread, saveThread } from "./thread-storage";
 import type { PlaybackClock } from "@/modules/editor/player/playback-clock";
-import type { EditorState } from "@/modules/editor/use-editor-state";
+import { lockedSceneIds } from "@/modules/editor/track-locks";
+import type { EditorState, EditResult } from "@/modules/editor/use-editor-state";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.agent;
@@ -15,7 +16,10 @@ const copy = STUDIO_COPY.agent;
 /** What the agent can change in the editor, each step undoable from its card and with ⌘Z. */
 type AgentEffects = {
   board: () => Board;
-  editBoard: (update: (board: Board) => Board) => void;
+  /** `replace` for a whole new board (a draft, or undoing one), whose missing scenes keep their clips. */
+  editBoard: (update: (board: Board) => Board, options?: { replace?: boolean }) => EditResult;
+  /** Scenes on locked tracks, which the agent's tools leave alone. */
+  lockedScenes: () => string[];
   theme: () => "light" | "dark";
   setTheme: (theme: "light" | "dark") => void;
 };
@@ -100,17 +104,30 @@ function useThread(projectId: string, effects: AgentEffects) {
         case "scene": {
           const before = fx.board();
           const after = boardAfter(event, before);
-          if (after) fx.editBoard(() => after);
+          const result = after ? fx.editBoard(() => after, { replace: event.type === "board" }) : null;
+          const summary = event.type === "board" ? copy.drafted(event.summary) : event.summary;
+          if (result && !result.applied) {
+            // Nothing changed, so the card says why and has nothing to undo.
+            addChange({
+              id: crypto.randomUUID(),
+              kind: event.type,
+              summary: copy.notApplied(result.reason),
+              before,
+              failed: true,
+            });
+            setStatus(null);
+            return;
+          }
           addChange(
             event.type === "board"
               ? {
                   id: crypto.randomUUID(),
                   kind: "board",
-                  summary: copy.drafted(event.summary),
+                  summary,
                   before,
                   ...(event.rationale ? { rationale: event.rationale } : {}),
                 }
-              : { id: crypto.randomUUID(), kind: event.type, summary: event.summary, before }
+              : { id: crypto.randomUUID(), kind: event.type, summary, before }
           );
           setStatus(null);
           return;
@@ -134,6 +151,7 @@ function useThread(projectId: string, effects: AgentEffects) {
         body: JSON.stringify({
           context,
           board: effectsRef.current.board(),
+          lockedScenes: effectsRef.current.lockedScenes(),
           messages: history
             .filter((message) => !message.failed)
             .map((message) => ({ role: message.role, content: historyContent(message) }))
@@ -178,9 +196,9 @@ function useThread(projectId: string, effects: AgentEffects) {
   const undo = (messageId: string, changeId: string) => {
     const message = messages.find((item) => item.id === messageId);
     const change = message?.changes?.find((item) => item.id === changeId);
-    if (!change || change.undone) return;
+    if (!change || change.undone || change.failed) return;
     if (change.kind === "theme") effectsRef.current.setTheme(change.before);
-    else effectsRef.current.editBoard(() => change.before);
+    else effectsRef.current.editBoard(() => change.before, { replace: change.kind === "board" });
     setMessages((list) =>
       list.map((item) =>
         item.id === messageId
@@ -220,7 +238,8 @@ export function useAgent(
 ) {
   const thread = useThread(editor.project.id, {
     board: () => editor.board,
-    editBoard: (update) => editor.editBoard(update),
+    editBoard: (update, options) => editor.editBoard(update, undefined, options),
+    lockedScenes: () => [...lockedSceneIds(editor.project)],
     theme: () => editor.project.settings.theme,
     setTheme: (theme) => editor.updateSettings({ theme }),
   });

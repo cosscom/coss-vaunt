@@ -10,7 +10,7 @@ import {
 import { findMotionPreset } from "@coss/vaunt-engine/catalogues/motion-presets/motion-presets";
 import { applyGeneratedClips } from "@coss/vaunt-engine/storyboard/board-generation";
 import { type Board, EMPTY_BOARD } from "@coss/vaunt-engine/storyboard/board-schema";
-import { syncBoard } from "@coss/vaunt-engine/storyboard/board-sync";
+import { syncBoard, syncBoardEdits } from "@coss/vaunt-engine/storyboard/board-sync";
 import {
   PROPERTY_KEYS,
   PROPERTY_SPECS,
@@ -87,7 +87,7 @@ import {
 import { groupTargetKeys, keyframeTargetKeys } from "./keyframe-targets";
 import { useMediaImport } from "./media/use-media-import";
 import type { PlaybackClock } from "./player/playback-clock";
-import { createHistory, pushHistory, redo, undo } from "./project-history";
+import { createHistory, type ProjectHistory, pushHistory, redo, undo } from "./project-history";
 import type { NewClipKind } from "./timeline/timeline-transport";
 import { changesLockedTracks, lockedClipIds, withoutLockedClips } from "./track-locks";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -103,6 +103,11 @@ function toggled<T>(items: readonly T[], item: T): T[] {
 type LaneState = { clipId: string | null; selected: PropertyKey[]; shown: PropertyKey[] };
 
 type EditOptions = { group?: string; selection?: EditorSelection };
+
+/** Whether an edit landed, and why not when it was refused; an edit that changes nothing still counts. */
+export type EditResult = { applied: true } | { applied: false; reason: string };
+
+const APPLIED: EditResult = { applied: true };
 
 /** Edits that would fail validation are dropped, so autosave only ever sends valid projects. */
 function isValid(next: Project): boolean {
@@ -123,9 +128,19 @@ function fileUrl(projectId: string, clip: Clip): string | null {
  * shortcuts share. Discrete actions read the latest render; continuous ones go through `edit`.
  */
 export function useEditorState(initialProject: Project, clock: PlaybackClock) {
-  const [history, setHistory] = useState(() =>
+  const [history, setHistoryState] = useState(() =>
     createHistory(quantiseProjectKeyframes(syncBoard(initialProject, initialProject)))
   );
+  // Edits apply to the latest history at once rather than in a state updater, so they can say whether they landed.
+  const latest = useRef(history);
+  const setHistory = (update: (current: ProjectHistory) => ProjectHistory) => {
+    const next = update(latest.current);
+    if (next === latest.current) return;
+    latest.current = next;
+    setHistoryState(next);
+  };
+  /** The last refusal toasted, so a refused drag says so once rather than on every frame. */
+  const refusal = useRef<{ group?: string; reason: string } | null>(null);
   /** Scenes being generated: the board keeps them while their clips are replaced. */
   const generatingScenes = useRef<ReadonlySet<string>>(new Set());
   const [rawSelection, setSelection] = useState<EditorSelection>(EMPTY_SELECTION);
@@ -148,20 +163,45 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
   const frame = 1 / project.settings.fps;
 
   /** Every edit, from the timeline, the board or the agent, ends with the board matched to the timeline. */
-  const synced = (before: Project, after: Project) =>
-    syncBoard(before, after, { keep: generatingScenes.current });
+  const synced = (before: Project, after: Project, { replace = false } = {}) =>
+    syncBoardEdits(before, after, { keep: generatingScenes.current, replace });
 
-  /** Edits that change a locked track's clips are dropped too, unless `unlocked` (generated clips). */
-  const edit = (update: (current: Project) => Project, group?: string, { unlocked = false } = {}) =>
-    setHistory((current) => {
-      const next = quantiseProjectKeyframes(synced(current.present, update(current.present)));
-      if (next === current.present || !isValid(next)) return current;
-      if (!unlocked && changesLockedTracks(current.present, next)) return current;
-      return pushHistory(current, next, { group, now: Date.now() });
-    });
+  const refuse = (reason: string, group?: string): EditResult => {
+    if (refusal.current?.reason !== reason || refusal.current.group !== group || !group)
+      toastManager.add({ type: "info", title: reason });
+    refusal.current = { group, reason };
+    return { applied: false, reason };
+  };
+
+  /**
+   * Applies `update` to the latest project. Edits that change a locked track's clips are dropped, unless `unlocked`
+   * (generated clips); with `report`, a dropped edit (a locked track, or a board edit the timeline can't follow)
+   * says why in a toast. `replace` is a board replaced wholesale (see `syncBoardEdits`).
+   */
+  const edit = (
+    update: (current: Project) => Project,
+    group?: string,
+    { unlocked = false, report = false, replace = false } = {}
+  ): EditResult => {
+    const present = latest.current.present;
+    const result = synced(present, update(present), { replace });
+    const next = quantiseProjectKeyframes(result.project);
+    const [refused] = result.refused;
+    const reason = refused
+      ? STUDIO_COPY.storyboard.refused[refused]
+      : next !== present && !isValid(next)
+        ? STUDIO_COPY.storyboard.invalidEdit
+        : !unlocked && changesLockedTracks(present, next)
+          ? copy.trackLockedRefused
+          : null;
+    if (reason) return report ? refuse(reason, group) : { applied: false, reason };
+    refusal.current = null;
+    if (next !== present) setHistory((current) => pushHistory(current, next, { group, now: Date.now() }));
+    return APPLIED;
+  };
 
   const commit = (proposed: Project, { group, selection: nextSelection }: EditOptions = {}) => {
-    const next = quantiseProjectKeyframes(synced(project, proposed));
+    const next = quantiseProjectKeyframes(synced(project, proposed).project);
     if (next === project || !isValid(next)) return false;
     if (changesLockedTracks(project, next)) {
       toastManager.add({ type: "info", title: copy.trackLockedRefused });
@@ -266,6 +306,8 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     hasValue: valueClipboard !== null,
     importing: media.importing,
     edit: (update: (current: Project) => Project, group?: string) => edit(update, group),
+    /** A board action that changes the project (a reorder), saying in a toast when it can't. */
+    editScenes: (update: (current: Project) => Project) => edit(update, undefined, { report: true }),
     editClip,
 
     undo: () => setHistory(undo),
@@ -581,13 +623,20 @@ export function useEditorState(initialProject: Project, clock: PlaybackClock) {
     moveSelection: (next: Project) => commit(next),
 
     board: project.storyboard ?? EMPTY_BOARD,
-    /** Board edits share the project's undo history; `group` merges a node drag into one step. */
-    editBoard: (update: (board: Board) => Board, group?: string) =>
-      edit((current) => {
-        const board = current.storyboard ?? EMPTY_BOARD;
-        const next = update(board);
-        return next === board ? current : { ...current, storyboard: next };
-      }, group),
+    /**
+     * Board edits share the project's undo history; `group` merges a node drag into one step, and `replace` is a
+     * board replaced wholesale (a draft), whose missing scenes keep their clips. A refused edit says why in a toast.
+     */
+    editBoard: (update: (board: Board) => Board, group?: string, { replace = false } = {}) =>
+      edit(
+        (current) => {
+          const board = current.storyboard ?? EMPTY_BOARD;
+          const next = update(board);
+          return next === board ? current : { ...current, storyboard: next };
+        },
+        group,
+        { report: true, replace }
+      ),
     /** Generated clips arrive while the author keeps editing, so this applies to the latest project. */
     applyGeneratedClips: (nodeId: string, clips: Clip[]) =>
       edit((current) => applyGeneratedClips(current, nodeId, clips), undefined, { unlocked: true }),

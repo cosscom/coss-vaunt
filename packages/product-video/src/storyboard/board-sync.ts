@@ -9,6 +9,8 @@ import { boardOrder } from "./board-order";
 import { type Board, type BoardEdge, type BoardNode, boardSchema, EMPTY_BOARD } from "./board-schema";
 import {
   findClipLocation,
+  incomingOverlap,
+  maxOverlap,
   removeClips,
   setClipDuration,
   setTransitionLength,
@@ -269,15 +271,206 @@ function setSceneTransition(project: Project, fromId: string, toId: string, edge
 }
 
 /**
- * Carries board edits that have a timeline equivalent over to the clips: a scene's new duration trims its clip,
- * and a new transition on the edge between two neighbouring clips sets their overlap.
+ * Why a board edit couldn't be carried over to the timeline: the scenes to reorder are on different tracks, other
+ * clips sit between them (or a scene has several clips), or the new order breaks the overlap rules.
  */
-export function applyBoardEdits(before: Project, after: Project): Project {
+export type BoardRefusal = "scenes-span-tracks" | "scenes-not-together" | "order-breaks-overlaps";
+
+export type BoardSync = { project: Project; refused: BoardRefusal[] };
+
+type BoardSyncOptions = {
+  /** Scenes being generated: the board keeps them while their clips are replaced. */
+  keep?: ReadonlySet<string>;
+  /**
+   * The board was replaced wholesale (a draft, or undoing one): scenes it leaves out or puts in another order keep
+   * their clips where they are, and the timeline brings them back.
+   */
+  replace?: boolean;
+};
+
+/** How far `clip` starts after the end of `previous`: negative when they overlap, kept within the overlap rules. */
+function clampedJoin(join: number, previous: Clip | undefined, clip: Clip): number {
+  if (!previous || join >= 0) return Math.max(0, join);
+  return -Math.min(-join, maxOverlap(previous.duration, clip.duration));
+}
+
+/**
+ * Re-lays the clips of `nodeIds` in that order, when each scene has one clip and they sit together on one video
+ * track. The run starts where it did; each clip keeps its duration, its transition and the gap or overlap before it
+ * (an overlap clamped to the rules), and the clips after the run move with its end.
+ */
+export function resequenceScenes(
+  project: Project,
+  nodeIds: readonly string[]
+): { project: Project } | { refused: BoardRefusal } {
+  const wanted = new Set(nodeIds);
+  const found = project.videoTracks.flatMap((track, trackIndex) =>
+    track.clips
+      .filter((clip) => clip.storyboardNodeId && wanted.has(clip.storyboardNodeId))
+      .map((clip) => ({ clip, trackIndex }))
+  );
+  if (new Set(found.map(({ trackIndex }) => trackIndex)).size > 1) return { refused: "scenes-span-tracks" };
+  if (found.length !== nodeIds.length) return { refused: "scenes-not-together" };
+  if (found.length < 2) return { project };
+  const { trackIndex } = found[0];
+  const track = project.videoTracks[trackIndex];
+  const sorted = [...track.clips].sort((a, b) => a.start - b.start);
+  const indexes = found.map(({ clip }) => sorted.indexOf(clip));
+  const first = Math.min(...indexes);
+  const last = Math.max(...indexes);
+  if (last - first + 1 !== found.length) return { refused: "scenes-not-together" };
+
+  const run = sorted.slice(first, last + 1);
+  const before = sorted[first - 1];
+  const after = sorted.slice(last + 1);
+  // The join into each clip; the first one's, from the clip before the run, is the run's slot and goes with the
+  // clip that takes it.
+  const joins = new Map(
+    run.map((clip, index) => {
+      const previous = index === 0 ? before : run[index - 1];
+      return [clip.id, previous ? clip.start - clipEnd(previous) : 0];
+    })
+  );
+  const byNode = new Map(run.map((clip) => [clip.storyboardNodeId, clip]));
+  const order = nodeIds.map((id) => byNode.get(id) as Clip);
+  const placed: Clip[] = [];
+  for (const [index, clip] of order.entries()) {
+    const previous = placed[index - 1] ?? before;
+    const join = index === 0 ? run[0].start - (before ? clipEnd(before) : 0) : (joins.get(clip.id) ?? 0);
+    const start = (previous ? clipEnd(previous) : 0) + clampedJoin(join, previous, clip);
+    placed.push(clip.start === start ? clip : { ...clip, start });
+  }
+  const next = after[0];
+  const shift = next
+    ? clipEnd(placed[placed.length - 1]) +
+      clampedJoin(next.start - clipEnd(run[run.length - 1]), placed[placed.length - 1], next) -
+      next.start
+    : 0;
+  const moved =
+    Math.abs(shift) < EPSILON ? after : after.map((clip) => ({ ...clip, start: clip.start + shift }));
+  const clips = [...sorted.slice(0, first), ...placed, ...moved];
+  if (!spansAreValid(clips)) return { refused: "order-breaks-overlaps" };
+  if (clips.every((clip, index) => clip === sorted[index])) return { project };
+  return {
+    project: {
+      ...project,
+      videoTracks: project.videoTracks.map((other, index) =>
+        index === trackIndex ? { ...other, clips } : other
+      ),
+    },
+  };
+}
+
+const pairOf = (edge: { from: string; to: string }) => `${edge.from}\n${edge.to}`;
+
+/**
+ * Edges between two scenes with clips that an edit only took out, joining nothing new: deleting the join between
+ * two scenes makes it a cut, so the scenes stay in order and the edge comes back as one.
+ */
+function deletedJoins(previous: Board, board: Board, bound: ReadonlySet<string>): BoardEdge[] {
+  const pairs = new Set(board.edges.map(pairOf));
+  const before = new Set(previous.edges.map(pairOf));
+  if (board.edges.some((edge) => !before.has(pairOf(edge)))) return [];
+  const outs = new Set(board.edges.map((edge) => edge.from));
+  const ins = new Set(board.edges.map((edge) => edge.to));
+  return previous.edges.filter(
+    (edge) =>
+      bound.has(edge.from) &&
+      bound.has(edge.to) &&
+      !pairs.has(pairOf(edge)) &&
+      !outs.has(edge.from) &&
+      !ins.has(edge.to)
+  );
+}
+
+/**
+ * The order of the scenes with clips the edited board asks for, or null when its joins didn't change. One new
+ * join between two scenes is a connection, which moves the second scene to right after the first; otherwise it's
+ * the board's own story order, with the drafts and sequences not joined to any scene left out.
+ */
+function askedOrder(
+  previous: Board,
+  board: Board,
+  current: readonly string[],
+  bound: ReadonlySet<string>,
+  cuts: readonly BoardEdge[]
+): string[] | null {
+  const sameNodes = sameIds(previous.nodes, board.nodes);
+  if (sameNodes && JSON.stringify(previous.edges) === JSON.stringify(board.edges)) return null;
+  const withCuts = { ...board, edges: [...board.edges, ...cuts] };
+  const component = components(withCuts);
+  const sequenced = new Set([...bound].map((id) => component.get(id)));
+  const nodes = withCuts.nodes.filter((node) => sequenced.has(component.get(node.id)));
+  const ids = new Set(nodes.map((node) => node.id));
+  const edges = withCuts.edges.filter((edge) => ids.has(edge.from) && ids.has(edge.to));
+  const ins = new Set(edges.map((edge) => edge.to));
+  const pairs = new Set(previous.edges.map(pairOf));
+  const joined = edges.filter(
+    (edge) => !pairs.has(pairOf(edge)) && bound.has(edge.from) && bound.has(edge.to)
+  );
+  // A connection leaves the scenes that followed `from` without a way in; a whole new chain has one start.
+  if (joined.length === 1 && nodes.filter((node) => !ins.has(node.id)).length > 1) {
+    const [{ from, to }] = joined;
+    const without = current.filter((id) => id !== to);
+    const at = without.indexOf(from) + 1;
+    return [...without.slice(0, at), to, ...without.slice(at)];
+  }
+  return boardOrder({ ...withCuts, nodes, edges })
+    .map((node) => node.id)
+    .filter((id) => bound.has(id));
+}
+
+/** Ends the overlap into `clipId` by moving it, and every clip after it on its track, later by that much. */
+function cutInto(project: Project, clipId: string): Project {
+  const location = findClipLocation(project, clipId);
+  if (!location) return project;
+  const overlap = incomingOverlap(location.track, clipId);
+  if (overlap <= EPSILON) return project;
+  const from = location.clip.start;
+  return {
+    ...project,
+    videoTracks: project.videoTracks.map((track, index) =>
+      index === location.trackIndex
+        ? {
+            ...track,
+            clips: track.clips.map((clip) =>
+              clip.start >= from - EPSILON ? { ...clip, start: clip.start + overlap } : clip
+            ),
+          }
+        : track
+    ),
+  };
+}
+
+/**
+ * Carries board edits that have a timeline equivalent over to the clips: a scene's new duration trims its clip, a
+ * new transition on the edge between two neighbouring clips sets their overlap, a removed scene takes its clips with
+ * it, a deleted join between two scenes becomes a cut, and a new story order (a move, or a connection to a scene
+ * further on) re-lays their clips. What can't be carried over is in `refused`; the board then follows the timeline.
+ */
+export function applyBoardEdits(
+  before: Project,
+  after: Project,
+  { replace = false }: Pick<BoardSyncOptions, "replace"> = {}
+): BoardSync {
   const previous = before.storyboard;
   const board = after.storyboard;
-  if (!previous || !board || previous === board) return after;
-  const clips = clipsByNode(after);
+  if (!previous || !board || previous === board) return { project: after, refused: [] };
   let next = after;
+  const refused: BoardRefusal[] = [];
+
+  if (!replace) {
+    const kept = new Set(board.nodes.map((node) => node.id));
+    const gone = new Set(previous.nodes.filter((node) => !kept.has(node.id)).map((node) => node.id));
+    const clipIds = next.videoTracks.flatMap((track) =>
+      track.clips
+        .filter((clip) => clip.storyboardNodeId && gone.has(clip.storyboardNodeId))
+        .map((clip) => clip.id)
+    );
+    if (clipIds.length > 0) next = removeClips(next, clipIds);
+  }
+
+  const clips = clipsByNode(next);
   const oldNodes = new Map(previous.nodes.map((node) => [node.id, node]));
   for (const node of board.nodes) {
     const was = oldNodes.get(node.id);
@@ -291,87 +484,62 @@ export function applyBoardEdits(before: Project, after: Project): Project {
     const was = oldEdges.get(edge.id);
     const from = clips.get(edge.from);
     const to = clips.get(edge.to);
-    if (!was || !from || !to) continue;
+    if (!was || !from || !to || was.from !== edge.from || was.to !== edge.to) continue;
     if (was.transition === edge.transition && was.transitionSeconds === edge.transitionSeconds) continue;
     next = setSceneTransition(next, from.id, to.id, edge);
   }
-  return next;
-}
+  if (replace) return { project: next, refused };
 
-/** One edit's effect on the board: board edits carried to the timeline, then the board matched to it. */
-export function syncBoard(
-  before: Project,
-  after: Project,
-  options: { keep?: ReadonlySet<string> } = {}
-): Project {
-  return reconcileBoard(before, applyBoardEdits(before, after), options);
-}
+  const onBoard = new Set(board.nodes.map((node) => node.id));
+  const bound = new Set([...clips.keys()].filter((id) => onBoard.has(id)));
+  const cuts = deletedJoins(previous, board, bound);
+  for (const edge of cuts) {
+    const to = clips.get(edge.to);
+    if (to) next = cutInto(next, to.id);
+  }
 
-/** Removes scenes from the board and their clips from the timeline. */
-export function removeScenes(
-  project: Project,
-  nodeIds: readonly string[],
-  edgeIds: readonly string[] = []
-): Project {
-  const removed = new Set(nodeIds);
-  const clipIds = project.videoTracks.flatMap((track) =>
-    track.clips
-      .filter((clip) => clip.storyboardNodeId && removed.has(clip.storyboardNodeId))
-      .map((clip) => clip.id)
-  );
-  return {
-    ...removeClips(project, clipIds),
-    storyboard: removeBoardNodes(project.storyboard ?? EMPTY_BOARD, nodeIds, edgeIds),
-  };
+  const current = [...clipsByNode(next).keys()].filter((id) => bound.has(id));
+  const asked = askedOrder(previous, board, current, bound, cuts);
+  if (
+    asked &&
+    !sameIds(
+      asked.map((id) => ({ id })),
+      current.map((id) => ({ id }))
+    )
+  ) {
+    // Only the stretch that changed is re-laid, so a move doesn't need every scene on one track.
+    let first = 0;
+    while (asked[first] === current[first]) first++;
+    let last = asked.length - 1;
+    while (asked[last] === current[last]) last--;
+    const result = resequenceScenes(next, asked.slice(first, last + 1));
+    if ("refused" in result) refused.push(result.refused);
+    else next = result.project;
+  }
+  return { project: next, refused };
 }
 
 /**
- * Swaps `firstId`'s clip with the clip after it on the same track, keeping the gap or overlap between them and
- * each start's transition; null when they aren't neighbours or the swap breaks the overlap rules.
+ * One edit's effect on the board: board edits carried to the timeline, then the board matched to it, with what
+ * couldn't be carried over.
  */
-function swapClips(project: Project, firstId: string, secondId: string): Project | null {
-  const first = findClipLocation(project, firstId);
-  const second = findClipLocation(project, secondId);
-  if (!first || !second || first.trackIndex !== second.trackIndex) return null;
-  const between = first.track.clips.some(
-    (clip) => clip.start > first.clip.start + EPSILON && clip.start < second.clip.start - EPSILON
-  );
-  if (between || second.clip.start < first.clip.start) return null;
-  const gap = second.clip.start - clipEnd(first.clip);
-  const swapped: Record<string, Clip> = {
-    [secondId]: { ...second.clip, start: first.clip.start, transitionIn: first.clip.transitionIn },
-    [firstId]: {
-      ...first.clip,
-      start: first.clip.start + second.clip.duration + gap,
-      transitionIn: second.clip.transitionIn,
-    },
-  };
-  const clips = first.track.clips.map((clip) => swapped[clip.id] ?? clip).sort((a, b) => a.start - b.start);
-  if (!spansAreValid(clips)) return null;
-  return {
-    ...project,
-    videoTracks: project.videoTracks.map((track, index) =>
-      index === first.trackIndex ? { ...track, clips } : track
-    ),
-  };
+export function syncBoardEdits(before: Project, after: Project, options: BoardSyncOptions = {}): BoardSync {
+  const { project, refused } = applyBoardEdits(before, after, options);
+  return { project: reconcileBoard(before, project, options), refused };
+}
+
+/** One edit's effect on the board, as `syncBoardEdits`, for callers that don't report what was refused. */
+export function syncBoard(before: Project, after: Project, options: BoardSyncOptions = {}): Project {
+  return syncBoardEdits(before, after, options).project;
 }
 
 /**
- * Moves a scene one step along the sequence. Two scenes with clips swap clips on the timeline, which the board
- * then follows; when either is a draft only the board changes.
+ * Moves a scene one step along the sequence on the board; the sync re-lays two scenes' clips to match (see
+ * `resequenceScenes`), and when either is a draft only the board changes.
  */
 export function reorderScene(project: Project, nodeId: string, direction: -1 | 1): Project {
   const board = project.storyboard;
   if (!board) return project;
-  const order = boardOrder(board);
-  const index = order.findIndex((node) => node.id === nodeId);
-  const other = order[index + direction];
-  if (index < 0 || !other) return project;
-  const [first, second] = direction === 1 ? [order[index], other] : [other, order[index]];
-  const clips = clipsByNode(project);
-  const firstClip = clips.get(first.id);
-  const secondClip = clips.get(second.id);
-  if (!firstClip || !secondClip)
-    return { ...project, storyboard: reorderBoardNode(board, nodeId, direction) };
-  return swapClips(project, firstClip.id, secondClip.id) ?? project;
+  const next = reorderBoardNode(board, nodeId, direction);
+  return next === board ? project : { ...project, storyboard: next };
 }
