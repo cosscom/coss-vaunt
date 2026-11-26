@@ -5,6 +5,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/toolt
 import { SparklesIcon, SquarePenIcon, XIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
+import type { RefObject } from "react";
 import { AgentInput } from "./agent-input";
 import { AgentThread } from "./agent-thread";
 import type { AgentModel } from "./use-agent";
@@ -54,12 +55,14 @@ function AgentFrame({
   open,
   onClose,
   onOpenSettings,
+  frameRef,
 }: {
   agent: AgentModel;
   width: number;
   open: boolean;
   onClose: () => void;
   onOpenSettings: () => void;
+  frameRef: RefObject<HTMLElement | null>;
 }): React.ReactElement {
   return (
     <section
@@ -69,6 +72,7 @@ function AgentFrame({
         !open && "opacity-0"
       )}
       data-slot="agent-frame"
+      ref={frameRef}
       style={{ width }}>
       <header className="flex h-9 shrink-0 items-center gap-1.5 ps-2.5 pe-1">
         <SparklesIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
@@ -106,6 +110,7 @@ export function AgentSidecar({
   onAnimationEnd,
   onClose,
   onOpenSettings,
+  frameRef,
   gap,
 }: {
   agent: AgentModel;
@@ -117,6 +122,7 @@ export function AgentSidecar({
   onAnimationEnd: () => void;
   onClose: () => void;
   onOpenSettings: () => void;
+  frameRef: RefObject<HTMLElement | null>;
   gap: number;
 }): React.ReactElement {
   const open = !size.collapsed;
@@ -144,6 +150,7 @@ export function AgentSidecar({
       />
       <AgentFrame
         agent={agent}
+        frameRef={frameRef}
         onClose={onClose}
         onOpenSettings={onOpenSettings}
         open={open}

@@ -46,6 +46,24 @@ describe("contextChips", () => {
   });
 });
 
+describe("contextChips with a scene", () => {
+  it("puts the selected scene after the project", () => {
+    const project = createProject({ name: "Launch video", now: NOW });
+    const scene = {
+      id: "hook",
+      kind: "text" as const,
+      title: "Hook",
+      notes: "",
+      duration: 2,
+      words: "Hi",
+      position: { x: 0, y: 0 },
+    };
+    expect(
+      contextChips({ project, scene, clip: null, time: 0, playing: false }).map((chip) => chip.id)
+    ).toEqual(["project", "scene:hook"]);
+  });
+});
+
 describe("describeProject", () => {
   it("describes an empty project", () => {
     const project = createProject({ name: "Empty", now: NOW });
@@ -80,9 +98,13 @@ describe("describeProject", () => {
     });
     const text = describeProject(project, board, chips);
     expect(text).toContain("Brief: Show the booking flow");
-    expect(text).toContain("1. [text] Hook (2 s)");
+    expect(text).toContain("1. [text] Hook (2 s), id hook");
     expect(text).toContain('- "Ship faster", text, at 1.0 s for 3.0 s');
     expect(text).toContain(`The author is pointing at clip "Ship faster":\n{"id":"${clipId}"`);
     expect(text).toContain("The author is pointing at 0:02.0 on the timeline.");
+    const pointed = describeProject(project, board, [
+      { id: "scene:hook", kind: "scene", label: "Hook", nodeId: "hook" },
+    ]);
+    expect(pointed).toContain('The author is pointing at scene "Hook" (id hook):');
   });
 });

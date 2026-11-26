@@ -27,7 +27,8 @@ Explored at `/proto/agent-shell` over four rounds; the prototype is deleted.
 - **The agent is an extension, not a panel:** its own frame (the composer frame's material: a muted shell with the
   header on it, holding an inset card for the thread, composer under the card). Sidecar: a full-height column on
   the window's right edge, beside the whole editor. 360 px by default, 300–520, collapses when dragged well past
-  its minimum.
+  its minimum. Hidden until opened (the title bar's Agent button, ⌘L, or the storyboard's agent button), so the
+  editor starts clean; once opened it stays open across reloads.
 - **Open and close push the editor:** the column's width eases (320 ms, `cubic-bezier(0.32, 0.72, 0, 1)`) and the
   frame fades with it (240 ms); the frame keeps its width and is revealed from the window edge. Dragging tracks the
   pointer with no easing; reduced motion opens and closes instantly. ⌘L, the title bar's Agent button or the
@@ -35,6 +36,20 @@ Explored at `/proto/agent-shell` over four rounds; the prototype is deleted.
 - **Context:** chips in the composer header. The project is always attached; the selected clip and the playhead
   (when paused) attach on their own and can be removed. Starters change to clip prompts when a clip is selected.
 - **Model picker** in the composer, writing the global AI setting; ⌘I opens AI settings.
+
+## Empty storyboard (decided from the prototype, November 2026)
+
+Explored at `/proto/empty-storyboard` (in place, in the Storyboard card) over three rounds; the prototype is deleted.
+
+- **Annotated:** the real canvas stays (dots, toolbar, add menu) and draws an example board with the real scene and
+  transition components, faded to 50% and inert: "1 · Introducing vaunt" → "2 · Open Links" → "3 · End card",
+  scenes 132 px apart so three read at the card's size. A card at the bottom splits the example prompt into numbered
+  parts ("Start with 'Introducing vaunt'," / "then click a few links in the sidebar" / "(and an end card)"), so each
+  part maps to a numbered scene; then "Plan with the agent ⌘L" and "or add a scene by hand".
+- **The handoff:** the button opens the agent (pushing the editor if it's closed) and puts the cursor in its input.
+- **One agent:** the storyboard composer is gone, with its length dropdown and theme switch. The agent drafts and
+  revises the board and asks for the length and the recording theme in the conversation, with quick replies.
+  Drafts apply at once with an Undo on the agent's card; only the author starts Generate.
 
 ## Rejected
 
@@ -47,3 +62,9 @@ Explored at `/proto/agent-shell` over four rounds; the prototype is deleted.
 - **Clip-on** (the frame under the inspector, growing upward) and **Summoned** (floating over the workspace on
   ⌘L): Summoned covered the work; the sidecar is better when it pushes rather than overlaps.
 - **One splitter line between cards:** the glow belongs on the cards' own borders.
+- **Empty state without the canvas** (an illustrated card, an outline of scene slots, a quiet question with
+  examples): losing the board made the card stop reading as a storyboard.
+- **Illustrations from the onboarding** (a contact sheet of recording stills, the tilted device with scene pins, a
+  ghost board drawn as an illustration): decorative at 270 px, and they didn't explain what to type.
+- **Example** (the faded board with its prompt and "Try this prompt") and **Seeded** (every project starting with an
+  intro scene): Annotated teaches the mapping from words to scenes; seeding is a product decision for later.

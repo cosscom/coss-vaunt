@@ -28,14 +28,16 @@ async function errorMessage(response: Response): Promise<string> {
  * node's clips are handed to `onClips` as they finish, so every node lands as its own undo step. Opening the
  * editor picks up the project's latest job, so clips finished while it was closed still land.
  */
-export function useBoardGeneration(
-  project: Project,
-  onClips: (nodeId: string, clips: Clip[]) => void
-): {
+export type BoardGeneration = {
   statuses: Record<string, NodeGeneration>;
   running: boolean;
   generate: (board: Board, nodeIds?: string[]) => Promise<void>;
-} {
+};
+
+export function useBoardGeneration(
+  project: Project,
+  onClips: (nodeId: string, clips: Clip[]) => void
+): BoardGeneration {
   const [statuses, setStatuses] = useState<Record<string, NodeGeneration>>({});
   const [running, setRunning] = useState(false);
   const abort = useRef<AbortController | null>(null);

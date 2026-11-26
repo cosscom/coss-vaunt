@@ -21,6 +21,13 @@ describe("restorePanel", () => {
     expect(restorePanel(spec, { size: 9000, collapsed: true })).toEqual({ size: 400, collapsed: true });
     expect(restorePanel(spec, { size: "wide" })).toEqual({ size: 280, collapsed: false });
   });
+
+  it("starts a panel hidden when its spec says so, until someone opens it", () => {
+    const hidden = { ...spec, defaultCollapsed: true };
+    expect(restorePanel(hidden, null)).toEqual({ size: 280, collapsed: true });
+    expect(restorePanel(hidden, { size: 300, collapsed: false })).toEqual({ size: 300, collapsed: false });
+    expect(restorePanel({ ...hidden, collapsible: false }, null)).toEqual({ size: 280, collapsed: false });
+  });
 });
 
 describe("rubber band", () => {

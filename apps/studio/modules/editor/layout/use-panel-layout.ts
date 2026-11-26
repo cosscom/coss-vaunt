@@ -7,13 +7,16 @@ export const PANEL_SPECS = {
   prompt: { min: 220, max: 420, defaultSize: 272, collapsible: true },
   inspector: { min: 300, max: 520, defaultSize: 336, collapsible: true },
   timeline: { min: 160, max: 640, defaultSize: 320, collapsible: false },
-  agent: { min: 300, max: 520, defaultSize: 360, collapsible: true },
+  /** Hidden until opened from the title bar, the storyboard or ⌘L, so the editor starts clean. */
+  agent: { min: 300, max: 520, defaultSize: 360, collapsible: true, defaultCollapsed: true },
 } satisfies Record<string, PanelSpec>;
 
 export type PanelId = keyof typeof PANEL_SPECS;
 type PanelSizes = Record<PanelId, PanelSize>;
 
-const STORAGE_KEY = "studio.editor-layout.v1";
+const STORAGE_KEY = "studio.editor-layout.v2";
+/** v1 had the agent open by default; its other panels carry over, the agent starts hidden. */
+const LEGACY_KEY = "studio.editor-layout.v1";
 const PANEL_IDS = Object.keys(PANEL_SPECS) as PanelId[];
 
 function defaults(): PanelSizes {
@@ -27,8 +30,11 @@ export function usePanelLayout() {
 
   useEffect(() => {
     try {
-      const stored: unknown = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null");
-      const record = typeof stored === "object" && stored !== null ? (stored as Record<string, unknown>) : {};
+      const current = window.localStorage.getItem(STORAGE_KEY);
+      const stored: unknown = JSON.parse(current ?? window.localStorage.getItem(LEGACY_KEY) ?? "null");
+      const record =
+        typeof stored === "object" && stored !== null ? { ...(stored as Record<string, unknown>) } : {};
+      if (current === null) delete record.agent;
       setSizes(
         Object.fromEntries(
           PANEL_IDS.map((id) => [id, restorePanel(PANEL_SPECS[id], record[id])])
@@ -49,7 +55,8 @@ export function usePanelLayout() {
   return {
     sizes,
     set,
-    reset: (id: PanelId) => set(id, restorePanel(PANEL_SPECS[id], null)),
+    /** Back to the default size; a reset comes from a visible splitter, so the panel stays open. */
+    reset: (id: PanelId) => set(id, { size: PANEL_SPECS[id].defaultSize, collapsed: false }),
     toggle: (id: PanelId) => set(id, { ...sizes[id], collapsed: !sizes[id].collapsed }),
   };
 }

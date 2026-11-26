@@ -15,6 +15,8 @@ import { ProjectBar } from "./project-bar";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 import { StagePanel } from "./stage/stage-panel";
 import { StageContextMenu } from "./stage-context-menu";
+import { useBoardGeneration } from "./storyboard/use-board-generation";
+import { useStoryboardActions } from "./storyboard/use-storyboard-actions";
 import type { TimelineHandle } from "./timeline/timeline-panel";
 import { TimelinePanel } from "./timeline/timeline-panel";
 import { useEditorShortcuts } from "./use-editor-shortcuts";
@@ -22,6 +24,7 @@ import { useEditorState } from "./use-editor-state";
 import { useProjectAutosave } from "./use-project-autosave";
 import { AgentSidecar } from "@/modules/agent/agent-sidecar";
 import { useAgent } from "@/modules/agent/use-agent";
+import { focusAgentComposerInput } from "@/modules/agent-ui/composer-focus";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.layout;
@@ -42,7 +45,13 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
   // Only a toggle animates the agent open or closed; dragging its splitter tracks the pointer.
   const [agentAnimating, setAgentAnimating] = useState(false);
   const saveStatus = useProjectAutosave(project);
-  const agent = useAgent(editor, clock);
+  const storyboard = useStoryboardActions(editor);
+  const generation = useBoardGeneration(project, editor.applyGeneratedClips);
+  const agent = useAgent(editor, clock, {
+    selectedScene: storyboard.selectedNode,
+    onGenerate: () => void generation.generate(editor.board),
+  });
+  const agentFrame = useRef<HTMLElement>(null);
 
   useEffect(() => clock.setDuration(projectDuration(project)), [clock, project]);
 
@@ -50,6 +59,17 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
     setAgentAnimating(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     layout.toggle("agent");
   };
+  // Opens the agent if it's closed and puts the cursor in it, once it's no longer inert.
+  const [focusAgent, setFocusAgent] = useState(false);
+  const planWithAgent = () => {
+    if (layout.sizes.agent.collapsed) toggleAgent();
+    setFocusAgent(true);
+  };
+  useEffect(() => {
+    if (!focusAgent || layout.sizes.agent.collapsed) return;
+    focusAgentComposerInput(agentFrame.current);
+    setFocusAgent(false);
+  }, [focusAgent, layout.sizes.agent.collapsed]);
 
   useEditorShortcuts({
     editor,
@@ -92,7 +112,13 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
               <>
                 <div {...card} className={cn(CARD, "shrink-0")} style={{ width: prompt.size }}>
                   <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                    <LeftSidebar clock={clock} editor={editor} />
+                    <LeftSidebar
+                      clock={clock}
+                      editor={editor}
+                      generation={generation}
+                      onPlanWithAgent={planWithAgent}
+                      storyboard={storyboard}
+                    />
                   </div>
                 </div>
                 <MirrorSplit
@@ -165,6 +191,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
           agent={agent}
           animating={agentAnimating}
           gap={GAP}
+          frameRef={agentFrame}
           onAnimationEnd={() => setAgentAnimating(false)}
           onClose={toggleAgent}
           onOpenSettings={() => setAiSettingsOpen(true)}

@@ -1,10 +1,11 @@
-import type { Board } from "@coss/vaunt-engine/storyboard/board-schema";
+import type { Board, BoardNode } from "@coss/vaunt-engine/storyboard/board-schema";
 import type { Clip, Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import { projectDuration } from "@coss/vaunt-engine/storyboard/track-resolution";
 
 /** Something the author is pointing the agent at; the project is always in context. */
 export type ContextChip =
   | { id: "project"; kind: "project"; label: string }
+  | { id: string; kind: "scene"; label: string; nodeId: string }
   | { id: string; kind: "clip"; label: string; clipId: string }
   | { id: string; kind: "moment"; label: string; time: number };
 
@@ -20,19 +21,25 @@ export function formatMoment(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}.${tenths % 10}`;
 }
 
-/** The chips for what's selected: the project, the selected clip, and the playhead while paused on a video. */
+/**
+ * The chips for what's selected: the project, the selected storyboard scene and clip, and the playhead while paused
+ * on a video.
+ */
 export function contextChips({
   project,
+  scene = null,
   clip,
   time,
   playing,
 }: {
   project: Project;
+  scene?: BoardNode | null;
   clip: Clip | null;
   time: number;
   playing: boolean;
 }): ContextChip[] {
   const chips: ContextChip[] = [{ id: "project", kind: "project", label: project.name }];
+  if (scene) chips.push({ id: `scene:${scene.id}`, kind: "scene", label: scene.title, nodeId: scene.id });
   if (clip) chips.push({ id: `clip:${clip.id}`, kind: "clip", label: clip.name, clipId: clip.id });
   const hasClips = project.videoTracks.some((track) => track.clips.length > 0);
   if (hasClips && !playing && time > MIN_MOMENT_SECONDS) {
@@ -50,7 +57,9 @@ export function describeProject(project: Project, board: Board, chips: readonly 
     board.brief ? `Brief: ${board.brief}` : "No brief yet.",
     board.nodes.length > 0
       ? `Storyboard scenes:\n${board.nodes
-          .map((node, index) => `${index + 1}. [${node.kind}] ${node.title} (${node.duration} s)`)
+          .map(
+            (node, index) => `${index + 1}. [${node.kind}] ${node.title} (${node.duration} s), id ${node.id}`
+          )
           .join("\n")}`
       : "The storyboard is empty.",
   ];
@@ -68,7 +77,13 @@ export function describeProject(project: Project, board: Board, chips: readonly 
 
   const allClips = project.videoTracks.flatMap((track) => track.clips);
   for (const chip of chips) {
-    if (chip.kind === "clip") {
+    if (chip.kind === "scene") {
+      const node = board.nodes.find((item) => item.id === chip.nodeId);
+      if (node)
+        lines.push(
+          `The author is pointing at scene "${node.title}" (id ${node.id}):\n${JSON.stringify(node)}`
+        );
+    } else if (chip.kind === "clip") {
       const clip = allClips.find((item) => item.id === chip.clipId);
       if (clip)
         lines.push(

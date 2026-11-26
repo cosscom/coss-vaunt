@@ -1,6 +1,6 @@
 "use client";
 
-import { ClockIcon, LayersIcon, VideoIcon, XIcon } from "@coss/ui/icons";
+import { ClockIcon, FileTextIcon, LayersIcon, VideoIcon, XIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import type { ContextChip } from "./agent-context";
@@ -11,7 +11,7 @@ import { BorderBeam } from "@/modules/border-beam/border-beam";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.agent;
-const CHIP_ICONS = { project: LayersIcon, clip: VideoIcon, moment: ClockIcon } as const;
+const CHIP_ICONS = { project: LayersIcon, scene: FileTextIcon, clip: VideoIcon, moment: ClockIcon } as const;
 
 function Chip({ chip, onRemove }: { chip: ContextChip; onRemove?: () => void }): React.ReactElement {
   const Icon = CHIP_ICONS[chip.kind];

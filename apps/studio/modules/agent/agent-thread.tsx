@@ -1,9 +1,19 @@
 "use client";
 
-import { CaptionsIcon, ClockIcon, MessageCircleIcon, SparklesIcon, VideoIcon } from "@coss/ui/icons";
+import { Button } from "@coss/ui/components/button";
+import {
+  CaptionsIcon,
+  CheckIcon,
+  ClockIcon,
+  MessageCircleIcon,
+  RotateCcwIcon,
+  SparklesIcon,
+  VideoIcon,
+} from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import type * as React from "react";
 import { Fragment, useEffect, useRef } from "react";
+import type { AgentChange, AgentMessage } from "./agent-events";
 import type { AgentModel } from "./use-agent";
 import { AgentMorphLoader } from "@/modules/agent-ui/agent-morph-loader";
 import { STUDIO_COPY } from "@/modules/studio-copy";
@@ -125,6 +135,113 @@ function EmptyThread({ agent }: { agent: AgentModel }): React.ReactElement {
   );
 }
 
+/** What the agent changed: one line each, with Undo, and Generate once there's a board to record. */
+function ChangeCard({
+  agent,
+  message,
+  change,
+}: {
+  agent: AgentModel;
+  message: AgentMessage;
+  change: AgentChange;
+}): React.ReactElement {
+  const showGenerate = change.kind === "board" && !change.undone && agent.canGenerate;
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border bg-card p-2.5 text-xs",
+        change.undone && "border-dashed bg-transparent"
+      )}>
+      <div className="flex items-center gap-2">
+        <CheckIcon
+          aria-hidden="true"
+          className={cn(
+            "size-3.5 shrink-0",
+            change.undone ? "text-muted-foreground" : "text-success-foreground"
+          )}
+        />
+        <span
+          className={cn("min-w-0 flex-1 truncate", change.undone && "text-muted-foreground line-through")}>
+          {change.summary}
+        </span>
+        {change.undone ? (
+          <span className="shrink-0 text-muted-foreground">{copy.undone}</span>
+        ) : (
+          <Button
+            className="shrink-0"
+            onClick={() => agent.thread.undo(message.id, change.id)}
+            size="xs"
+            variant="ghost">
+            <RotateCcwIcon aria-hidden="true" />
+            {copy.undo}
+          </Button>
+        )}
+      </div>
+      {showGenerate ? (
+        <Button className="w-full" onClick={agent.generate} size="sm">
+          {copy.generate}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** A question the agent is waiting on: its replies as buttons, while it's the latest turn. */
+function Replies({ agent, options, live }: { agent: AgentModel; options: string[]; live: boolean }) {
+  return (
+    <div aria-label={copy.replyLabel} className="flex flex-wrap gap-1.5" role="group">
+      {options.map((option) => (
+        <Button
+          className="rounded-full"
+          disabled={!live || agent.busy}
+          key={option}
+          onClick={() => agent.ask(option)}
+          size="xs"
+          variant="outline">
+          {option}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function AssistantTurn({
+  agent,
+  message,
+  latest,
+}: {
+  agent: AgentModel;
+  message: AgentMessage;
+  latest: boolean;
+}): React.ReactElement {
+  const streamingHere = latest && agent.busy;
+  const empty = !message.content && !message.ask && !message.changes?.length;
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2.5 text-foreground/88",
+        message.failed && "text-destructive-foreground"
+      )}>
+      {message.content ? <AgentRichText text={message.content} /> : null}
+      {message.ask ? (
+        <div className="flex flex-col gap-2">
+          <p className="font-medium text-foreground">{message.ask.question}</p>
+          <Replies agent={agent} live={latest} options={message.ask.options} />
+        </div>
+      ) : null}
+      {message.changes?.map((change) => (
+        <ChangeCard agent={agent} change={change} key={change.id} message={message} />
+      ))}
+      {streamingHere && (empty || agent.thread.status) ? (
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <AgentMorphLoader className="size-4" />
+          {agent.thread.status ?? copy.thinking}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 /** The conversation, following the reply as it streams; the starters while there's nothing yet. */
 export function AgentThread({ agent }: { agent: AgentModel }): React.ReactElement {
   const scroller = useRef<HTMLDivElement>(null);
@@ -135,7 +252,7 @@ export function AgentThread({ agent }: { agent: AgentModel }): React.ReactElemen
   useEffect(() => {
     const node = scroller.current;
     if (node) node.scrollTop = node.scrollHeight;
-  }, [messages.length, last?.content]);
+  }, [messages.length, last?.content, last?.ask, last?.changes?.length, agent.thread.status]);
 
   if (messages.length === 0) return <EmptyThread agent={agent} />;
 
@@ -157,18 +274,7 @@ export function AgentThread({ agent }: { agent: AgentModel }): React.ReactElemen
             ) : null}
           </div>
         ) : (
-          <div
-            className={cn("text-foreground/88", message.failed && "text-destructive-foreground")}
-            key={message.id}>
-            {message.content ? (
-              <AgentRichText text={message.content} />
-            ) : (
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <AgentMorphLoader className="size-4" />
-                {copy.thinking}
-              </span>
-            )}
-          </div>
+          <AssistantTurn agent={agent} key={message.id} latest={message.id === last?.id} message={message} />
         )
       )}
     </div>
