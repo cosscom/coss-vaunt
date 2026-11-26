@@ -73,7 +73,7 @@ function SceneDetails({
   if (!node) return null;
   return (
     <InspectorSection
-      aside={<Badge variant="outline">{copy.kinds[node.kind]}</Badge>}
+      aside={<Badge variant="secondary">{copy.kinds[node.kind]}</Badge>}
       bodyClassName="gap-3"
       title={node.title}>
       <SceneForm
@@ -183,7 +183,12 @@ export function StoryboardPanel({
           <Tooltip>
             <TooltipTrigger
               render={
-                <Button aria-label={copy.askAgent} onClick={onPlanWithAgent} size="icon" variant="outline" />
+                <Button
+                  aria-label={copy.askAgent}
+                  onClick={onPlanWithAgent}
+                  size="icon"
+                  variant="secondary"
+                />
               }>
               <SparklesIcon aria-hidden="true" />
             </TooltipTrigger>

@@ -271,7 +271,7 @@ function ClaudeKey(): React.ReactElement {
                 type="password"
                 value={key}
               />
-              <Button disabled={!key.trim()} loading={saving} type="submit" variant="outline">
+              <Button disabled={!key.trim()} loading={saving} type="submit" variant="secondary">
                 Save key
               </Button>
             </div>

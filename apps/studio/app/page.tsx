@@ -1,7 +1,6 @@
 import path from "node:path";
 import { findProjectStill } from "@coss/vaunt-engine/project-store/project-still";
 import type { Metadata } from "next";
-import { StudioIntro } from "@/modules/intro/studio-intro";
 import { FirstRun } from "@/modules/onboarding/first-run";
 import { onboardingCompleted } from "@/modules/onboarding/onboarding-store";
 import { ProjectsView } from "@/modules/projects/projects-view";
@@ -35,12 +34,5 @@ export default async function ProjectsPage({
     )
   );
   const studio = <ProjectsView defaultAppUrl={studioDefaultAppUrl()} projects={projects} stills={stills} />;
-  return firstRun ? (
-    <FirstRun>{studio}</FirstRun>
-  ) : (
-    <>
-      <StudioIntro />
-      {studio}
-    </>
-  );
+  return firstRun ? <FirstRun>{studio}</FirstRun> : studio;
 }

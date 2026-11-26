@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@coss/ui/components/button";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@coss/ui/components/select";
 import { Toggle } from "@coss/ui/components/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
 import {
@@ -15,11 +14,7 @@ import {
   RotateCwIcon,
 } from "@coss/ui/icons";
 import { InlineEditableText } from "@coss/ui/shared/inline-editable-text";
-import {
-  ASPECT_RATIOS,
-  type Project,
-  type ProjectSettings,
-} from "@coss/vaunt-engine/storyboard/storyboard-schema";
+import type { Project } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import Link from "next/link";
 import type * as React from "react";
 import { useState } from "react";
@@ -31,14 +26,12 @@ import { SettingsButton } from "@/modules/settings/settings-button";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.editor;
-const aspectItems = ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio }));
 const QUIET = "text-muted-foreground hover:text-foreground";
 
 type ProjectBarProps = {
   project: Project;
   saveStatus: SaveStatus;
   onRename: (name: string) => void;
-  onSettingsChange: (settings: Partial<ProjectSettings>) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -142,7 +135,6 @@ export function ProjectBar({
   project,
   saveStatus,
   onRename,
-  onSettingsChange,
   canUndo,
   canRedo,
   onUndo,
@@ -199,26 +191,8 @@ export function ProjectBar({
         <SaveIndicator status={saveStatus} />
       </div>
 
-      <div className="flex items-center" data-tauri-drag-region>
-        <Select
-          items={aspectItems}
-          onValueChange={(value) => value && onSettingsChange({ aspectRatio: value })}
-          value={project.settings.aspectRatio}>
-          <SelectTrigger
-            aria-label={copy.aspectRatio}
-            className="w-auto min-w-0 border-transparent bg-transparent tabular-nums shadow-none hover:bg-accent"
-            size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectPopup>
-            {aspectItems.map((item) => (
-              <SelectItem className="tabular-nums" key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-      </div>
+      {/* The aspect ratio moved to the stage's toolbar; the middle of the bar stays a place to drag the window by. */}
+      <div data-tauri-drag-region />
 
       <div className="flex items-center justify-end gap-0.5" data-tauri-drag-region>
         <HistoryButton disabled={!canUndo} label={copy.undo} onClick={onUndo}>

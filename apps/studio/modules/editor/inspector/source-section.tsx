@@ -62,9 +62,10 @@ export function SourceSection({ project, clip, onClipChange }: SourceSectionProp
 
   return (
     <InspectorSection
+      defaultOpen={false}
       aside={
         source.kind === "text" ? undefined : (
-          <Badge variant="outline">{STUDIO_COPY.sources[source.kind]}</Badge>
+          <Badge variant="secondary">{STUDIO_COPY.sources[source.kind]}</Badge>
         )
       }
       title={source.kind === "text" ? copy.text : copy.source}>

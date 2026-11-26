@@ -96,7 +96,6 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
         inspectorOpen={!inspector.collapsed}
         onRedo={editor.redo}
         onRename={editor.rename}
-        onSettingsChange={editor.updateSettings}
         onToggleAgent={toggleAgent}
         onToggleInspector={() => layout.toggle("inspector")}
         onTogglePrompt={() => layout.toggle("prompt")}
@@ -149,6 +148,7 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
                     blurEditing || editor.selectedLanes.some((key) => PROPERTY_SPECS[key].group === "blur")
                   }
                   clock={clock}
+                  onAspectRatioChange={(aspectRatio) => editor.updateSettings({ aspectRatio })}
                   onSelectClip={(clipId, additive) =>
                     clipId ? editor.selectClip(clipId, { additive }) : editor.clearSelection()
                   }
@@ -196,7 +196,13 @@ export function EditorView({ initialProject }: { initialProject: Project }): Rea
             value={timeline}
           />
           <div {...card} className={cn(CARD, "shrink-0")} style={{ height: timeline.size }}>
-            <TimelinePanel clock={clock} editor={editor} ref={timelineRef} />
+            <TimelinePanel
+              clock={clock}
+              editor={editor}
+              // The card's top and bottom border on top of what the timeline itself needs.
+              onContentHeight={(height) => layout.fitContent("timeline", height + 2)}
+              ref={timelineRef}
+            />
           </div>
         </div>
         <AgentSidecar

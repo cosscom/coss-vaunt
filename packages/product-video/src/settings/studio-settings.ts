@@ -4,8 +4,20 @@ import path from "node:path";
 import { z } from "zod";
 import { AI_PROVIDERS } from "../ai/ai-providers";
 import { type Appearance, appearanceSchema, DEFAULT_APPEARANCE } from "./appearance";
+import {
+  DEFAULT_EDITOR_PREFERENCES,
+  type EditorPreferences,
+  editorPreferencesSchema,
+} from "./editor-preferences";
 
-export { type Appearance, appearanceSchema, DEFAULT_APPEARANCE };
+export {
+  type Appearance,
+  appearanceSchema,
+  DEFAULT_APPEARANCE,
+  DEFAULT_EDITOR_PREFERENCES,
+  type EditorPreferences,
+  editorPreferencesSchema,
+};
 
 /**
  * The studio's settings, shared by every project on this machine: the AI connections and model, and how the desktop
@@ -37,6 +49,8 @@ export const studioSettingsSchema = z.object({
   /** Absent until AI is set up. */
   ai: aiSettingsSchema.optional(),
   appearance: appearanceSchema.optional(),
+  /** Absent until changed; optional, so a file without it still reads as version 2. */
+  editor: editorPreferencesSchema.optional(),
 });
 export type StudioSettings = z.infer<typeof studioSettingsSchema>;
 
@@ -95,4 +109,8 @@ export async function updateStudioSettings(
 
 export function appearanceOf(settings: StudioSettings): Appearance {
   return settings.appearance ?? DEFAULT_APPEARANCE;
+}
+
+export function editorPreferencesOf(settings: StudioSettings): EditorPreferences {
+  return settings.editor ?? DEFAULT_EDITOR_PREFERENCES;
 }

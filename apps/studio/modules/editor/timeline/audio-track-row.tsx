@@ -15,10 +15,11 @@ import type { AudioActions } from "./audio/audio-actions";
 import { AudioClipBlock } from "./audio/audio-clip-block";
 import { AudioClipMenu } from "./audio/audio-clip-menu";
 import type { AudioDragMode } from "./audio/audio-drag";
-import { AUDIO_ROW_HEIGHT_PX } from "./audio/audio-metrics";
+import { audioClipInnerHeight } from "./audio/audio-metrics";
 import { dropTime } from "./audio/drop-time";
 import { TimelineRow } from "./timeline-row";
 import { TrackLockToggle } from "./track-lock-toggle";
+import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = AUDIO_COPY.track;
 
@@ -39,6 +40,10 @@ type AudioTrackRowProps = {
   onDropFiles: (dataTransfer: DataTransfer, time: number) => void;
   onImport: () => void;
   onToggleLocked: () => void;
+  /** The row's height, which its bottom edge resizes. */
+  height: number;
+  onResize: (height: number) => void;
+  onResetHeight: () => void;
 };
 
 function HeaderTooltip({
@@ -72,6 +77,9 @@ export function AudioTrackRow({
   onDropFiles,
   onImport,
   onToggleLocked,
+  height,
+  onResize,
+  onResetHeight,
 }: AudioTrackRowProps): React.ReactElement {
   const [dropping, setDropping] = useState(false);
   const muteLabel = track.muted ? copy.unmute(track.name) : copy.mute(track.name);
@@ -83,6 +91,7 @@ export function AudioTrackRow({
     <AudioClipBlock
       clip={clip}
       clock={clock}
+      innerHeight={audioClipInnerHeight(height)}
       key={clip.id}
       left={toX(clip.start)}
       locked={locked}
@@ -109,7 +118,7 @@ export function AudioTrackRow({
       data-track-index={trackIndex}
       header={
         <div
-          className="flex min-w-0 flex-1 items-center gap-2"
+          className="flex min-w-0 flex-1 items-center gap-1"
           data-menu="audio-lane"
           data-track-index={trackIndex}>
           <HeaderTooltip label={muteLabel}>
@@ -127,14 +136,14 @@ export function AudioTrackRow({
               )}
             </Toggle>
           </HeaderTooltip>
+          <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
           <span
             className={cn(
-              "min-w-0 flex-1 truncate font-medium text-foreground text-xs",
+              "ms-1 min-w-0 flex-1 truncate font-medium text-foreground text-xs",
               track.muted && "text-muted-foreground line-through"
             )}>
             {track.name}
           </span>
-          <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
           <HeaderTooltip label={copy.importAudio}>
             <Button
               aria-label={copy.importAudio}
@@ -147,7 +156,8 @@ export function AudioTrackRow({
           </HeaderTooltip>
         </div>
       }
-      height={AUDIO_ROW_HEIGHT_PX}
+      height={height}
+      resize={{ label: STUDIO_COPY.timeline.resizeTrack(track.name), onResize, onReset: onResetHeight }}
       onDragLeave={() => setDropping(false)}
       onDragOver={(event) => {
         if (!hasFiles(event)) return;

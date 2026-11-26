@@ -5,7 +5,7 @@ point it at, drafts the storyboard and edits it.
 
 | File | What it is |
 | --- | --- |
-| `agent-sidecar.tsx` | The sidecar: the agent frame in a column on the window's right edge that pushes the editor open and closed |
+| `agent-sidecar.tsx` | The sidecar: the agent card in a column on the window's right edge that pushes the editor open and closed |
 | `agent-thread.tsx` | The conversation, its empty state and starters, the change cards (Undo, Generate, "Why these scenes"), and the light markdown replies render with |
 | `agent-input.tsx` | The composer, with the context chips in its header and the model picker |
 | `model-picker.tsx` | Switches the studio's model among the connected providers' (the same setting as Settings › AI) |
@@ -54,8 +54,10 @@ Explored at `/proto/agent-shell` over four rounds; the prototype is deleted.
 - **Resize handles:** the gap between two cards is the handle; nothing is drawn in it. Hovering or dragging lights
   the facing borders of both cards, mirrored, and only where a bordered card sits against the gap: the glow skips
   the gaps between cards and fades 14 px + 28 px before each rounded corner. A side with no border stays dark.
-- **The agent is an extension, not a panel:** its own frame (the composer frame's material: a muted shell with the
-  header on it, holding an inset card for the thread, composer under the card). Sidecar: a full-height column on
+- **The agent is one of the editor's cards** (November 2026, replacing its own muted frame): bordered like the
+  inspector beside it, a plain "Agent" header (no icon), the thread, and the composer set into the card's bottom
+  4 px from its edge, its corners following the card's (`data-snug` math: card radius − border − inset; the
+  composer 2 px tighter than its chip shelf). The frame read as a dark slab sitting above the composer. Sidecar: a full-height column on
   the window's right edge, beside the whole editor. 360 px by default, 300–520, collapses when dragged well past
   its minimum. Hidden until opened (the title bar's Agent button, ⌘L, or the storyboard's agent button), so the
   editor starts clean; once opened it stays open across reloads.

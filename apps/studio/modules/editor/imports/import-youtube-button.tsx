@@ -121,7 +121,7 @@ export function ImportYoutubeButton({ projectId, onImported }: ImportYoutubeButt
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+      <DialogTrigger render={<Button variant="secondary" />}>
         <UploadIcon aria-hidden="true" />
         {copy.trigger}
       </DialogTrigger>

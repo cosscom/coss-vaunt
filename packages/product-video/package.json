@@ -84,7 +84,8 @@
     "./setup/ffmpeg-install": "./src/setup/ffmpeg-install.ts",
     "./setup/vaunt-bin": "./src/setup/vaunt-bin.ts",
     "./settings/studio-settings": "./src/settings/studio-settings.ts",
-    "./settings/appearance": "./src/settings/appearance.ts"
+    "./settings/appearance": "./src/settings/appearance.ts",
+    "./settings/editor-preferences": "./src/settings/editor-preferences.ts"
   },
   "typesVersions": {
     "*": {
@@ -327,6 +328,9 @@
       ],
       "settings/appearance": [
         "./src/settings/appearance.ts"
+      ],
+      "settings/editor-preferences": [
+        "./src/settings/editor-preferences.ts"
       ]
     }
   },

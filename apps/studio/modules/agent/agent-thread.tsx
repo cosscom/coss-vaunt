@@ -218,7 +218,7 @@ function Replies({ agent, options, live }: { agent: AgentModel; options: string[
           key={option}
           onClick={() => agent.ask(option)}
           size="xs"
-          variant="outline">
+          variant="secondary">
           {option}
         </Button>
       ))}

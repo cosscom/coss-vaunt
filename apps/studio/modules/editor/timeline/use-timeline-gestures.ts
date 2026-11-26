@@ -34,6 +34,8 @@ type TimelineGestureOptions = {
   contentRef: React.RefObject<HTMLDivElement | null>;
   /** The scrolled body that marquees are drawn in. */
   bodyRef: React.RefObject<HTMLDivElement | null>;
+  /** The track header column's width, for autoscroll near its edge. */
+  headerWidth: number;
 };
 
 export type Marquee = { left: number; top: number; width: number; height: number };
@@ -66,11 +68,12 @@ export function useTimelineGestures({
   pxPerSecond,
   contentRef,
   bodyRef,
+  headerWidth,
 }: TimelineGestureOptions) {
   const [draft, setDraftState] = useState<Project | null>(null);
   const [marquee, setMarquee] = useState<Marquee | null>(null);
   const draftRef = useRef<Project | null>(null);
-  const startDrag = usePointerDrag();
+  const startDrag = usePointerDrag(headerWidth);
   const { project, selection } = editor;
   const { fps } = project.settings;
 

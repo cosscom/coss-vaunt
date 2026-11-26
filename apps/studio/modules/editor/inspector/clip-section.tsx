@@ -56,7 +56,7 @@ export function ClipSection({
   }, [focusTransition]);
 
   return (
-    <InspectorSection aside={location?.track.name} title={copy.clip}>
+    <InspectorSection aside={location?.track.name} defaultOpen={false} title={copy.clip}>
       <InspectorRow htmlFor="clip-name" label={copy.name}>
         <DraftInput
           id="clip-name"
@@ -105,9 +105,11 @@ export function ClipSection({
           }
           value={clip.transitionIn}
         />
-        <p className="ps-26 text-muted-foreground text-xs tabular-nums">
-          {overlap > 0 ? copy.transitionLength(`${overlap.toFixed(2)} s`) : copy.transitionHint}
-        </p>
+        {overlap > 0 ? (
+          <p className="ps-26 text-muted-foreground text-xs tabular-nums">
+            {copy.transitionLength(`${overlap.toFixed(2)} s`)}
+          </p>
+        ) : null}
       </div>
     </InspectorSection>
   );

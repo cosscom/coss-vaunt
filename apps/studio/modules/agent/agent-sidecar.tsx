@@ -2,7 +2,7 @@
 
 import { Button } from "@coss/ui/components/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@coss/ui/components/tooltip";
-import { SparklesIcon, SquarePenIcon, XIcon } from "@coss/ui/icons";
+import { SquarePenIcon, XIcon } from "@coss/ui/icons";
 import type * as React from "react";
 import type { RefObject } from "react";
 import { AgentInput } from "./agent-input";
@@ -46,8 +46,8 @@ function FrameAction({
 }
 
 /**
- * The agent's own material: the composer frame's muted shell with the header on it, holding an inset card for the
- * thread, with the composer on the frame under it. It reads as something attached to the editor, not a panel of it.
+ * The agent as one of the editor's cards, like the inspector beside it: a header, the thread, and the composer set
+ * into the card's bottom, its corners following the card's.
  */
 function AgentFrame({
   agent,
@@ -63,12 +63,12 @@ function AgentFrame({
   return (
     <section
       aria-label={copy.title}
-      className="flex min-h-0 flex-1 flex-col rounded-2xl p-1"
-      data-slot="agent-frame"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-background"
+      data-editor-card=""
+      data-slot="agent-panel"
       ref={frameRef}>
-      <header className="flex h-9 shrink-0 items-center gap-1.5 ps-2.5 pe-1">
-        <SparklesIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
-        <h2 className="min-w-0 flex-1 truncate font-medium text-[13px]">{copy.title}</h2>
+      <header className="flex h-10.5 shrink-0 items-center gap-1 border-b ps-4 pe-1.5">
+        <h2 className="min-w-0 flex-1 truncate font-medium text-foreground text-sm">{copy.title}</h2>
         {agent.thread.messages.length > 0 ? (
           <FrameAction label={copy.newChat} onClick={agent.thread.clear}>
             <SquarePenIcon aria-hidden="true" />
@@ -78,10 +78,9 @@ function AgentFrame({
           <XIcon aria-hidden="true" />
         </FrameAction>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-background">
-        <AgentThread agent={agent} />
-      </div>
-      <AgentInput agent={agent} className="shrink-0 pt-1" onOpenSettings={onOpenSettings} />
+      <AgentThread agent={agent} />
+      {/* 4 px from the card's edge: the composer's corners follow the card's (see data-snug in globals.css). */}
+      <AgentInput agent={agent} className="shrink-0 p-1" onOpenSettings={onOpenSettings} />
     </section>
   );
 }

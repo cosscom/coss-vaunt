@@ -2,7 +2,7 @@
 
 import type { ProjectSettings } from "@coss/vaunt-engine/storyboard/storyboard-schema";
 import type * as React from "react";
-import { BackgroundSwatches } from "./background-swatches";
+import { BackgroundPicker } from "./background-picker";
 import { InspectorNumberRow } from "./inspector-number-row";
 import { InspectorSection } from "./inspector-section";
 import { InspectorSwitchRow } from "./inspector-switch-row";
@@ -23,7 +23,7 @@ export function ProjectSections({ settings, onSettingsChange }: ProjectSectionsP
   return (
     <>
       <InspectorSection title={copy.background}>
-        <BackgroundSwatches
+        <BackgroundPicker
           onChange={(background) => onSettingsChange({ background })}
           value={settings.background}
         />

@@ -55,8 +55,8 @@ export function LeftSidebar({
           setOpen(true);
         }}
         value={tab}>
-        <div className={cn("flex h-10 shrink-0 items-center gap-1 ps-2 pe-1", open && "border-b")}>
-          <TabsList className="flex-1" size="sm">
+        <div className={cn("flex shrink-0 items-center gap-1", open && "border-b")} data-snug="">
+          <TabsList className="flex-1">
             <TabsTab value="storyboard">{STUDIO_COPY.storyboard.tab}</TabsTab>
             <TabsTab value="assets">{STUDIO_COPY.assets.tab}</TabsTab>
           </TabsList>
@@ -64,7 +64,7 @@ export function LeftSidebar({
             aria-expanded={open}
             aria-label={open ? STUDIO_COPY.sidebar.collapse : STUDIO_COPY.sidebar.expand}
             onClick={() => setOpen((value) => !value)}
-            size="icon-sm"
+            size="icon"
             variant="ghost">
             <ChevronDownIcon
               aria-hidden="true"

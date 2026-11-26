@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   appearanceOf,
   DEFAULT_APPEARANCE,
+  DEFAULT_EDITOR_PREFERENCES,
+  editorPreferencesOf,
   migrateSettings,
   readStudioSettings,
   updateStudioSettings,
@@ -35,6 +37,18 @@ describe("appearanceOf", () => {
   it("defaults to no glass", () => {
     expect(appearanceOf({ version: 2 })).toEqual(DEFAULT_APPEARANCE);
     expect(DEFAULT_APPEARANCE.glass).toBe(false);
+  });
+});
+
+describe("editorPreferencesOf", () => {
+  it("defaults to selecting on hover after 800 ms, and reads a saved choice", () => {
+    expect(editorPreferencesOf({ version: 2 })).toEqual(DEFAULT_EDITOR_PREFERENCES);
+    expect(DEFAULT_EDITOR_PREFERENCES.hoverSelectDelayMs).toBe(800);
+    const editor = { hoverSelect: false, hoverSelectDelayMs: 1200 };
+    expect(editorPreferencesOf(migrateSettings({ version: 2, editor }))).toEqual(editor);
+    expect(() =>
+      migrateSettings({ version: 2, editor: { hoverSelect: true, hoverSelectDelayMs: 50 } })
+    ).toThrow();
   });
 });
 

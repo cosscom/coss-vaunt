@@ -1,6 +1,6 @@
 # Settings
 
-The studio's settings: one full-window screen, on every page. ⌘, opens it (Ctrl+, elsewhere), Esc or × closes it.
+The studio's settings: one dialog, on every page. ⌘, opens it (Ctrl+, elsewhere), Esc or × closes it.
 The title bars' gear and the agent's model picker ("AI settings…") open it at AI.
 
 | File | What it is |
@@ -13,6 +13,7 @@ The title bars' gear and the agent's model picker ("AI settings…") open it at 
 | `ai-connections.ts` | The pickers' model lists per connected provider, and the requests that save keys |
 | `appearance.ts` | What the glass setting puts on `<html>` |
 | `settings-button.tsx` | The gear in the title bars |
+| `provider-logo.tsx` | The AI providers' brand marks (Simple Icons, OpenAI's and xAI's own; Groq's initial, a globe for a compatible server) |
 
 Everything is saved in the engine's settings file, `$XDG_CONFIG_HOME/coss-vaunt/settings.json` (version 2: `ai` and
 `appearance`; a version 1 file, the AI settings alone, is read as the `ai` part and rewritten on the next save). The
@@ -22,11 +23,12 @@ theme is the exception: next-themes keeps it in localStorage, since it has to ap
 
 Modelled on T3 Code's settings.
 
-- **A screen, not a dialog:** it covers the whole window, on the editor shell's color, with one card inside: the nav
+- **A dialog that fits comfortably:** one card centred over the dimmed, blurred window, at most 1080 × 760 and always
+  32 px clear of the window's edges (below the window buttons in the desktop window). Inside it: the nav
   on the left (search with `/`, then General and Appearance, "Studio": AI and Keybindings, "App": About), the
   section on the right under "Settings / Section", with Restore defaults and × at the right of that header. It
-  fades in (200 ms, ease-out, a 1% scale; opacity only with reduced motion). In the desktop window the strip above
-  the card drags the window.
+  fades in (200 ms, ease-out, a 2% scale; opacity only with reduced motion). In the desktop window the strip along
+  the top of the backdrop drags the window. (It first covered the whole window; that read as too much.)
 - **Rows:** each section is groups of rows on a card, a title above each group; a row is the title and description
   on the left and its control on the right. A row that needs more (a key being typed, a test's result) opens under
   its title.
@@ -38,7 +40,7 @@ Modelled on T3 Code's settings.
   the glass, 0–100%). The cards stay opaque. In a browser, or a window binary without the command, the switch is
   disabled with a note that it's the desktop window's.
 - **AI:** the model in use (a select of every connected provider's models, then a model id field for anything else),
-  then a row per provider: Anthropic, OpenAI, Google Gemini, xAI, Mistral, Groq, OpenRouter, Vercel AI Gateway and
+  then a row per provider, each led by its logo on a small tile (`provider-logo.tsx`): Anthropic, OpenAI, Google Gemini, xAI, Mistral, Groq, OpenRouter, Vercel AI Gateway and
   OpenAI-compatible (a base URL, like Ollama's or LM Studio's, and an optional key). A row says whether it's
   connected and how ("Saved key …abcd", "From GROQ_API_KEY", the server's address), and offers Add key, Replace,
   Remove and Test. Test asks the provider's default model for one word (a few tokens), or the compatible server for

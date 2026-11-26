@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@coss/ui/components/button";
-import { Dialog, DialogPortal, DialogPrimitive } from "@coss/ui/components/dialog";
+import { Dialog, DialogBackdrop, DialogPortal, DialogPrimitive } from "@coss/ui/components/dialog";
 import { Kbd } from "@coss/ui/components/kbd";
 import { toastManager } from "@coss/ui/components/toast";
 import {
@@ -131,7 +131,7 @@ function SettingsNav({
 }
 
 /**
- * Settings, over the whole window: a nav of sections on the left (with search), and the section as groups of rows
+ * Settings, as a dialog centred over a dimmed window (at most 1080 × 760): a nav of sections on the left (with search), and the section as groups of rows
  * on the right under a "Settings / Section" breadcrumb. ⌘, opens it (settings-provider.tsx), Esc or × closes it.
  */
 export function SettingsScreen({
@@ -185,16 +185,19 @@ export function SettingsScreen({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogPortal>
-        <DialogPrimitive.Popup
-          className="fixed inset-0 z-50 flex flex-col bg-(--editor-shell-color) p-2.5 pt-[max(var(--titlebar-inset,0px),10px)] outline-none transition-[opacity,scale] duration-200 ease-out data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:data-ending-style:scale-[0.99] motion-safe:data-starting-style:scale-[0.99]"
-          data-slot="settings-screen">
+        <DialogBackdrop>
           {/* The desktop window's buttons sit in this strip; it drags the window, as the title bar would. */}
           <div
             aria-hidden="true"
             className="absolute inset-x-0 top-0 h-(--titlebar-inset)"
             data-tauri-drag-region
           />
-          <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-background">
+        </DialogBackdrop>
+        {/* Centred below the window buttons, at most 1080 × 760 and always 32 px clear of the window's edges. */}
+        <DialogPrimitive.Popup
+          className="fixed top-[calc(50%+var(--titlebar-inset,0px)/2)] left-1/2 z-50 flex h-[min(760px,calc(100dvh-var(--titlebar-inset,0px)-4rem))] w-[min(1080px,calc(100vw-4rem))] -translate-x-1/2 -translate-y-1/2 flex-col outline-none transition-[opacity,scale] duration-200 ease-out data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:data-ending-style:scale-[0.98] motion-safe:data-starting-style:scale-[0.98]"
+          data-slot="settings-screen">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-background shadow-2xl">
             <SettingsNav onSectionChange={onSectionChange} section={section} />
             <div className="flex min-w-0 flex-1 flex-col">
               <header className="flex h-12 shrink-0 items-center gap-2 border-b ps-6 pe-2">

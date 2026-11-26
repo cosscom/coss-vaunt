@@ -127,7 +127,7 @@ export function ProjectCard({
             <span>{STUDIO_COPY.projects.clips(project.sceneCount)}</span>
           </p>
         </div>
-        <Badge className="tabular-nums" variant="outline">
+        <Badge className="tabular-nums" variant="secondary">
           {project.aspectRatio}
         </Badge>
         <Menu>

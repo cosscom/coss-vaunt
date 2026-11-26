@@ -16,7 +16,17 @@ export const SETTINGS_NAV: readonly NavGroup[] = [
 
 /** What search matches besides a section's name: the titles of the rows in it. */
 const SEARCH_TERMS: Record<SettingsSection, readonly string[]> = {
-  general: [copy.general.projectsFolder, copy.general.settingsFile, copy.general.replay, "folder", "storage"],
+  general: [
+    copy.general.projectsFolder,
+    copy.general.settingsFile,
+    copy.general.replay,
+    copy.general.hoverSelect,
+    copy.general.hoverDelay,
+    "folder",
+    "storage",
+    "hover",
+    "select",
+  ],
   appearance: [
     copy.appearance.themeTitle,
     copy.appearance.glass,

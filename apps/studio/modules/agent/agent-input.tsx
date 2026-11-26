@@ -16,7 +16,7 @@ const CHIP_ICONS = { project: LayersIcon, scene: FileTextIcon, clip: VideoIcon, 
 function Chip({ chip, onRemove }: { chip: ContextChip; onRemove?: () => void }): React.ReactElement {
   const Icon = CHIP_ICONS[chip.kind];
   return (
-    <span className="inline-flex h-6 max-w-44 items-center gap-1.5 rounded-md bg-muted ps-2 pe-1 text-muted-foreground text-xs">
+    <span className="inline-flex h-6 max-w-44 items-center gap-1.5 rounded-[calc(var(--agent-composer-radius,8px)-2px)] bg-muted ps-2 pe-1 text-muted-foreground text-xs">
       <Icon aria-hidden="true" className="size-3 shrink-0 opacity-72" />
       <span className={cn("min-w-0 truncate", chip.kind === "moment" && "tabular-nums")}>{chip.label}</span>
       {onRemove ? (
@@ -45,7 +45,14 @@ export function AgentInput({
   className?: string;
 }): React.ReactElement {
   return (
-    <div className={className}>
+    <div
+      className={cn(
+        // The composer's chip shelf sits 2 px around it, so the composer is 2 px tighter than the card's curve.
+        "[--agent-composer-radius:calc(var(--radius-xl)-1px-4px-2px)]",
+        // Its bottom corners sit nearer the card's, so they open 1 px wider to read as parallel to the card's curve.
+        "**:data-[slot=composer]:rounded-b-[calc(var(--agent-composer-radius)+1px)]",
+        className
+      )}>
       <BorderBeam state={agent.busy ? "active" : "idle"}>
         <AgentComposer
           autoFocus={false}

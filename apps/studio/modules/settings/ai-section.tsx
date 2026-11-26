@@ -32,6 +32,7 @@ import {
   modelGroups,
   parseChoice,
 } from "./ai-connections";
+import { ProviderLogo } from "./provider-logo";
 import { SettingsGroup, SettingsRow } from "./settings-rows";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
@@ -242,7 +243,7 @@ function ConnectionRow({
               </>
             ) : null}
             {connection ? null : (
-              <Button onClick={() => setEditing(true)} size="sm" variant="outline">
+              <Button onClick={() => setEditing(true)} size="sm" variant="secondary">
                 {copy.addKey}
               </Button>
             )}
@@ -255,6 +256,7 @@ function ConnectionRow({
           <span className="truncate">{connection ? status : copy.providerDescriptions[provider]}</span>
         </span>
       }
+      icon={<ProviderLogo provider={provider} />}
       title={
         <>
           {name}

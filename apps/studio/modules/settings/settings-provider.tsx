@@ -2,6 +2,10 @@
 
 import { toastManager } from "@coss/ui/components/toast";
 import { type Appearance, DEFAULT_APPEARANCE } from "@coss/vaunt-engine/settings/appearance";
+import {
+  DEFAULT_EDITOR_PREFERENCES,
+  type EditorPreferences,
+} from "@coss/vaunt-engine/settings/editor-preferences";
 import type * as React from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { glassAttributes } from "./appearance";
@@ -11,6 +15,7 @@ import { canUseGlass, setWindowGlass } from "@/modules/desktop/desktop-window";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const APPEARANCE_URL = "/api/settings/appearance";
+const EDITOR_URL = "/api/settings/editor";
 
 type SettingsContextValue = {
   /** Opens Settings, at `section` or wherever it was last. */
@@ -22,6 +27,12 @@ type SettingsContextValue = {
   updateAppearance: (change: Partial<Appearance>) => Promise<void>;
   /** Shows a change without saving it, as a slider drags; `updateAppearance` saves it when let go. */
   previewAppearance: (change: Partial<Appearance>) => void;
+  /** How the editor behaves: selecting stage layers on hover, and after how long. */
+  editorPreferences: EditorPreferences;
+  /** Saves a change; it shows at once and goes back if saving fails. */
+  updateEditorPreferences: (change: Partial<EditorPreferences>) => Promise<void>;
+  /** Shows a change without saving it, as a slider drags. */
+  previewEditorPreferences: (change: Partial<EditorPreferences>) => void;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -42,7 +53,7 @@ function applyAppearance(appearance: Appearance, capable: boolean): void {
 }
 
 /**
- * Settings on every page: the full-window screen (⌘, opens it, Esc closes it) and the appearance it edits, which is
+ * Settings on every page: the settings dialog (⌘, opens it, Esc closes it) and the appearance it edits, which is
  * read from the server once and applied to the page and the desktop window.
  */
 export function SettingsProvider({ children }: { children: React.ReactNode }): React.ReactElement {
@@ -50,6 +61,48 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
   const [section, setSection] = useState<SettingsSection>("general");
   const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const [glassCapable, setGlassCapable] = useState(false);
+  const [editorPreferences, setEditorPreferences] = useState<EditorPreferences>(DEFAULT_EDITOR_PREFERENCES);
+  const [savedEditor, setSavedEditor] = useState<EditorPreferences>(DEFAULT_EDITOR_PREFERENCES);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(EDITOR_URL)
+      .then((response) => (response.ok ? (response.json() as Promise<EditorPreferences>) : null))
+      .then((loaded) => {
+        if (cancelled || !loaded) return;
+        setEditorPreferences(loaded);
+        setSavedEditor(loaded);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const previewEditorPreferences = useCallback(
+    (change: Partial<EditorPreferences>) => setEditorPreferences((current) => ({ ...current, ...change })),
+    []
+  );
+
+  const updateEditorPreferences = useCallback(
+    async (change: Partial<EditorPreferences>) => {
+      const previous = savedEditor;
+      setEditorPreferences((current) => ({ ...current, ...change }));
+      try {
+        const response = await fetch(EDITOR_URL, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(change),
+        });
+        if (!response.ok) throw new Error(response.statusText);
+        setSavedEditor((await response.json()) as EditorPreferences);
+      } catch {
+        setEditorPreferences(previous);
+        toastManager.add({ type: "error", title: STUDIO_COPY.settings.saveFailed });
+      }
+    },
+    [savedEditor]
+  );
 
   useEffect(() => {
     const capable = canUseGlass();
@@ -124,8 +177,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }): R
       glassCapable,
       updateAppearance,
       previewAppearance,
+      editorPreferences,
+      updateEditorPreferences,
+      previewEditorPreferences,
     }),
-    [appearance, glassCapable, updateAppearance, previewAppearance]
+    [
+      appearance,
+      glassCapable,
+      updateAppearance,
+      previewAppearance,
+      editorPreferences,
+      updateEditorPreferences,
+      previewEditorPreferences,
+    ]
   );
 
   return (

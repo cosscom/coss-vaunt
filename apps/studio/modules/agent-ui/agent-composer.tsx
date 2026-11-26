@@ -230,7 +230,7 @@ export function AgentComposerFrame({
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute rounded-lg bg-muted [transition-property:inset,opacity] motion-reduce:transition-none",
+          "pointer-events-none absolute rounded-[calc(var(--agent-composer-radius,var(--radius-lg))+2px)] bg-muted [transition-property:inset,opacity] motion-reduce:transition-none",
           backdropClassName
         )}
         data-slot="agent-composer-frame-backdrop"
@@ -295,7 +295,7 @@ export function AgentComposerInput({
       {...composerProps}
       className={cn(
         // No focus ring: the frame lights its border under the pointer instead.
-        "[--composer-radius:var(--radius-lg)] [--composer-max-height:12rem] has-[[data-slot=composer-input]:focus-visible]:border-foreground/16 has-[[data-slot=composer-input]:focus-visible]:ring-0",
+        "[--composer-radius:var(--agent-composer-radius,var(--radius-lg))] [--composer-max-height:12rem] has-[[data-slot=composer-input]:focus-visible]:border-foreground/16 has-[[data-slot=composer-input]:focus-visible]:ring-0",
         withHeader && "relative",
         withFooter &&
           !withHeader &&

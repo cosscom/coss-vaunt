@@ -1,6 +1,6 @@
 "use client";
 
-import { LockIcon } from "@coss/ui/icons";
+import { LockIcon, MusicIcon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { audioClipGainAt } from "@coss/vaunt-engine/audio/audio-volume";
 import type { AudioClip } from "@coss/vaunt-engine/storyboard/storyboard-schema";
@@ -30,6 +30,8 @@ type AudioClipBlockProps = {
   clock: PlaybackClock;
   onPointerDown: (event: React.PointerEvent, mode: AudioDragMode) => void;
   onSelect: () => void;
+  /** The clip's inner height, from its track's height. */
+  innerHeight?: number;
 };
 
 function EdgeHandle({
@@ -87,6 +89,7 @@ export function AudioClipBlock({
   clock,
   onPointerDown,
   onSelect,
+  innerHeight = AUDIO_CLIP_INNER_HEIGHT_PX,
 }: AudioClipBlockProps): React.ReactElement {
   const peaks = useWaveformPeaks(projectId, clip.file);
   const keyframed = clip.volume.keyframes.length > 0;
@@ -95,7 +98,7 @@ export function AudioClipBlock({
     if (keyframed) return false;
     const box = event.currentTarget.getBoundingClientRect();
     const local = (event.clientX - box.left) / pxPerSecond;
-    const lineY = volumeLineY(audioClipGainAt(clip, local), AUDIO_CLIP_INNER_HEIGHT_PX) + 1;
+    const lineY = volumeLineY(audioClipGainAt(clip, local), innerHeight) + 1;
     return Math.abs(event.clientY - box.top - lineY) <= VOLUME_LINE_GRAB_PX;
   };
 
@@ -112,7 +115,7 @@ export function AudioClipBlock({
         aria-label={`${clip.name}, ${copy.seconds(clip.duration)}`}
         aria-pressed={selected}
         className={cn(
-          "relative flex size-full cursor-grab touch-none select-none items-start overflow-hidden rounded-md border border-(--studio-audio)/40 bg-(--studio-audio)/14 px-2 py-1 text-start outline-none transition-colors hover:bg-(--studio-audio)/20 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
+          "relative flex size-full cursor-grab touch-none select-none flex-col items-start justify-between overflow-hidden rounded-md border border-(--studio-audio)/40 bg-(--studio-audio)/14 px-2 py-1.5 text-start outline-none transition-colors hover:bg-(--studio-audio)/20 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
           selected && "border-(--studio-audio) bg-(--studio-audio)/22 ring-(--studio-audio) ring-1",
           muted && "opacity-48",
           locked && "cursor-default opacity-72 saturate-50"
@@ -128,20 +131,23 @@ export function AudioClipBlock({
         <AudioWaveform
           clip={clip}
           clock={clock}
-          height={AUDIO_CLIP_INNER_HEIGHT_PX}
+          height={innerHeight}
           peaks={peaks}
           pxPerSecond={pxPerSecond}
           width={width - 2}
         />
-        <span className="relative flex min-w-0 items-baseline gap-1.5 rounded-sm bg-background/56 px-1 leading-4 backdrop-blur-[2px]">
+        {/* Laid out like a video clip: icon and name on top, the duration at the bottom. Each sits on a light scrim
+            over the waveform, pulled out by its own padding so the text lines up with a video clip's. */}
+        <span className="relative -mx-1 flex min-w-0 max-w-[calc(100%+0.5rem)] items-center gap-1.5 rounded-sm bg-background/56 px-1 leading-4 backdrop-blur-[2px]">
+          <MusicIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0 truncate font-medium text-foreground text-xs">{clip.name}</span>
-          <span className="shrink-0 text-[0.625rem] text-muted-foreground tabular-nums">
+          {locked ? <LockIcon aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" /> : null}
+        </span>
+        {innerHeight >= AUDIO_CLIP_INNER_HEIGHT_PX - 12 ? (
+          <span className="relative -mx-1 truncate rounded-sm bg-background/56 px-1 text-[0.625rem] text-muted-foreground tabular-nums leading-3 backdrop-blur-[2px]">
             {copy.seconds(clip.duration)}
           </span>
-          {locked ? (
-            <LockIcon aria-hidden="true" className="size-3 shrink-0 self-center text-muted-foreground" />
-          ) : null}
-        </span>
+        ) : null}
       </button>
       {locked ? null : (
         <>

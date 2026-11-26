@@ -14,7 +14,7 @@ import {
   MenuTrigger,
 } from "@coss/ui/components/menu";
 import { toastManager } from "@coss/ui/components/toast";
-import { ChevronDownIcon, SparklesIcon } from "@coss/ui/icons";
+import { ChevronDownIcon } from "@coss/ui/icons";
 import type { AiSettingsView } from "@coss/vaunt-engine/ai/ai-providers";
 import type * as React from "react";
 import { useEffect, useState } from "react";
@@ -28,6 +28,7 @@ import {
   parseChoice,
 } from "@/modules/settings/ai-connections";
 import { AI_SETTINGS_URL, saveAiSettings } from "@/modules/settings/ai-section";
+import { ProviderMark } from "@/modules/settings/provider-logo";
 import { STUDIO_COPY } from "@/modules/studio-copy";
 
 const copy = STUDIO_COPY.agent;
@@ -73,13 +74,13 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings: () => void }):
         render={
           <Button
             aria-label={copy.model(label)}
-            className="gap-1 px-2 text-muted-foreground hover:text-foreground"
+            className="gap-1.5 px-2 text-muted-foreground hover:text-foreground"
             size="xs"
             type="button"
             variant="ghost"
           />
         }>
-        <SparklesIcon aria-hidden="true" />
+        {view ? <ProviderMark className="size-3.5" provider={view.provider} /> : null}
         <span className="max-w-28 truncate">{label}</span>
         <ChevronDownIcon aria-hidden="true" className="opacity-64" />
       </MenuTrigger>
@@ -90,7 +91,10 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings: () => void }):
           value={view ? choiceValue(view.provider, activeModel(view)) : ""}>
           {groups.map((group) => (
             <MenuGroup key={group.provider}>
-              <MenuGroupLabel>{providerNames[group.provider]}</MenuGroupLabel>
+              <MenuGroupLabel className="flex items-center gap-1.5">
+                <ProviderMark className="size-3" provider={group.provider} />
+                {providerNames[group.provider]}
+              </MenuGroupLabel>
               {group.models.map((model) => (
                 <MenuRadioItem key={model.id} value={choiceValue(group.provider, model.id)}>
                   {model.label}

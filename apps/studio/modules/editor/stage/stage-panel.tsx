@@ -1,6 +1,6 @@
 "use client";
 
-import { BoxIcon, FocusIcon, HandIcon, MousePointer2Icon, RotateCwIcon } from "@coss/ui/icons";
+import { BoxIcon, HandIcon, MousePointer2Icon } from "@coss/ui/icons";
 import { cn } from "@coss/ui/lib/utils";
 import { SegmentedRadio, SegmentedRadioGroup } from "@coss/ui/shared/segmented-radio-group";
 import type { CanvasMode } from "@coss/vaunt-engine/stage/canvas-drag";
@@ -12,6 +12,7 @@ import type * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type PlaybackClock, usePlaybackState } from "../player/playback-clock";
 import { onRecordingFinished } from "../recording/recording-finished";
+import { AspectRatioSelect } from "./aspect-ratio-select";
 import { STAGE_COPY as copy } from "./stage-copy";
 import {
   blurGuideTarget,
@@ -25,6 +26,7 @@ import { textColorForBackground } from "./text/text-contrast";
 import { TextOverlay } from "./text-overlay";
 import { useCanvasDrag } from "./use-canvas-drag";
 import { useStageHover } from "./use-stage-hover";
+import { useSettings } from "@/modules/settings/settings-provider";
 
 export type StagePanelProps = {
   project: Project;
@@ -38,10 +40,11 @@ export type StagePanelProps = {
   onSetProperty: (clipId: string, key: PropertyKey, value: number) => void;
   /** A layer picked on the stage, or null for a click on the background. */
   onSelectClip: (clipId: string | null, additive: boolean) => void;
+  onAspectRatioChange: (aspectRatio: Project["settings"]["aspectRatio"]) => void;
 };
 
 type StageTool = "select" | CanvasMode;
-const TOOLS: readonly StageTool[] = ["select", "camera", "orbit", "rotate", "focus"];
+const TOOLS: readonly StageTool[] = ["select", "camera", "rotate"];
 
 const FRAME_PADDING = 24;
 const MAX_PIXEL_RATIO = 2;
@@ -78,6 +81,7 @@ export function StagePanel({
   blurEditing,
   onSetProperty,
   onSelectClip,
+  onAspectRatioChange,
 }: StagePanelProps): React.ReactElement {
   const [area, setArea] = useState<HTMLDivElement | null>(null);
   const [frameElement, setFrameElement] = useState<HTMLDivElement | null>(null);
@@ -85,6 +89,7 @@ export function StagePanel({
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const stage = useRef<{ renderer: StageRenderer; invalidate: () => void } | null>(null);
   const [tool, setTool] = useState<StageTool>("select");
+  const { editorPreferences } = useSettings();
   const mode: CanvasMode = tool === "select" ? "camera" : tool;
   const [failed, setFailed] = useState(false);
 
@@ -197,6 +202,8 @@ export function StagePanel({
     selectedClipId,
     canSelect: (event) => event.buttons === 0 && !clock.getState().playing && !activeRing && !blurHandle,
     onSelect: (clipId) => onSelectClip(clipId, false),
+    enabled: editorPreferences.hoverSelect,
+    delayMs: editorPreferences.hoverSelectDelayMs,
   });
   const hoveredClipId = hover.hoveredClipId;
   useLayoutEffect(() => {
@@ -231,14 +238,13 @@ export function StagePanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-muted/40">
-      <div className="flex h-11 shrink-0 items-center justify-between gap-2 px-3">
+      <div className="flex shrink-0 items-center justify-between gap-2" data-snug="">
         <SegmentedRadioGroup
           aria-label={copy.canvasMode}
           onValueChange={(next) => {
             const picked = TOOLS.find((candidate) => candidate === next);
             if (picked) setTool(picked);
           }}
-          size="sm"
           value={tool}>
           <SegmentedRadio title={copy.selectHint} value="select">
             <MousePointer2Icon aria-hidden="true" />
@@ -248,19 +254,12 @@ export function StagePanel({
             <HandIcon aria-hidden="true" />
             {copy.camera}
           </SegmentedRadio>
-          <SegmentedRadio title={copy.orbitHint} value="orbit">
-            <RotateCwIcon aria-hidden="true" />
-            {copy.orbit}
-          </SegmentedRadio>
           <SegmentedRadio title={copy.rotateHint} value="rotate">
             <BoxIcon aria-hidden="true" />
             {copy.rotate}
           </SegmentedRadio>
-          <SegmentedRadio title={copy.focusHint} value="focus">
-            <FocusIcon aria-hidden="true" />
-            {copy.focus}
-          </SegmentedRadio>
         </SegmentedRadioGroup>
+        <AspectRatioSelect onChange={onAspectRatioChange} value={project.settings.aspectRatio} />
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden" ref={setArea}>
         <div

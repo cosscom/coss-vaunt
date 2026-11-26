@@ -19,7 +19,9 @@ import { useMediaImport } from "../../media/use-media-import";
 import type { PlaybackClock } from "../../player/playback-clock";
 import type { EditorState } from "../../use-editor-state";
 import { AudioTrackRow } from "../audio-track-row";
+import type { TrackHeightsState } from "../track-heights";
 import { AddAudioTrackRow } from "./add-audio-track-row";
+import { AUDIO_ROW_HEIGHT_PX } from "./audio-metrics";
 import { AudioVolumeLane } from "./audio-volume-lane";
 import { useAudioActions } from "./use-audio-actions";
 import { useAudioGestures } from "./use-audio-gestures";
@@ -31,6 +33,7 @@ type AudioTracksProps = {
   contentWidth: number;
   pxPerSecond: number;
   toX: (seconds: number) => number;
+  trackHeights: TrackHeightsState;
 };
 
 /**
@@ -43,6 +46,7 @@ export function AudioTracks({
   contentWidth,
   pxPerSecond,
   toX,
+  trackHeights,
 }: AudioTracksProps): React.ReactElement {
   const { project } = editor;
   const store = audioSelectionFor(clock);
@@ -66,9 +70,7 @@ export function AudioTracks({
   }, [videoSelected, store]);
 
   return (
-    <div
-      className="[--studio-audio-line:oklch(0.42_0.2_295)] [--studio-audio:oklch(0.62_0.17_295)] dark:[--studio-audio-line:oklch(0.86_0.09_295)] dark:[--studio-audio:oklch(0.7_0.15_295)]"
-      data-testid="audio-tracks">
+    <div data-testid="audio-tracks">
       <input
         accept={ACCEPTED_AUDIO}
         className="hidden"
@@ -100,6 +102,9 @@ export function AudioTracks({
               importTrack.current = trackIndex;
               fileInputRef.current?.click();
             }}
+            height={trackHeights.heightOf(track.id, AUDIO_ROW_HEIGHT_PX)}
+            onResetHeight={() => trackHeights.resetHeight(track.id)}
+            onResize={(height) => trackHeights.setHeight(track.id, height)}
             onToggleLocked={() => editor.setAudioTrackLocked(trackIndex, !track.locked)}
             onSelectClip={(clipId) => gestures.select({ clipIds: [clipId], keyframeIds: [] })}
             projectId={project.id}

@@ -34,7 +34,10 @@ export function SettingsRow({
   control,
   children,
   className,
+  icon,
 }: {
+  /** Leads the row, before its title: a provider's logo. */
+  icon?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
   control?: React.ReactNode;
@@ -44,6 +47,7 @@ export function SettingsRow({
   return (
     <div className={cn("flex flex-col gap-3 px-4 py-3.5", className)}>
       <div className="flex min-h-8 items-center gap-6">
+        {icon ? <div className="-me-3 flex shrink-0 self-start pt-0.5">{icon}</div> : null}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2 font-medium text-sm">{title}</div>
           {description ? <div className="text-muted-foreground text-sm">{description}</div> : null}

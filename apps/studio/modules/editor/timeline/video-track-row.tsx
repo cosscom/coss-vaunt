@@ -49,6 +49,10 @@ type VideoTrackRowProps = {
   onToggleLanes: () => void;
   onToggleHidden: () => void;
   onToggleLocked: () => void;
+  /** The track row's height, which its bottom edge resizes. */
+  height: number;
+  onResize: (height: number) => void;
+  onResetHeight: () => void;
   onSelectTransition: (clipId: string) => void;
   onSelectClip: (clipId: string) => void;
   onClipPointerDown: (event: React.PointerEvent, clip: Clip, mode: ClipDragMode) => void;
@@ -101,6 +105,9 @@ export function VideoTrackRow({
   onToggleLanes,
   onToggleHidden,
   onToggleLocked,
+  height,
+  onResize,
+  onResetHeight,
   onSelectTransition,
   onSelectClip,
   onClipPointerDown,
@@ -137,7 +144,7 @@ export function VideoTrackRow({
         data-track-index={trackIndex}
         header={
           <div
-            className="flex min-w-0 flex-1 items-center gap-1.5"
+            className="flex min-w-0 flex-1 items-center gap-1"
             data-menu="track"
             data-track-index={trackIndex}>
             <Tooltip>
@@ -159,14 +166,14 @@ export function VideoTrackRow({
               </TooltipTrigger>
               <TooltipPopup>{visibilityLabel}</TooltipPopup>
             </Tooltip>
+            <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
             <span
               className={cn(
-                "min-w-0 flex-1 truncate font-medium text-foreground text-xs",
+                "ms-1 min-w-0 flex-1 truncate font-medium text-foreground text-xs",
                 track.hidden && "text-muted-foreground line-through"
               )}>
               {track.name}
             </span>
-            <TrackLockToggle locked={locked} name={track.name} onToggle={onToggleLocked} />
             {laneClip ? <AddLaneMenu onShowLane={onShowLane} shown={lanes.map((lane) => lane.key)} /> : null}
             <HeaderButton
               aria-expanded={showLanes}
@@ -180,7 +187,8 @@ export function VideoTrackRow({
             </HeaderButton>
           </div>
         }
-        height={VIDEO_TRACK_HEIGHT_PX}
+        height={height}
+        resize={{ label: copy.resizeTrack(track.name), onResize, onReset: onResetHeight }}
         onDragLeave={() => setDropping(false)}
         onDragOver={(event) => {
           if (!hasFiles(event)) return;
@@ -205,6 +213,7 @@ export function VideoTrackRow({
           {track.clips.map((clip) => (
             <TimelineClip
               clip={clip}
+              compact={height < VIDEO_TRACK_HEIGHT_PX}
               insetEnd={overlapPx(clip.id, "outgoingClipId")}
               insetStart={overlapPx(clip.id, "clipId")}
               key={clip.id}
