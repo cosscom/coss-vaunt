@@ -1,6 +1,12 @@
 import { createTextClip } from "@coss/vaunt-engine/storyboard/storyboard-factories";
 import { describe, expect, it } from "vitest";
-import { applyGenerationEvent, failUnfinished, parseGenerationStream, shownSteps } from "./generation-stream";
+import {
+  applyGenerationEvent,
+  failUnfinished,
+  generatingScenes,
+  parseGenerationStream,
+  shownSteps,
+} from "./generation-stream";
 
 describe("parseGenerationStream", () => {
   it("returns complete events and keeps the unfinished tail", () => {
@@ -71,5 +77,17 @@ describe("shownSteps", () => {
     expect(statuses.a?.steps).toBeUndefined();
     statuses = applyGenerationEvent(statuses, { nodeId: "a", status: "done" });
     expect(shownSteps(statuses.a!)).toEqual({ finished: [], current: null });
+  });
+});
+
+describe("generatingScenes", () => {
+  it("lists the scenes still queued or working", () => {
+    const scenes = generatingScenes({
+      a: { status: "queued" },
+      b: { status: "recording" },
+      c: { status: "done" },
+      d: { status: "failed" },
+    });
+    expect([...scenes]).toEqual(["a", "b"]);
   });
 });
