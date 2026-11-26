@@ -59,6 +59,7 @@
     "./project-store/import-templates": "./src/project-store/import-templates.ts",
     "./project-store/scan-project-assets": "./src/project-store/scan-project-assets.ts",
     "./storyboard/board-generation": "./src/storyboard/board-generation.ts",
+    "./storyboard/board-sync": "./src/storyboard/board-sync.ts",
     "./storyboard/board-order": "./src/storyboard/board-order.ts",
     "./ai/board-draft": "./src/ai/board-draft.ts",
     "./ai/generation-events": "./src/ai/generation-events.ts",
@@ -232,6 +233,9 @@
       ],
       "storyboard/board-generation": [
         "./src/storyboard/board-generation.ts"
+      ],
+      "storyboard/board-sync": [
+        "./src/storyboard/board-sync.ts"
       ],
       "storyboard/board-order": [
         "./src/storyboard/board-order.ts"
