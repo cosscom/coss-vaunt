@@ -79,7 +79,9 @@
     "./ai/studio-model": "./src/ai/studio-model.ts",
     "./setup/tools-status": "./src/setup/tools-status.ts",
     "./setup/ffmpeg-install": "./src/setup/ffmpeg-install.ts",
-    "./setup/vaunt-bin": "./src/setup/vaunt-bin.ts"
+    "./setup/vaunt-bin": "./src/setup/vaunt-bin.ts",
+    "./settings/studio-settings": "./src/settings/studio-settings.ts",
+    "./settings/appearance": "./src/settings/appearance.ts"
   },
   "typesVersions": {
     "*": {
@@ -307,6 +309,12 @@
       ],
       "setup/vaunt-bin": [
         "./src/setup/vaunt-bin.ts"
+      ],
+      "settings/studio-settings": [
+        "./src/settings/studio-settings.ts"
+      ],
+      "settings/appearance": [
+        "./src/settings/appearance.ts"
       ]
     }
   },
@@ -321,7 +329,13 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.116",
+    "@ai-sdk/google": "3.0.121",
+    "@ai-sdk/groq": "3.0.64",
+    "@ai-sdk/mistral": "3.0.63",
     "@ai-sdk/openai": "3.0.109",
+    "@ai-sdk/openai-compatible": "2.0.74",
+    "@ai-sdk/xai": "3.0.130",
+    "@openrouter/ai-sdk-provider": "2.10.0",
     "agent-browser": "0.43.0",
     "ai": "6.0.277",
     "playwright": "1.64.1",

@@ -8,12 +8,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Which AI provider and model the studio uses, and where each key comes from; never the keys themselves. */
+/** Which AI provider and model the studio uses, and how each provider is connected; never the keys themselves. */
 export async function GET(): Promise<Response> {
   return Response.json(aiSettingsView(await readAiSettings()));
 }
 
-/** Body: `{ provider, model?, apiKey? }`; an absent key keeps the saved one and null removes it. */
+/**
+ * Body: `{ provider?, model?, keys?, baseUrl? }`. A provider absent from `keys` keeps its saved key and null removes
+ * it; the same for `baseUrl`.
+ */
 export async function PUT(request: Request): Promise<Response> {
   const parsed = aiSettingsUpdateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
